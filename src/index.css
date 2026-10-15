@@ -1,0 +1,579 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Source Serif 4", "Times New Roman", serif;
+  --font-hero: "Anton", "Arial Narrow", Impact, sans-serif;
+
+  --animate-float: float 6s ease-in-out infinite;
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  /* Primary: violet pulled from the seal's outer ring and shield */
+  --color-brand-50: #f7f2ff;
+  --color-brand-100: #ede2ff;
+  --color-brand-200: #dbc6ff;
+  --color-brand-300: #bf9aff;
+  --color-brand-400: #a066ff;
+  --color-brand-500: #8a3cf5;
+  --color-brand-600: #7524db;
+  --color-brand-700: #5f18b8;
+  --color-brand-800: #491293;
+  --color-brand-900: #330c69;
+  --color-brand-950: #1e0541;
+
+  /* Accent: gold from the ring border, star, and scales */
+  --color-gold-100: #fff6d6;
+  --color-gold-300: #ffe38f;
+  --color-gold-400: #fcd34d;
+  --color-gold-500: #f2b705;
+  --color-gold-600: #d19d00;
+
+  /* Reserved accent: maroon laurels (alerts, emphasis, footer details) */
+  --color-maroon-100: #fde8e8;
+  --color-maroon-600: #9b1c1c;
+  --color-maroon-700: #7a1212;
+  --color-maroon-800: #5a0d0d;
+
+  /* Page background tint, similar to the inspiration's cool off-white */
+  --color-surface: #f5f3fb;
+
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+  --default-transition-duration: 500ms;
+  --default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-menu-in: menu-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-menu-out: menu-out 150ms ease-in;
+  --animate-pulse-shadow: pulse-shadow 1.8s ease-out infinite;
+
+  @keyframes menu-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes menu-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+@keyframes pulse-shadow {
+  0% {
+    box-shadow: 0 0 0 0 rgb(117 36 219 / 0.48);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 12px rgb(117 36 219 / 0);
+  }
+}
+}
+
+html {
+  color-scheme: light;
+  height: 100%;
+  scroll-behavior: auto;
+  overflow-anchor: none;
+}
+
+#root {
+  height: 100%;
+}
+
+/* Fill the screen instead of relying on percentage height.
+   iOS Safari collapses height: 100% when the document cannot scroll, which leaves a blank page. */
+.app-scroll {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-pulse-shadow,
+  .animate-spin,
+  .snackbar-in,
+  .sheet-up {
+    animation: none;
+  }
+}
+
+@keyframes snackbar-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.snackbar-in {
+  animation: snackbar-in 260ms ease-out both;
+}
+
+@keyframes sheet-up {
+  from {
+    opacity: 0.55;
+    transform: translateY(24%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sheet-up {
+  animation: sheet-up 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes result-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+
+.result-shake {
+  animation: result-shake 420ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes scroll-mouse-wheel {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(4px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(4px);
+    opacity: 0;
+  }
+}
+
+.scroll-mouse-wheel {
+  animation: scroll-mouse-wheel 1.5s ease-in-out infinite;
+}
+
+@keyframes step-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.step-progress {
+  transform-origin: left center;
+  animation: step-progress 3.2s linear forwards;
+}
+
+@keyframes logo-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.logo-marquee {
+  animation: logo-marquee 42s linear infinite;
+}
+
+.logo-marquee:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snackbar-in,
+  .sheet-up,
+  .result-shake,
+  .scroll-mouse-wheel,
+  .step-progress,
+  .logo-marquee {
+    animation: none;
+  }
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--color-surface);
+  color: var(--color-zinc-900);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark theme remaps the light surfaces and type colors.
+   Filled brand buttons, photo captions, and white type on violet stay as they are. */
+html.dark {
+  color-scheme: dark;
+  --color-surface: #0e0a14;
+  --color-zinc-50: #221832;
+  --color-zinc-100: #2c2040;
+  --color-zinc-200: #4a3a64;
+  --color-zinc-300: #645484;
+  --color-zinc-400: #a08eb8;
+  --color-zinc-500: #c4b6d4;
+  --color-zinc-600: #ddd2ea;
+  --color-zinc-700: #ebe4f4;
+  --color-zinc-800: #f3eef8;
+  --color-zinc-900: #f8f4fc;
+  --color-zinc-950: #ffffff;
+  --color-brand-50: #2a1844;
+}
+
+html.dark .bg-white,
+html.dark .hover\:bg-white:hover,
+html.dark .focus\:bg-white:focus,
+html.dark .focus-within\:bg-white:focus-within {
+  background-color: #161222;
+}
+
+html.dark :is(.rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl).bg-white {
+  background-color: #241c38;
+}
+
+/* Heroes keep a violet field in dark mode. The light gradient uses literal white
+   and lavender, which would otherwise sit on top of the dark page. */
+html.dark .hero-wash {
+  background:
+    radial-gradient(ellipse 70% 42% at 50% 22%, rgb(138 60 245 / 0.42), transparent 68%),
+    linear-gradient(180deg, #161222 0%, #2a1458 40%, #4a2088 68%, #1c1230 100%);
+}
+
+html.dark [aria-label='Recognized Student Organizations'] img {
+  filter: grayscale(0.25) brightness(1.35);
+  opacity: 0.92;
+}
+
+html.dark [aria-label='Recognized Student Organizations'] img:hover {
+  filter: none;
+  opacity: 1;
+}
+
+html.dark .bg-white\/95 {
+  background-color: rgb(22 16 34 / 0.94);
+}
+
+/* On the hero, the bar uses the same wash as the section below it. */
+html.dark header.header-blend {
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+html.dark .hero-blend {
+  margin-top: -4.5rem;
+  padding-top: 4.5rem;
+}
+
+html.dark .hero-glow {
+  background-color: rgb(196 150 255 / 0.2);
+}
+
+html.dark .bg-white\/90 {
+  background-color: rgb(74 36 140 / 0.35);
+}
+
+html.dark .hover\:bg-white\/40:hover {
+  background-color: rgb(255 255 255 / 0.08);
+}
+
+html.dark .from-white {
+  --tw-gradient-from: #100b18;
+}
+
+html.dark .bg-\[\#f4f5f7\],
+html.dark .bg-\[\#f6f5fb\],
+html.dark .bg-\[\#f7f6fb\] {
+  background-color: #120c1c;
+}
+
+html.dark .bg-\[\#f6f6f8\] {
+  background-color: #221832;
+}
+
+html.dark .bg-brand-100 {
+  background-color: #3a2260;
+}
+
+html.dark .bg-brand-100\/40 {
+  background-color: rgb(58 34 96 / 0.45);
+}
+
+html.dark .hero-stage {
+  background-color: rgb(176 110 255 / 0.38);
+}
+
+html.dark .border-brand-100,
+html.dark .border-brand-100\/80 {
+  border-color: #4a3568;
+}
+
+html.dark .border-brand-200,
+html.dark .hover\:border-brand-200:hover {
+  border-color: #6b45a0;
+}
+
+html.dark .border-brand-300,
+html.dark .hover\:border-brand-300:hover {
+  border-color: #8a5ec4;
+}
+
+html.dark .text-brand-600 {
+  color: #c084fc;
+}
+
+html.dark .text-brand-700 {
+  color: #d4b4ff;
+}
+
+html.dark .text-brand-800 {
+  color: #e7dbff;
+}
+
+html.dark .text-brand-900 {
+  color: #f4eeff;
+}
+
+html.dark .text-brand-950 {
+  color: #f7f2ff;
+}
+
+html.dark .hover\:text-brand-600:hover,
+html.dark .group:hover .group-hover\:text-brand-600 {
+  color: #d4b4ff;
+}
+
+html.dark .hover\:text-brand-700:hover,
+html.dark .group:hover .group-hover\:text-brand-700,
+html.dark .data-\[state\=open\]\:text-brand-700[data-state='open'],
+html.dark .aria-\[current\=page\]\:text-brand-700[aria-current='page'] {
+  color: #e4d4ff;
+}
+
+html.dark .hover\:text-brand-800:hover,
+html.dark .group:hover .group-hover\:text-brand-800 {
+  color: #f4eeff;
+}
+
+html.dark .hover\:text-brand-950:hover {
+  color: #ffffff;
+}
+
+html.dark :is(.bg-gold-400, .bg-gold-500).text-brand-950 {
+  color: #1e0541;
+}
+
+html.dark .bg-gold-100 {
+  background-color: #3f3010;
+}
+
+html.dark .bg-gold-100.text-brand-950 {
+  color: #ffe7a3;
+}
+
+html.dark .bg-maroon-100 {
+  background-color: #3f1518;
+}
+
+html.dark .text-maroon-700 {
+  color: #fca5a5;
+}
+
+html.dark .text-maroon-800 {
+  color: #fecaca;
+}
+
+.section-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: fit-content;
+  margin: 0;
+  padding: 0.22rem 0.7rem 0.22rem 0.22rem;
+  border: 1px solid rgb(255 255 255 / 0.75);
+  border-radius: 999px;
+  background-color: rgb(255 255 255 / 0.62);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 10px 18px -14px rgb(30 5 65 / 0.4);
+  backdrop-filter: blur(16px);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-brand-700);
+}
+
+.section-kicker-icon {
+  display: grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--color-brand-500), var(--color-brand-700));
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35);
+}
+
+html.dark .section-kicker {
+  border-color: rgb(255 255 255 / 0.14);
+  background-color: rgb(36 28 56 / 0.72);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    0 10px 20px -14px rgb(0 0 0 / 0.55);
+  color: #d4b4ff;
+}
+
+html.dark .section-kicker-icon {
+  background: linear-gradient(180deg, #b48bff, #6d28d9);
+  color: #fff;
+}
+
+.org-card {
+  background-color: rgb(255 255 255 / 0.55);
+  border-color: rgb(255 255 255 / 0.7);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.85),
+    0 14px 28px -20px rgb(30 5 65 / 0.4);
+}
+
+.org-card:hover {
+  background-color: rgb(255 255 255 / 0.72);
+  border-color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    0 22px 36px -18px rgb(30 5 65 / 0.45);
+}
+
+.org-card-panel {
+  background-color: rgb(255 255 255 / 0.35);
+  border-color: rgb(255 255 255 / 0.8);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
+}
+
+.org-card-chip {
+  background-color: rgb(255 255 255 / 0.5);
+  border-color: rgb(255 255 255 / 0.7);
+}
+
+.org-card-nav {
+  background-color: rgb(255 255 255 / 0.82);
+  border-color: rgb(255 255 255 / 0.8);
+}
+
+.org-card-nav:hover {
+  background-color: rgb(245 240 255 / 0.95);
+  border-color: #d4c2f5;
+}
+
+html.dark .org-card {
+  background-color: rgb(36 28 56 / 0.62);
+  border-color: rgb(255 255 255 / 0.14);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 18px 36px -18px rgb(0 0 0 / 0.55);
+}
+
+html.dark .org-card:hover {
+  background-color: rgb(54 40 82 / 0.78);
+  border-color: rgb(255 255 255 / 0.28);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.16),
+    0 22px 40px -16px rgb(0 0 0 / 0.6);
+}
+
+html.dark .org-card-panel {
+  background-color: rgb(255 255 255 / 0.06);
+  border-color: rgb(255 255 255 / 0.12);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+
+html.dark .org-card-chip {
+  background-color: rgb(255 255 255 / 0.08);
+  border-color: rgb(255 255 255 / 0.14);
+}
+
+html.dark .org-card-nav {
+  background-color: rgb(22 16 34 / 0.72);
+  border-color: rgb(255 255 255 / 0.16);
+  color: #f7f2ff;
+}
+
+html.dark .org-card-nav:hover {
+  background-color: rgb(54 40 82 / 0.9);
+  border-color: rgb(255 255 255 / 0.28);
+}
+
+html.dark .org-wash span:nth-child(1) {
+  background-color: rgb(138 60 245 / 0.42);
+}
+
+html.dark .org-wash span:nth-child(2) {
+  background-color: rgb(90 40 170 / 0.5);
+}
+
+html.dark .org-wash span:nth-child(3) {
+  background-color: rgb(180 130 40 / 0.28);
+}
+
+@media (min-width: 40rem) {
+  html.dark .sm\:bg-white {
+    background-color: #1a1228;
+  }
+
+  html.dark .sm\:text-brand-950 {
+    color: #f7f2ff;
+  }
+}
