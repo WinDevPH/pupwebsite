@@ -1,50 +1,101 @@
-import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from 'react'
-
-const storageKey = 'pup-colsc-theme'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 
 export type Theme = 'light' | 'dark'
 
-type ThemeContextValue = {
+export type ThemeContextValue = {
   theme: Theme
+  setTheme: (theme: Theme, options?: { persist?: boolean }) => void
   toggleTheme: () => void
 }
 
-const ThemeContext = createContext<ThemeContextValue | null>(null)
+export const THEME_STORAGE_KEY = 'pup-colsc-theme'
 
-function readTheme(): Theme {
-  if (document.documentElement.classList.contains('dark')) return 'dark'
-  return 'light'
+const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
+
+export function readStoredThemePreference(): Theme | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
+    if (stored === 'light' || stored === 'dark') return stored
+  } catch {
+    /* ignore */
+  }
+  return null
+}
+
+function persistThemePreference(theme: Theme) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  } catch {
+    /* ignore */
+  }
+}
+
+function readInitialTheme(): Theme {
+  if (typeof window === 'undefined') return 'light'
+  const stored = readStoredThemePreference()
+  if (stored) return stored
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
 function applyTheme(theme: Theme) {
-  document.documentElement.classList.toggle('dark', theme === 'dark')
-  document.documentElement.style.colorScheme = theme
+  const root = document.documentElement
+  if (theme === 'dark') root.classList.add('dark')
+  else root.classList.remove('dark')
+  root.style.colorScheme = theme
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(readTheme)
+  const [theme, setThemeState] = useState<Theme>(() => readInitialTheme())
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     applyTheme(theme)
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#07070b' : '#ffffff')
   }, [theme])
 
-  function toggleTheme() {
-    setTheme((current) => {
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = (event: MediaQueryListEvent) => {
+      if (readStoredThemePreference()) return
+      setThemeState(event.matches ? 'dark' : 'light')
+    }
+    media.addEventListener('change', handler)
+    return () => media.removeEventListener('change', handler)
+  }, [])
+
+  const setTheme = useCallback((next: Theme, options?: { persist?: boolean }) => {
+    if (options?.persist !== false) persistThemePreference(next)
+    setThemeState(next)
+  }, [])
+
+  const toggleTheme = useCallback(() => {
+    setThemeState((current) => {
       const next = current === 'dark' ? 'light' : 'dark'
-      try {
-        localStorage.setItem(storageKey, next)
-      } catch {
-        // The choice still applies for this visit if storage is blocked.
-      }
+      persistThemePreference(next)
       return next
     })
-  }
+  }, [])
 
-  return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>
+  const value = useMemo<ThemeContextValue>(
+    () => ({ theme, setTheme, toggleTheme }),
+    [theme, setTheme, toggleTheme],
+  )
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }
 
-export function useTheme() {
-  const value = useContext(ThemeContext)
-  if (!value) throw new Error('useTheme must be used within ThemeProvider')
-  return value
+export function useTheme(): ThemeContextValue {
+  const ctx = useContext(ThemeContext)
+  if (!ctx) throw new Error('useTheme must be used within a ThemeProvider')
+  return ctx
 }

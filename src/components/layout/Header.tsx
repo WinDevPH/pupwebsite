@@ -1,16 +1,21 @@
-import { useEffect, useState, type ComponentProps, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { NavigationMenu } from 'radix-ui'
 import { AnimatePresence, motion } from 'motion/react'
 import { ChevronDown, ChevronsRight, Clock, Menu, Moon, Sun, X } from 'lucide-react'
 import logo from '@/assets/pup-col-sc-logo.png'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { useScrollContainer } from '@/context/ScrollContext'
 import { useTheme } from '@/context/ThemeContext'
+import { mapProjectRecord } from '@/components/home/project-data'
 import { scrollPageTo, setPageScrollLocked } from '@/hooks/useLenis'
+import { useSiteContact } from '@/hooks/useSiteContact'
+import { listProjects } from '@/lib/projects-api'
+import type { SiteContact } from '@/lib/site-settings-api'
 import { cn } from '@/lib/utils'
 import {
-  contact,
+  isExternalNavTo,
   navItems,
   primaryCta,
   siteName,
@@ -21,6 +26,37 @@ import {
 } from './nav-data'
 
 type MenuItem = Extract<NavItem, { groups: NavGroup[] }>
+
+/** Nav items with the Projects mega-menu swapped for published projects once loaded. */
+function useNavItems(): NavItem[] {
+  const [projectLinks, setProjectLinks] = useState<NavLinkItem[] | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void listProjects().then((result) => {
+      if (cancelled || !result.ok || result.data.items.length === 0) return
+      setProjectLinks(
+        result.data.items.map((item) => {
+          const project = mapProjectRecord(item)
+          return { label: project.label, to: `/projects/${project.slug}`, icon: project.icon }
+        }),
+      )
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return useMemo(() => {
+    if (!projectLinks) return navItems
+    return navItems.map((item) => {
+      if (item.label !== 'Projects' || !item.groups) return item
+      const [first, ...rest] = item.groups
+      if (!first) return item
+      return { ...item, groups: [{ ...first, links: projectLinks }, ...rest] }
+    })
+  }, [projectLinks])
+}
 
 const navLinkClass =
   'inline-flex h-10 items-center gap-1 rounded-lg px-3 text-[14px] font-medium whitespace-nowrap text-zinc-700 transition-colors hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500'
@@ -50,6 +86,8 @@ export function Header() {
   const { pathname } = useLocation()
   const mobileOpen = openedAt === pathname
   const scroller = useScrollContainer()
+  const items = useNavItems()
+  const siteContact = useSiteContact()
 
   useEffect(() => {
     const el = scroller.current
@@ -65,25 +103,25 @@ export function Header() {
   return (
     <>
       <div className="sticky top-0 z-50">
-      <TopBar hidden={scrolled} />
+      <TopBar hidden={scrolled} contact={siteContact} />
       <header
         className={cn(
           'border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300',
           scrolled || mobileOpen || !onHero
-            ? 'border-brand-100/80 bg-white/95 backdrop-blur-md'
-            : 'header-blend border-transparent bg-white',
+            ? 'border-brand-100/80 bg-white/95 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/95'
+            : 'header-blend border-transparent bg-white dark:bg-transparent',
         )}
       >
         <div className="mx-auto flex h-18 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Brand onNavigate={() => setOpenedAt(null)} />
 
-          <DesktopNav />
+          <DesktopNav items={items} />
 
           <div className="flex shrink-0 items-center gap-2">
-            <ThemeToggle />
+            <ThemeToggle className="hidden xl:inline-flex" />
             <div className="hidden xl:block">
               <Button asChild>
-                <Link to={primaryCta.to} aria-label={primaryCta.description}>
+                <Link to={primaryCta.to} aria-label={primaryCta.label}>
                   {primaryCta.label}
                   <ChevronsRight className="size-4" />
                 </Link>
@@ -91,7 +129,7 @@ export function Header() {
             </div>
             <button
               type="button"
-              className="inline-flex size-10 items-center justify-center rounded-lg text-brand-900 hover:bg-brand-50 xl:hidden"
+              className="inline-flex size-10 items-center justify-center rounded-lg text-brand-900 hover:bg-brand-50 dark:text-zinc-100 dark:hover:bg-brand-500/15 xl:hidden"
               aria-expanded={mobileOpen}
               aria-controls="mobile-nav"
               aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
@@ -114,45 +152,23 @@ export function Header() {
         </div>
       </header>
       </div>
-      <MobileNav open={mobileOpen} barVisible={!scrolled} onNavigate={() => setOpenedAt(null)} />
+      <MobileNav
+        items={items}
+        contact={siteContact}
+        open={mobileOpen}
+        barVisible={!scrolled}
+        onNavigate={() => setOpenedAt(null)}
+      />
     </>
   )
 }
 
-function ThemeToggle() {
-  const { theme, toggleTheme } = useTheme()
-  const dark = theme === 'dark'
 
-  return (
-    <button
-      type="button"
-      onClick={toggleTheme}
-      aria-pressed={dark}
-      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      title={dark ? 'Light mode' : 'Dark mode'}
-      className="hidden size-10 items-center justify-center rounded-lg text-zinc-700 transition-colors hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 xl:inline-flex"
-    >
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.span
-          key={theme}
-          initial={{ opacity: 0, rotate: -70, scale: 0.7 }}
-          animate={{ opacity: 1, rotate: 0, scale: 1 }}
-          exit={{ opacity: 0, rotate: 70, scale: 0.7 }}
-          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-          className="inline-flex"
-        >
-          {dark ? <Sun className="size-5" /> : <Moon className="size-5" />}
-        </motion.span>
-      </AnimatePresence>
-    </button>
-  )
-}
-
-function TopBar({ hidden }: { hidden: boolean }) {
+function TopBar({ hidden, contact }: { hidden: boolean; contact: SiteContact }) {
   return (
     <div
       className={cn(
-        'hidden overflow-hidden bg-brand-950 text-brand-100 transition-[max-height] duration-300 ease-out md:block',
+        'hidden overflow-hidden border-b border-transparent bg-brand-950 text-brand-100 transition-[max-height,background-color,border-color,color] duration-300 ease-out md:block dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300',
         hidden ? 'pointer-events-none max-h-0' : 'max-h-9',
       )}
       inert={hidden}
@@ -160,9 +176,10 @@ function TopBar({ hidden }: { hidden: boolean }) {
     >
       <div className="mx-auto flex h-9 max-w-7xl items-center justify-between gap-3 px-4 text-[11px] sm:px-6 sm:text-xs lg:px-8">
         <p className="inline-flex min-w-0 items-center gap-1.5 font-medium tracking-wide">
-          <Clock className="size-3.5 text-gold-400" />
+          <Clock className="size-3.5 shrink-0 text-gold-400 dark:text-gold-400" aria-hidden />
           <span className="truncate">
-            <span className="text-white/60">Office hours:</span> {contact.hours}
+            <span className="text-white/60 dark:text-zinc-500">Office hours:</span>{' '}
+            <span className="text-brand-100 dark:text-zinc-200">{contact.hours}</span>
           </span>
         </p>
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
@@ -174,7 +191,7 @@ function TopBar({ hidden }: { hidden: boolean }) {
               rel="noreferrer"
               aria-label={`${social.name} ${social.handle}`}
               title={social.handle}
-              className="inline-flex items-center gap-1.5 transition-colors hover:text-white"
+              className="inline-flex items-center gap-1.5 text-brand-100 transition-colors hover:text-white dark:text-zinc-400 dark:hover:text-zinc-100"
             >
               <SocialIcon name={social.name} className="size-3.5" />
               <span className="hidden lg:inline">{social.handle}</span>
@@ -223,11 +240,11 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-function DesktopNav() {
+function DesktopNav({ items }: { items: NavItem[] }) {
   return (
     <NavigationMenu.Root className="relative hidden xl:block">
       <NavigationMenu.List className="flex items-center gap-0.5">
-        {navItems
+        {items
           .filter((item) => !item.mobileOnly)
           .map((item) =>
             item.groups ? (
@@ -266,8 +283,8 @@ function DesktopNav() {
           )}
       </NavigationMenu.List>
 
-      <div className="absolute top-full left-1/2 flex -translate-x-1/2 justify-center pt-3">
-        <NavigationMenu.Viewport className="relative h-(--radix-navigation-menu-viewport-height) w-(--radix-navigation-menu-viewport-width) origin-top overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-[0_28px_60px_-24px_rgba(30,5,65,0.4)] transition-[width,height] duration-200 data-[state=closed]:animate-menu-out data-[state=open]:animate-menu-in" />
+      <div className="absolute top-full left-1/2 z-50 flex -translate-x-1/2 justify-center pt-3">
+        <NavigationMenu.Viewport className="relative h-(--radix-navigation-menu-viewport-height) w-(--radix-navigation-menu-viewport-width) origin-top overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-[0_28px_60px_-24px_rgba(30,5,65,0.4)] transition-[width,height] duration-200 data-[state=closed]:animate-menu-out data-[state=open]:animate-menu-in dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/50" />
       </div>
     </NavigationMenu.Root>
   )
@@ -404,10 +421,14 @@ const menuItemVariants = {
 }
 
 function MobileNav({
+  items,
+  contact,
   open,
   barVisible,
   onNavigate,
 }: {
+  items: NavItem[]
+  contact: SiteContact
   open: boolean
   barVisible: boolean
   onNavigate: () => void
@@ -433,7 +454,7 @@ function MobileNav({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.22, ease: menuEase }}
           className={cn(
-            'fixed inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden bg-white top-18 xl:hidden',
+            'fixed inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden bg-white top-18 xl:hidden dark:bg-zinc-950',
             barVisible && 'md:top-[6.75rem]',
           )}
         >
@@ -461,7 +482,7 @@ function MobileNav({
                 animate="show"
                 className="flex flex-col gap-1 py-3"
               >
-                {navItems.map((item) =>
+                {items.map((item) =>
                   item.groups ? (
                     <motion.li key={item.label} variants={menuItemVariants}>
                       <MobileGroup item={item} />
@@ -484,7 +505,7 @@ function MobileNav({
               >
                 <MobileThemeToggle />
                 <Button asChild size="lg" className="mt-3 w-full">
-                  <Link to={primaryCta.to} aria-label={primaryCta.description}>
+                  <Link to={primaryCta.to} aria-label={primaryCta.label}>
                     {primaryCta.label}
                     <ChevronsRight className="size-4" />
                   </Link>
@@ -518,6 +539,7 @@ const mobileItemClass =
 function MobileThemeToggle() {
   const { theme, toggleTheme } = useTheme()
   const dark = theme === 'dark'
+  const Icon = dark ? Moon : Sun
 
   return (
     <button
@@ -525,23 +547,23 @@ function MobileThemeToggle() {
       role="switch"
       onClick={toggleTheme}
       aria-checked={dark}
-      className={cn(mobileItemClass, 'justify-between pr-3')}
+      aria-label={dark ? 'Dark Mode enabled' : 'Light Mode enabled'}
+      className={cn(mobileItemClass, 'justify-between pr-3 dark:text-zinc-100 dark:hover:bg-brand-500/12')}
     >
       <span className="inline-flex min-w-0 items-center gap-3">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-          <Moon className="size-4" aria-hidden />
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+          <Icon className="size-4" aria-hidden />
         </span>
-        Dark mode
+        {dark ? 'Dark Mode' : 'Light Mode'}
       </span>
       <span className="inline-flex shrink-0 items-center gap-2">
-        <span className={cn('text-xs font-semibold', dark ? 'text-brand-700' : 'text-zinc-400')}>
-          {dark ? 'On' : 'Off'}
-        </span>
         <span
           aria-hidden
           className={cn(
-            'relative h-6 w-11 rounded-full transition-colors',
-            dark ? 'bg-brand-700' : 'bg-zinc-300',
+            'relative h-6 w-11 rounded-full border transition-colors',
+            dark
+              ? 'border-brand-500/50 bg-brand-600 dark:border-brand-400/50 dark:bg-brand-500'
+              : 'border-zinc-300 bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-700',
           )}
         >
           <span
@@ -659,7 +681,7 @@ function MobileGroup({ item }: { item: MenuItem }) {
             className="overflow-hidden"
           >
             <div className="px-1 pt-2 pb-3">
-              <div className="overflow-hidden rounded-2xl border border-brand-100 bg-white">
+              <div className="overflow-hidden rounded-2xl border border-brand-100 bg-white dark:border-zinc-700 dark:bg-zinc-900">
                 <MegaMenu item={item} stacked />
               </div>
             </div>
@@ -688,17 +710,13 @@ function MenuLink({
 }: { link: NavLinkItem; compact?: boolean } & Omit<ComponentProps<typeof Link>, 'to'>) {
   const Icon = link.icon
   const hasDescription = !compact && Boolean(link.description)
-
-  return (
-    <Link
-      {...props}
-      to={link.to}
-      className={cn(
-        'flex gap-3 rounded-xl px-3 py-2 transition-colors hover:bg-brand-50',
-        hasDescription ? 'items-start' : 'items-center',
-        className,
-      )}
-    >
+  const classes = cn(
+    'flex gap-3 rounded-xl px-3 py-2 transition-colors hover:bg-brand-50',
+    hasDescription ? 'items-start' : 'items-center',
+    className,
+  )
+  const body = (
+    <>
       {Icon ? (
         <span
           className={cn(
@@ -715,6 +733,26 @@ function MenuLink({
           <span className="mt-1 block text-xs/5 text-zinc-500">{link.description}</span>
         ) : null}
       </span>
+    </>
+  )
+
+  if (isExternalNavTo(link.to)) {
+    return (
+      <a
+        {...(props as ComponentProps<'a'>)}
+        href={link.to}
+        target="_blank"
+        rel="noreferrer"
+        className={classes}
+      >
+        {body}
+      </a>
+    )
+  }
+
+  return (
+    <Link {...props} to={link.to} className={classes}>
+      {body}
     </Link>
   )
 }

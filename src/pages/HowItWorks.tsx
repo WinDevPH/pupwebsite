@@ -84,7 +84,7 @@ export default function HowItWorks() {
           <header className="mx-auto max-w-3xl text-center">
             <SectionKicker icon={Play}>Guide</SectionKicker>
             <h1 className="mt-[clamp(0.85rem,0.5rem+1vw,1.25rem)] font-hero text-[clamp(1.85rem,0.9rem+3vw,3.75rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950">
-              How it <span className="text-brand-600">works</span>
+              How It <span className="text-brand-600">Works</span>
             </h1>
             <div
               role="tablist"

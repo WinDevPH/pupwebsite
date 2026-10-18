@@ -22,65 +22,9 @@ import studentCouncilMark from '@/assets/logos/student-council-mark.jpg'
 import { siteName } from '@/components/layout/nav-data'
 import { Reveal } from '@/components/motion/Reveal'
 import { SectionKicker } from '@/components/ui/SectionKicker'
+import { useDocuments } from '@/hooks/useDocuments'
+import type { DocumentRecord } from '@/lib/documents-api'
 import { cn } from '@/lib/utils'
-
-type Resolution = {
-  number: string
-  title: string
-  href: string
-}
-
-const boardResolutions: Resolution[] = [
-  {
-    number: '001',
-    title: 'Declaring Vacancies and Manner of Filling the Same',
-    href: 'https://drive.google.com/file/d/1p1dQc5ck5CtFTHY07zKX5i46Mbv8V5nZ/view?usp=sharing',
-  },
-  {
-    number: '002',
-    title: 'Creation of Ad Hoc Committees and Providing for Manner of Filling the Same',
-    href: 'https://drive.google.com/file/d/1HSqAIASpCO3oHxWp_msYhc4J34I9X7Ee/view?usp=sharing',
-  },
-  {
-    number: '003',
-    title: 'Creation of the SC Website, Ad Hoc Committee, and Matters Related Thereto',
-    href: 'https://bit.ly/BoardResolution003s2026',
-  },
-  {
-    number: '004',
-    title: 'Policy Guidelines on Correspondence and Document Management',
-    href: 'https://bit.ly/BoardResolution004s2026',
-  },
-  {
-    number: '005',
-    title: 'Policy Guidelines on the Conduct of Board Meetings and other Assemblies',
-    href: 'https://bit.ly/BoardResolution005s2026',
-  },
-]
-
-const appointmentResolutions: Resolution[] = [
-  {
-    number: '001',
-    title:
-      'PRESCRIBING THE PROCEDURE, QUALIFICATIONS, AND CALENDAR FOR THE APPOINTMENT OF ASSOCIATE OFFICERS AND OTHER APPOINTIVE POSITIONS FOR FIRST SEMESTER, ACADEMIC YEAR 2026-2027',
-    href: 'https://drive.google.com/file/d/100RBzQvvdiWYRcVPfnWh0PfXHrjzUJf6/view?usp=sharing',
-  },
-  {
-    number: '002',
-    title: 'ADJUSTMENT OF CALENDAR',
-    href: 'https://drive.google.com/file/d/1-YGowhE93PIYo2E8c6rZrnsYeV4egSG8/view?usp=sharing',
-  },
-  {
-    number: '003',
-    title: 'CONFIRMATION OF APPOINTMENTS',
-    href: 'https://drive.google.com/file/d/1GBxqhnWrfu2dbo2CfjLo7E9-yXDM7X_a/view?usp=sharing',
-  },
-  {
-    number: '004',
-    title: 'SECOND CALL FOR APPLICATIONS',
-    href: 'https://drive.google.com/file/d/1QpkZWwuFFgq48o84FUkSoF71hU6ZWLfA/view?usp=sharing',
-  },
-]
 
 const seals = [
   { src: collegeOfLaw, label: 'College of Law' },
@@ -97,8 +41,8 @@ const rise = {
 }
 
 const transparencyTabs = [
-  { id: 'board', label: 'Board', icon: Landmark, count: boardResolutions.length },
-  { id: 'appointments', label: 'Appointments', icon: Gavel, count: appointmentResolutions.length },
+  { id: 'board', label: 'Board', icon: Landmark },
+  { id: 'appointments', label: 'Appointments', icon: Gavel },
   { id: 'memoranda', label: 'Memoranda', icon: Mail },
   { id: 'reports', label: 'Reports', icon: ClipboardCheck },
 ] as const
@@ -136,6 +80,14 @@ function tabFromHash(hash: string): TransparencyTab | null {
 export default function Transparency() {
   const { hash } = useLocation()
   const [tab, setTab] = useState<TransparencyTab>(() => tabFromHash(hash) ?? 'board')
+  const board = useDocuments('board_resolution')
+  const appointments = useDocuments('appointment_resolution')
+  const memoranda = useDocuments('memorandum')
+  const reports = useDocuments('report')
+  const tabCounts: Partial<Record<TransparencyTab, number>> = {
+    board: board.loading ? undefined : board.items.length,
+    appointments: appointments.loading ? undefined : appointments.items.length,
+  }
 
   useEffect(() => {
     const next = tabFromHash(hash)
@@ -187,7 +139,7 @@ export default function Transparency() {
             >
               Governance and
               <br />
-              <span className="text-brand-600">resolutions</span>
+              <span className="text-brand-600">Resolutions</span>
             </motion.h1>
           </motion.div>
         </div>
@@ -205,6 +157,7 @@ export default function Transparency() {
               {transparencyTabs.map((item) => {
                 const selected = tab === item.id
                 const Icon = item.icon
+                const count = tabCounts[item.id]
                 return (
                   <button
                     key={item.id}
@@ -224,14 +177,14 @@ export default function Transparency() {
                   >
                     <Icon className="size-3.5 shrink-0" aria-hidden />
                     <span className="truncate">{item.label}</span>
-                    {'count' in item ? (
+                    {typeof count === 'number' ? (
                       <span
                         className={cn(
                           'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums',
                           selected ? 'bg-white/20 text-white' : 'bg-brand-50 text-brand-700',
                         )}
                       >
-                        {item.count}
+                        {count}
                       </span>
                     ) : null}
                   </button>
@@ -252,12 +205,14 @@ export default function Transparency() {
               id="board-resolutions"
               icon={Landmark}
               kicker="Secretariat"
-              title="Board resolutions"
-              accent="and en banc issuances"
-              note="Organized archive of resolutions arranged by Series/Academic Year. Downloadable PDF links provided."
+              title="Board Resolutions"
+              accent="and En Banc Issuances"
+               note="Organized archive of resolutions arranged by Series/Academic Year. Downloadable PDF links provided."
               folder="01 Board Resolution & Memoranda"
               seriesLabel="Board Resolution"
-              items={boardResolutions}
+              items={board.items}
+              loading={board.loading}
+              error={board.error}
             />
           ) : null}
           {tab === 'appointments' ? (
@@ -266,20 +221,36 @@ export default function Transparency() {
               icon={Gavel}
               kicker="Secretariat"
               title="Commission on Appointments"
-              accent="resolutions"
+              accent="Resolutions"
               note="CA Reso No. 001, 002, 003, 004, Series of 2026."
               seriesLabel="Resolution"
-              items={appointmentResolutions}
+              items={appointments.items}
+              loading={appointments.loading}
+              error={appointments.error}
             />
           ) : null}
-          {tab === 'memoranda' ? (
+          {tab === 'memoranda' && memoranda.items.length > 0 ? (
+            <Archive
+              id="memoranda"
+              icon={ScrollText}
+              kicker="Secretariat"
+              title="Memoranda and"
+              accent="Administrative Requests"
+              note="Copies of formal communications sent to the Dean’s Office."
+              seriesLabel="Memorandum"
+              items={memoranda.items}
+              loading={memoranda.loading}
+              error={memoranda.error}
+            />
+          ) : null}
+          {tab === 'memoranda' && memoranda.items.length === 0 ? (
             <Reveal>
               <section id="memoranda">
                 <SectionHeading
                   icon={ScrollText}
                   kicker="Secretariat"
                   title="Memoranda and"
-                  accent="administrative requests"
+                  accent="Administrative Requests"
                 />
                 <div className="mt-6 grid items-stretch gap-3 lg:grid-cols-2">
                   <article className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-4 sm:gap-4 sm:p-5">
@@ -316,14 +287,28 @@ export default function Transparency() {
               </section>
             </Reveal>
           ) : null}
-          {tab === 'reports' ? (
+          {tab === 'reports' && reports.items.length > 0 ? (
+            <Archive
+              id="reports"
+              icon={FileText}
+              kicker="Audit"
+              title="Financial and"
+              accent="Accomplishment Reports"
+              note="Open records of the Council’s finances and accomplishments."
+              seriesLabel="Report"
+              items={reports.items}
+              loading={reports.loading}
+              error={reports.error}
+            />
+          ) : null}
+          {tab === 'reports' && reports.items.length === 0 ? (
             <Reveal>
               <section id="reports" className="scroll-mt-28">
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <div className="min-w-0">
                     <SectionKicker icon={FileText}>Audit</SectionKicker>
                     <h2 className="mt-2 font-hero text-[clamp(1.75rem,1.15rem+1.6vw,2.75rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950">
-                      Financial and <span className="text-brand-600">accomplishment reports</span>
+                      Financial and <span className="text-brand-600">Accomplishment Reports</span>
                     </h2>
                   </div>
                   <p className="text-[11px] font-semibold tracking-[0.14em] text-brand-700 uppercase">In progress</p>
@@ -393,6 +378,8 @@ function Archive({
   folder,
   seriesLabel,
   items,
+  loading = false,
+  error = '',
 }: {
   id: string
   icon: LucideIcon
@@ -402,7 +389,9 @@ function Archive({
   note: string
   folder?: string
   seriesLabel: string
-  items: Resolution[]
+  items: DocumentRecord[]
+  loading?: boolean
+  error?: string
 }) {
   return (
     <Reveal>
@@ -412,22 +401,29 @@ function Archive({
         {folder ? (
           <p className="mt-3 text-[11px] font-semibold tracking-[0.16em] text-brand-700 uppercase">{folder}</p>
         ) : null}
+        {loading ? <p className="mt-5 text-sm text-zinc-500">Loading documents…</p> : null}
+        {!loading && error ? <p className="mt-5 text-sm text-zinc-500">{error}</p> : null}
+        {!loading && !error && items.length === 0 ? (
+          <p className="mt-5 text-sm text-zinc-500">No documents published yet.</p>
+        ) : null}
         <ul className="mt-5 grid gap-3">
           {items.map((item) => (
-            <li key={item.number}>
+            <li key={item.id}>
               <a
-                href={item.href}
+                href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4 transition-colors hover:border-brand-200 sm:flex-row sm:items-center sm:gap-4"
               >
                 <span className="flex min-w-0 flex-1 items-start gap-3">
                   <span className="pt-0.5 font-hero text-xl leading-none text-brand-600 tabular-nums">
-                    {item.number}
+                    {item.number || '—'}
                   </span>
                   <span className="min-w-0">
                     <span className="block text-[11px] font-semibold tracking-[0.14em] text-brand-700 uppercase">
-                      {seriesLabel} No. {item.number}, s. 2026
+                      {item.number
+                        ? `${item.seriesLabel || seriesLabel} No. ${item.number}, s. 2026`
+                        : item.seriesLabel || seriesLabel}
                     </span>
                     <span className="mt-1 block text-sm leading-5 font-semibold text-balance text-brand-950">
                       {item.title}

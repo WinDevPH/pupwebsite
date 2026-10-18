@@ -1,96 +1,27 @@
 import { useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
-import { ArrowUpRight, Gavel, Scale, type LucideIcon } from 'lucide-react'
+import { ArrowUpRight, Gavel, Loader2, Scale, type LucideIcon } from 'lucide-react'
 import { SectionKicker } from '@/components/ui/SectionKicker'
 import collegeOfLaw from '@/assets/logos/college-of-law.jpg'
 import lawStudentsSociety from '@/assets/logos/law-students-society.jpg'
 import studentCouncil from '@/assets/logos/student-council.png'
 import studentCouncilMark from '@/assets/logos/student-council-mark.jpg'
-import biato from '@/assets/council/people/biato.jpg'
-import cuyugan from '@/assets/council/people/cuyugan.jpg'
-import deLeon from '@/assets/council/people/de-leon.jpg'
-import guadana from '@/assets/council/people/guadana.jpg'
-import orante from '@/assets/council/people/orante.jpg'
-import ramos from '@/assets/council/people/ramos.jpg'
-import rana from '@/assets/council/people/rana.jpg'
-import salazar from '@/assets/council/people/salazar.jpg'
-import sanchez from '@/assets/council/people/sanchez.jpg'
-import sarabia from '@/assets/council/people/sarabia.jpg'
-import tercero from '@/assets/council/people/tercero.jpg'
-import toribio from '@/assets/council/people/toribio.jpg'
-import velasco from '@/assets/council/people/velasco.jpg'
 import { siteName } from '@/components/layout/nav-data'
 import { Reveal } from '@/components/motion/Reveal'
+import {
+  councilYearKicker,
+  useCouncilBoard,
+  type CouncilSeat,
+} from '@/hooks/useCouncilBoard'
+import { useDocuments } from '@/hooks/useDocuments'
 import { cn } from '@/lib/utils'
-
-const academicYear = 'A.Y. 2026–2027'
 
 const seals = [
   { src: collegeOfLaw, label: 'College of Law' },
   { src: studentCouncilMark, label: 'Previous Student Council' },
   { src: lawStudentsSociety, label: 'Law Students Society' },
   { src: studentCouncil, label: 'Student Council' },
-]
-
-const boardResolutions = [
-  {
-    number: '001',
-    title: 'Declaring Vacancies and Manner of Filling the Same',
-    href: 'https://drive.google.com/file/d/1p1dQc5ck5CtFTHY07zKX5i46Mbv8V5nZ/view?usp=sharing',
-  },
-  {
-    number: '002',
-    title: 'Creation of Ad Hoc Committees and Providing for Manner of Filling the Same',
-    href: 'https://drive.google.com/file/d/1HSqAIASpCO3oHxWp_msYhc4J34I9X7Ee/view?usp=sharing',
-  },
-  {
-    number: '003',
-    title: 'Creation of the SC Website, Ad Hoc Committee, and Matters Related Thereto',
-    href: 'https://bit.ly/BoardResolution003s2026',
-  },
-  {
-    number: '004',
-    title: 'Policy Guidelines on Correspondence and Document Management',
-    href: 'https://bit.ly/BoardResolution004s2026',
-  },
-  {
-    number: '005',
-    title: 'Policy Guidelines on the Conduct of Board Meetings and other Assemblies',
-    href: 'https://bit.ly/BoardResolution005s2026',
-  },
-]
-
-type Seat = {
-  role: string
-  name: string
-  photo?: string
-  vacant?: boolean
-}
-
-const executiveBoard: Seat[] = [
-  { role: 'President', name: 'Toribio, Russel Angelo O.', photo: toribio },
-  { role: 'Vice President Internal', name: 'de Leon, Kristoffer Red S.', photo: deLeon },
-  { role: 'Vice President External', name: 'Salazar, Marvin L.', photo: salazar },
-  { role: 'Secretary-General', name: 'Velasco, Jesca O.', photo: velasco },
-  { role: 'Finance Officer', name: 'Biato, Yvonne', photo: biato },
-  { role: 'Auditor', name: 'Orante, Amaziah Perseus G.', photo: orante },
-  { role: 'Communications Officer', name: 'Tercero, Shein', photo: tercero },
-]
-
-const yearRepresentatives: Seat[] = [
-  { role: 'Year 1', name: 'Roxas, Jayson', photo: ramos },
-  { role: 'Year 2', name: 'Rana, John Ivan H.', photo: rana },
-  { role: 'Year 3', name: 'Guadaña, Almira P.', photo: guadana },
-  { role: 'Year 4', name: 'Vacant', vacant: true },
-]
-
-const associates: Seat[] = [
-  { role: 'Presidential Affairs', name: 'Jessica Mae T. Asuncion' },
-  { role: 'Internal Affairs', name: 'Aldrich R. Sanchez', photo: sanchez },
-  { role: 'Secretariat', name: 'Cherie An M. Sarabia', photo: sarabia },
-  { role: 'External Affairs', name: 'Gleanna Marie B. Cuyugan', photo: cuyugan },
-  { role: 'Social Media Management', name: 'Jenina Denisse R. Cabrera' },
 ]
 
 const ease = [0.16, 1, 0.3, 1] as const
@@ -102,6 +33,7 @@ const rise = {
 
 export function LegislativePage() {
   usePageTitle('Legislative')
+  const { items: boardResolutions, loading, error } = useDocuments('board_resolution')
 
   return (
     <>
@@ -126,27 +58,39 @@ export function LegislativePage() {
                     id="board-resolutions-title"
                     className="mt-3 font-hero text-[clamp(1.85rem,0.9rem+2.4vw,3.25rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950"
                   >
-                    Board <span className="text-brand-600">resolutions</span>
+                    Board <span className="text-brand-600">Resolutions</span>
                   </h2>
                 </div>
-                <p className="text-sm font-medium text-zinc-500">{boardResolutions.length} resolutions</p>
+                {loading || error ? null : (
+                  <p className="text-sm font-medium text-zinc-500">{boardResolutions.length} resolutions</p>
+                )}
               </header>
             </Reveal>
+            {loading ? (
+              <div className="mt-8 flex items-center justify-center gap-2 text-sm text-zinc-500">
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                Loading resolutions…
+              </div>
+            ) : null}
+            {!loading && error ? <p className="mt-8 text-center text-sm text-zinc-500">{error}</p> : null}
+            {!loading && !error && boardResolutions.length === 0 ? (
+              <p className="mt-8 text-center text-sm text-zinc-500">No board resolutions published yet.</p>
+            ) : null}
             <ol className="mt-8 grid gap-3">
               {boardResolutions.map((item) => (
-                <li key={item.number}>
+                <li key={item.id}>
                   <a
-                    href={item.href}
+                    href={item.url}
                     target="_blank"
                     rel="noreferrer"
                     className="group flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-4 transition-colors hover:border-brand-300 sm:gap-5 sm:p-5"
                   >
                     <span className="w-10 shrink-0 font-hero text-2xl leading-none text-brand-300 tabular-nums sm:w-12">
-                      {item.number}
+                      {item.number || '—'}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[11px] font-semibold tracking-[0.14em] text-brand-700 uppercase">
-                        Board resolution
+                        {item.seriesLabel || 'Board resolution'}
                       </span>
                       <span className="mt-1 block font-display text-[1.05rem] leading-snug font-medium text-brand-950 sm:text-lg">
                         {item.title}
@@ -169,8 +113,8 @@ export function LegislativePage() {
         <Companion
           href="/governance/executive"
           kicker="Executive"
-          title="Officers for this academic year"
-          text={`The Executive Board, year representatives, and associates for ${academicYear}.`}
+          title="Officers for the public academic year"
+          text="The Executive Board, year representatives, and associates pinned for The Council."
         />
       </main>
     </>
@@ -179,7 +123,12 @@ export function LegislativePage() {
 
 export function ExecutivePage() {
   usePageTitle('Executive')
-  const [president, ...board] = executiveBoard
+  const { year, loading, error, bySection } = useCouncilBoard('officers')
+  const executive = bySection('executive')
+  const yearReps = bySection('year_reps')
+  const associates = bySection('associates')
+  const [president, ...board] = executive
+  const yearLabel = year ? `A.Y. ${year}` : 'Public academic year'
 
   return (
     <>
@@ -188,53 +137,125 @@ export function ExecutivePage() {
         icon={Gavel}
         kicker="Governance"
         title="Executive"
-        lede={`The Executive Board, year representatives, and associates for ${academicYear}.`}
+        lede={
+          year
+            ? `The Executive Board, year representatives, and associates for A.Y. ${year} (set from the admin public pin).`
+            : 'The Executive Board, year representatives, and associates for the academic year pinned on The Council.'
+        }
         current="executive"
       />
       <main id="main-content" className="bg-surface">
         <section aria-labelledby="executive-board-title" className="bg-white">
           <div className="mx-auto max-w-7xl px-4 py-[clamp(2.5rem,1.6rem+3vw,5rem)] sm:px-6 lg:px-8">
-            <SectionHeading id="executive-board-title" kicker={academicYear} title={<>Executive <span className="text-brand-600">Board</span></>} />
-            <div className="mt-8">
-              <SeatCard seat={president} featured />
+            <SectionHeading
+              id="executive-board-title"
+              kicker={councilYearKicker('Officers', year)}
+              title={
+                <>
+                  Executive <span className="text-brand-600">Board</span>
+                </>
+              }
+            />
+            {loading ? (
+              <div className="mt-10 flex items-center justify-center gap-2 text-sm text-zinc-500">
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                Loading roster…
+              </div>
+            ) : null}
+            {!loading && error ? (
+              <p className="mt-10 text-center text-sm text-zinc-500">{error}</p>
+            ) : null}
+            {!loading && !error && !president ? (
+              <p className="mt-10 text-center text-sm text-zinc-500">
+                No officers published for {yearLabel.toLowerCase()}.
+              </p>
+            ) : null}
+            {!loading && !error && president ? (
+              <>
+                <div className="mt-8">
+                  <SeatCard seat={president} featured />
+                </div>
+                {board.length > 0 ? (
+                  <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {board.map((seat) => (
+                      <li key={`${seat.role}-${seat.name}`}>
+                        <SeatCard seat={seat} />
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        </section>
+
+        {!loading && !error && (yearReps.length > 0 || associates.length > 0) ? (
+          <section aria-labelledby="year-reps-title" className="bg-surface">
+            <div className="mx-auto max-w-7xl px-4 py-[clamp(2.5rem,1.6rem+3vw,5rem)] sm:px-6 lg:px-8">
+              {yearReps.length > 0 ? (
+                <>
+                  <SectionHeading
+                    id="year-reps-title"
+                    kicker="Representation"
+                    title={
+                      <>
+                        Year <span className="text-brand-600">Representatives</span>
+                      </>
+                    }
+                  />
+                  <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {yearReps.map((seat) => (
+                      <li key={`${seat.role}-${seat.name}`}>
+                        <SeatCard seat={seat} />
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+
+              {associates.length > 0 ? (
+                <>
+                  <h3
+                    className={cn(
+                      'text-[11px] font-semibold tracking-[0.16em] text-brand-700 uppercase',
+                      yearReps.length > 0 ? 'mt-12' : 'mt-0',
+                    )}
+                  >
+                    Associates
+                  </h3>
+                  <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {associates.map((seat) => (
+                      <li key={`${seat.role}-${seat.name}`}>
+                        <SeatCard seat={seat} />
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
             </div>
-            <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {board.map((seat) => (
-                <li key={seat.role}>
-                  <SeatCard seat={seat} />
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        <section aria-labelledby="year-reps-title" className="bg-surface">
-          <div className="mx-auto max-w-7xl px-4 py-[clamp(2.5rem,1.6rem+3vw,5rem)] sm:px-6 lg:px-8">
-            <SectionHeading id="year-reps-title" kicker="Representation" title={<>Year <span className="text-brand-600">representatives</span></>} />
-            <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {yearRepresentatives.map((seat) => (
-                <li key={seat.role}>
-                  <SeatCard seat={seat} />
-                </li>
-              ))}
-            </ul>
-
-            <h3 className="mt-12 text-[11px] font-semibold tracking-[0.16em] text-brand-700 uppercase">Associates</h3>
-            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-              {associates.map((seat) => (
-                <li key={seat.role}>
-                  <SeatCard seat={seat} />
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
+          </section>
+        ) : null}
 
         <section aria-label="Related council pages" className="bg-white">
           <div className="mx-auto grid max-w-7xl gap-3 px-4 py-[clamp(2.5rem,1.6rem+3vw,5rem)] sm:px-6 lg:grid-cols-3 lg:px-8">
-            <CompanionCard href="/governance/legislative" kicker="Legislative" title="Board resolutions" text="Series of 2026." />
-            <CompanionCard href="/about/the-council#advisers" kicker="Advisers" title="Faculty advisers" text="Advisory Board for this academic year." />
-            <CompanionCard href="/about/the-council#commissions" kicker="Commission" title="Appointments" text="Commission on Appointments." />
+            <CompanionCard
+              href="/governance/legislative"
+              kicker="Legislative"
+              title="Board resolutions"
+              text="Series of 2026."
+            />
+            <CompanionCard
+              href="/about/the-council#advisers"
+              kicker="Advisers"
+              title="Faculty advisers"
+              text="Advisory Board for the public academic year."
+            />
+            <CompanionCard
+              href="/about/the-council#commissions"
+              kicker="Commission"
+              title="Appointments"
+              text="Commission on Appointments."
+            />
           </div>
         </section>
       </main>
@@ -349,7 +370,7 @@ function SectionHeading({ id, kicker, title }: { id: string; kicker: string; tit
   )
 }
 
-function SeatCard({ seat, featured = false }: { seat: Seat; featured?: boolean }) {
+function SeatCard({ seat, featured = false }: { seat: CouncilSeat; featured?: boolean }) {
   return (
     <article
       className={cn(

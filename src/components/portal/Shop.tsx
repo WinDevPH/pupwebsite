@@ -108,7 +108,16 @@ export function ShopPanel({
         {visible.map((entry) => {
           const saved = favorites.ids.includes(entry.id)
           const closed = entry.availability === 'reserved' || entry.availability === 'out'
-          const statusLabel = entry.availability === 'reserved' ? 'Reserved' : entry.availability === 'out' ? 'Out of stock' : shop === 'locker' ? 'Locker' : 'Merch'
+          const statusLabel =
+            entry.availability === 'reserved'
+              ? 'Reserved'
+              : entry.availability === 'out'
+                ? shop === 'locker'
+                  ? 'Unavailable'
+                  : 'Out of stock'
+                : shop === 'locker'
+                  ? 'Locker'
+                  : 'Merch'
           return (
             <li key={entry.id}>
               <article
@@ -179,7 +188,13 @@ export function ShopPanel({
                     </span>
                     <span className="mt-1 inline-flex items-center gap-1.5 text-xs text-zinc-500">
                       <Package className="size-3.5 shrink-0" aria-hidden />
-                      {shop === 'locker' ? 'Available' : `${entry.stock} in stock`}
+                      {shop === 'locker'
+                        ? entry.availability === 'reserved'
+                          ? 'Reserved'
+                          : entry.availability === 'out'
+                            ? 'Unavailable'
+                            : 'Available'
+                        : `${entry.stock} in stock`}
                     </span>
                   </span>
                   {closed ? (

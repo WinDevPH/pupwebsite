@@ -1,11 +1,11 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowUpRight, ChevronLeft, Clock, Flag, X } from 'lucide-react'
+import { ArrowUpRight, ChevronLeft, Clock, Flag, Loader2, X } from 'lucide-react'
 import {
   announcementKind,
   formatPosted,
-  getAnnouncement,
+  mapAnnouncementRecord,
   relatedAnnouncements,
   type Announcement as BulletinItem,
 } from '@/components/home/Announcements'
@@ -13,12 +13,54 @@ import { contact, siteName } from '@/components/layout/nav-data'
 import { Reveal } from '@/components/motion/Reveal'
 import { SectionKicker } from '@/components/ui/SectionKicker'
 import { Button } from '@/components/ui/button'
+import { RichTextContent } from '@/components/ui/RichTextEditor'
 import { setPageScrollLocked } from '@/hooks/useLenis'
+import {
+  getAnnouncementBySlug,
+  listAnnouncements,
+} from '@/lib/announcements-api'
 import { cn } from '@/lib/utils'
 
 export default function Announcement() {
   const { id = '' } = useParams()
-  const item = getAnnouncement(id)
+  const [item, setItem] = useState<BulletinItem | null>(null)
+  const [related, setRelated] = useState<BulletinItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      setNotFound(false)
+      setItem(null)
+      setRelated([])
+
+      const [detail, list] = await Promise.all([
+        getAnnouncementBySlug(id),
+        listAnnouncements(),
+      ])
+
+      if (cancelled) return
+
+      if (!detail.ok) {
+        setNotFound(true)
+        setLoading(false)
+        return
+      }
+
+      const mapped = mapAnnouncementRecord(detail.data.item)
+      setItem(mapped)
+
+      const all = list.ok ? list.data.items.map(mapAnnouncementRecord) : [mapped]
+      setRelated(relatedAnnouncements(all, mapped.id))
+      setLoading(false)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [id])
 
   useEffect(() => {
     const previous = document.title
@@ -30,7 +72,18 @@ export default function Announcement() {
     }
   }, [item])
 
-  if (!item) {
+  if (loading) {
+    return (
+      <main id="main-content" className="bg-surface">
+        <div className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-20 text-sm text-zinc-500 sm:px-6 lg:px-8">
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+          Loading announcement…
+        </div>
+      </main>
+    )
+  }
+
+  if (notFound || !item) {
     return (
       <main id="main-content" className="bg-surface">
         <div className="mx-auto max-w-3xl px-4 py-[clamp(2.5rem,1.6rem+3vw,5rem)] sm:px-6 lg:px-8">
@@ -48,7 +101,6 @@ export default function Announcement() {
 
   const kind = announcementKind(item.kind)
   const Icon = kind.icon
-  const related = relatedAnnouncements(item.id)
 
   return (
     <main id="main-content" className="bg-surface">
@@ -80,6 +132,14 @@ export default function Announcement() {
                 <p className="mt-4 max-w-2xl font-display text-base leading-7 text-zinc-700 sm:mt-6 sm:text-[clamp(1.05rem,0.95rem+0.4vw,1.25rem)] sm:leading-relaxed">
                   {item.summary}
                 </p>
+                {item.body ? (
+                  <div className="mt-4 max-w-2xl sm:mt-5">
+                    <RichTextContent
+                      html={item.body}
+                      className="text-sm leading-6 text-zinc-600 sm:text-[15px] sm:leading-7"
+                    />
+                  </div>
+                ) : null}
                 {item.external ? (
                   <div className="mt-5 sm:mt-8">
                     <Button asChild size="lg" className="w-full sm:w-auto">

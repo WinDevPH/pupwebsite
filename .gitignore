@@ -7,9 +7,15 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Env (keep secrets out of git)
+.env
+.env.*
+!.env.example
+
 node_modules
 dist
 dist-ssr
+release
 *.local
 
 # Editor directories and files
@@ -22,3 +28,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+storage/*
+!storage/.htaccess
+!storage/**/.gitkeep

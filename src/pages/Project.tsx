@@ -1,13 +1,15 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowUpRight, ChevronLeft, Flag, X } from 'lucide-react'
+import { ArrowUpRight, ChevronLeft, Flag, Loader2, X } from 'lucide-react'
 import { contact, siteName } from '@/components/layout/nav-data'
-import { getProject, projects, type Project as ProjectItem } from '@/components/home/project-data'
+import { mapProjectRecord, type Project as ProjectItem } from '@/components/home/project-data'
 import { Reveal } from '@/components/motion/Reveal'
 import { SectionKicker } from '@/components/ui/SectionKicker'
 import { Button } from '@/components/ui/button'
+import { RichTextContent } from '@/components/ui/RichTextEditor'
 import { setPageScrollLocked } from '@/hooks/useLenis'
+import { getProjectBySlug, listProjects } from '@/lib/projects-api'
 import { cn } from '@/lib/utils'
 
 const councilReports = [
@@ -18,7 +20,40 @@ const councilReports = [
 
 export default function Project() {
   const { slug = '' } = useParams()
-  const project = getProject(slug)
+  const [project, setProject] = useState<ProjectItem | null>(null)
+  const [others, setOthers] = useState<ProjectItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setNotFound(false)
+    setProject(null)
+    void Promise.all([getProjectBySlug(slug), listProjects()]).then(([detail, list]) => {
+      if (cancelled) return
+      if (!detail.ok) {
+        setNotFound(true)
+        setLoading(false)
+        return
+      }
+      const mapped = mapProjectRecord(detail.data.item)
+      setProject(mapped)
+      if (list.ok) {
+        setOthers(
+          list.data.items
+            .map(mapProjectRecord)
+            .filter((item) => item.slug !== mapped.slug),
+        )
+      } else {
+        setOthers([])
+      }
+      setLoading(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [slug])
 
   useEffect(() => {
     const previous = document.title
@@ -30,7 +65,18 @@ export default function Project() {
     }
   }, [project])
 
-  if (!project) {
+  if (loading) {
+    return (
+      <main id="main-content" className="bg-surface">
+        <div className="mx-auto flex max-w-3xl flex-col items-center gap-2 px-4 py-24 text-sm text-zinc-500">
+          <Loader2 className="size-5 animate-spin text-zinc-400" aria-hidden />
+          Loading project…
+        </div>
+      </main>
+    )
+  }
+
+  if (notFound || !project) {
     return (
       <main id="main-content" className="bg-surface">
         <div className="mx-auto max-w-3xl px-4 py-[clamp(2.5rem,1.6rem+3vw,5rem)] sm:px-6 lg:px-8">
@@ -51,7 +97,6 @@ export default function Project() {
   const links = facebook
     ? [...project.links, { label: `Facebook ${facebook.handle}`, href: facebook.href }]
     : project.links
-  const others = projects.filter((item) => item.slug !== project.slug)
 
   return (
     <main id="main-content" className="bg-surface">
@@ -78,6 +123,11 @@ export default function Project() {
               <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600 sm:text-base sm:leading-7">
                 {project.summary}
               </p>
+              {project.body ? (
+                <div className="mt-4 max-w-2xl">
+                  <RichTextContent html={project.body} className="text-sm leading-6 text-zinc-600 sm:text-[15px]" />
+                </div>
+              ) : null}
 
               <div className="mt-6 grid gap-6 border-t border-zinc-200 pt-6 sm:mt-8 sm:gap-8 sm:pt-8 md:grid-cols-2">
                 <section aria-labelledby="project-links" className="min-w-0">

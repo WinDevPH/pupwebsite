@@ -31,7 +31,7 @@ export default function Privacy() {
           <header className="mx-auto max-w-3xl text-center">
             <SectionKicker icon={ShieldCheck}>Privacy</SectionKicker>
             <h1 className="mt-[clamp(0.85rem,0.5rem+1vw,1.25rem)] font-hero text-[clamp(1.85rem,0.9rem+3vw,3.75rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950">
-              Privacy <span className="text-brand-600">policy</span>
+              Privacy <span className="text-brand-600">Policy</span>
             </h1>
             <p className="mx-auto mt-[clamp(0.75rem,0.4rem+1vw,1.15rem)] max-w-lg text-[clamp(0.875rem,0.82rem+0.2vw,0.95rem)] leading-relaxed text-zinc-500">
               What the {siteName.short} {siteName.unit} website keeps on your device.

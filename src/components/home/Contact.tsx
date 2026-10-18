@@ -1,14 +1,15 @@
 import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { useLocation } from 'react-router-dom'
 import { ArrowUpRight, CircleAlert, Clock, Ellipsis, Lightbulb, Loader2, Mail, MapPin, MessageSquare, Send, ThumbsUp, User, type LucideIcon } from 'lucide-react'
-import { contact } from '@/components/layout/nav-data'
 import { Reveal } from '@/components/motion/Reveal'
 import { SectionKicker } from '@/components/ui/SectionKicker'
 import { Button } from '@/components/ui/button'
+import { useSiteContact } from '@/hooks/useSiteContact'
+import type { SiteContact } from '@/lib/site-settings-api'
 import { cn } from '@/lib/utils'
 
 const fieldClass =
-  'mt-1.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 text-sm text-brand-950 outline-none placeholder:text-zinc-400 focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 aria-invalid:border-maroon-600 aria-invalid:focus:border-maroon-600 aria-invalid:focus:ring-maroon-100'
+  'mt-1.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 text-sm text-brand-950 outline-none placeholder:text-zinc-400 focus:border-brand-400 focus:bg-white focus:ring-2 focus:ring-brand-100 aria-invalid:border-maroon-600 aria-invalid:focus:border-maroon-600 aria-invalid:focus:ring-maroon-100 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-brand-400 dark:focus:bg-zinc-900 dark:focus:ring-brand-500/25'
 
 type FeedbackField = 'name' | 'email' | 'about' | 'message'
 type FeedbackErrors = Partial<Record<FeedbackField, string>>
@@ -63,6 +64,7 @@ const validators: Record<FeedbackField, (value: string) => string> = {
 
 export function ContactSection() {
   const location = useLocation()
+  const contact = useSiteContact()
 
   useLayoutEffect(() => {
     if (location.hash !== '#contact') return
@@ -78,7 +80,11 @@ export function ContactSection() {
   }, [location.hash, location.pathname])
 
   return (
-    <section id="contact" aria-labelledby="contact-title" className="scroll-mt-28 bg-surface">
+    <section
+      id="contact"
+      aria-labelledby="contact-title"
+      className="scroll-mt-28 bg-white dark:bg-zinc-950"
+    >
       <div className="mx-auto max-w-7xl px-4 py-[clamp(2.5rem,1.6rem+3vw,5rem)] sm:px-6 lg:px-8">
         <Reveal>
           <header className="mx-auto max-w-3xl text-center">
@@ -87,7 +93,7 @@ export function ContactSection() {
               id="contact-title"
               className="mt-[clamp(0.85rem,0.5rem+1vw,1.25rem)] font-hero text-[clamp(1.85rem,0.9rem+3vw,3.75rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950"
             >
-              Contact and <span className="text-brand-600">helpdesk</span>
+              Contact and <span className="text-brand-600">Helpdesk</span>
             </h2>
             <p className="mx-auto mt-[clamp(0.75rem,0.4rem+1vw,1.15rem)] max-w-lg text-[clamp(0.875rem,0.82rem+0.2vw,0.95rem)] leading-relaxed text-zinc-500">
               Reach the Council directly. Office details and a feedback form are on this page.
@@ -96,17 +102,17 @@ export function ContactSection() {
         </Reveal>
 
         <div className="mt-[clamp(1.5rem,1rem+1.5vw,2.25rem)] grid items-stretch gap-4 lg:grid-cols-2">
-          <HelpdeskCard />
-          <FeedbackForm />
+          <HelpdeskCard contact={contact} />
+          <FeedbackForm contact={contact} />
         </div>
       </div>
     </section>
   )
 }
 
-const facebook = contact.socials.find((item) => item.name === 'Facebook')
+function HelpdeskCard({ contact }: { contact: SiteContact }) {
+  const facebook = contact.socials.find((item) => item.name === 'Facebook')
 
-function HelpdeskCard() {
   return (
     <div className="flex h-full flex-col justify-between gap-4 rounded-2xl border border-zinc-200 bg-white p-6 sm:p-8">
       <div>
@@ -166,7 +172,13 @@ function HelpdeskCard() {
                   className="flex h-full items-center gap-2.5 rounded-xl border border-zinc-200 px-3 py-2.5 transition-colors hover:border-brand-300 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
                 >
                   <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700">
-                    {item.name === 'Instagram' ? <InstagramMark className="size-4" /> : <XMark className="size-3.5" />}
+                    {item.name === 'Instagram' ? (
+                      <InstagramMark className="size-4" />
+                    ) : item.name === 'X' ? (
+                      <XMark className="size-3.5" />
+                    ) : (
+                      <ArrowUpRight className="size-4" aria-hidden />
+                    )}
                   </span>
                   <span className="min-w-0">
                     <span className="block text-[10px] font-semibold tracking-[0.14em] text-zinc-500 uppercase">
@@ -232,7 +244,7 @@ function HelpdeskLink({
   )
 }
 
-function FeedbackForm() {
+function FeedbackForm({ contact }: { contact: SiteContact }) {
   const formId = useId()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')

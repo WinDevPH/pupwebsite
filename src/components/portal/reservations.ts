@@ -1,3 +1,6 @@
+import type { ReservationRecord, ReservationStatus } from '@/lib/reservations-api'
+import { RESERVATION_STATUSES } from '@/lib/reservations-api'
+
 export type StoredReservation = {
   id: string
   shop: 'locker' | 'merch'
@@ -7,10 +10,35 @@ export type StoredReservation = {
   name: string
   year: string
   submittedAt: string
-  status: 'Submitted' | 'Not sent'
+  status: string
 }
 
 const reservationStoreKey = 'pup-col-sc-reservations'
+
+const STATUS_LABEL: Record<ReservationStatus, string> = Object.fromEntries(
+  RESERVATION_STATUSES.map((entry) => [entry.value, entry.label]),
+) as Record<ReservationStatus, string>
+
+export function reservationStatusLabel(status: string) {
+  const key = status.trim().toLowerCase() as ReservationStatus
+  if (STATUS_LABEL[key]) return STATUS_LABEL[key]
+  if (status === 'Submitted' || status === 'Not sent') return status
+  return status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+export function reservationFromApi(record: ReservationRecord): StoredReservation {
+  return {
+    id: record.code,
+    shop: record.shop,
+    item: record.itemName,
+    quantity: record.quantity,
+    total: record.total,
+    name: record.name,
+    year: record.year || record.yearLevel,
+    submittedAt: record.submittedAt,
+    status: reservationStatusLabel(record.status),
+  }
+}
 
 export function readReservations(): StoredReservation[] {
   try {

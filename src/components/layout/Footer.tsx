@@ -1,15 +1,19 @@
 import { Link } from 'react-router-dom'
 import { Mail } from 'lucide-react'
 import logo from '@/assets/pup-col-sc-logo.png'
-import { contact, footerColumns, footerSocials, siteName } from '@/components/layout/nav-data'
+import { footerColumns, isExternalNavTo, siteName } from '@/components/layout/nav-data'
 import { Reveal } from '@/components/motion/Reveal'
 import { scrollPageTo } from '@/hooks/useLenis'
+import { useSiteContact } from '@/hooks/useSiteContact'
 
 const year = new Date().getFullYear()
 
 export function Footer() {
+  const contact = useSiteContact()
+  const { footerSocials } = contact
+
   return (
-    <footer className="w-full border-t border-zinc-200 bg-white text-zinc-950">
+    <footer className="w-full border-t border-zinc-200 bg-white text-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
       <Reveal className="mx-auto w-full max-w-7xl px-4 pt-12 pb-5 sm:px-6 sm:pt-14 lg:px-8">
         <div className="grid w-full gap-12 lg:grid-cols-[minmax(20rem,0.9fr)_minmax(0,1.5fr)] lg:items-start lg:gap-16">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
@@ -17,28 +21,30 @@ export function Footer() {
               to="/"
               aria-label={`${siteName.short} ${siteName.unit}, home`}
               onClick={() => scrollPageTo(0, false)}
-              className="inline-flex items-center gap-3"
+              className="group inline-flex max-w-full items-center gap-3.5 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-500"
             >
               <img
                 src={logo}
                 alt=""
-                width={44}
-                height={44}
-                className="size-11 rounded-full ring-2 ring-gold-400"
+                width={64}
+                height={64}
+                className="size-16 shrink-0 rounded-full object-contain ring-2 ring-gold-400 transition-[box-shadow,transform] group-hover:-translate-y-0.5 group-hover:ring-brand-400 sm:size-[4.25rem]"
               />
-              <span className="text-[15px] font-semibold leading-tight tracking-tight">
-                {siteName.short}
-                <span className="mt-0.5 block text-[11px] font-medium tracking-[0.14em] text-brand-700 uppercase">
+              <span className="min-w-0 text-left leading-tight">
+                <span className="block text-[1.05rem] font-bold tracking-tight text-brand-950 transition-colors group-hover:text-brand-800 sm:text-lg">
+                  {siteName.short}
+                </span>
+                <span className="mt-1 block text-[11px] font-semibold tracking-[0.16em] text-brand-600 uppercase sm:text-xs">
                   {siteName.unit}
                 </span>
               </span>
             </Link>
-            <p className="mt-5 max-w-md text-sm leading-6 text-zinc-500 lg:mx-0">
-              The official website of the {siteName.full}. Announcements, student services, and
-              council information for law students.
+            <p className="mt-5 max-w-sm text-sm leading-6 text-zinc-500">
+              The official website of the {siteName.full}, designed to streamline information
+              dissemination and empower the student body.
             </p>
 
-            <ul className="mt-4 flex items-center justify-center gap-2 lg:justify-start">
+            <ul className="mt-5 flex items-center justify-center gap-2 lg:justify-start">
               {footerSocials.map((social) => (
                 <li key={social.name}>
                   <a
@@ -85,12 +91,23 @@ export function Footer() {
                 <ul className="mt-4 space-y-2.5">
                   {column.links.map((item) => (
                     <li key={item.to}>
-                      <Link
-                        to={item.to}
-                        className="text-sm text-zinc-500 transition-colors hover:text-brand-700"
-                      >
-                        {item.label}
-                      </Link>
+                      {isExternalNavTo(item.to) ? (
+                        <a
+                          href={item.to}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm text-zinc-500 transition-colors hover:text-brand-700"
+                        >
+                          {item.label}
+                        </a>
+                      ) : (
+                        <Link
+                          to={item.to}
+                          className="text-sm text-zinc-500 transition-colors hover:text-brand-700"
+                        >
+                          {item.label}
+                        </Link>
+                      )}
                     </li>
                   ))}
                 </ul>

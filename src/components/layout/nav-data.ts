@@ -4,11 +4,16 @@ import {
   BookOpen,
   CalendarCheck,
   CircleHelp,
+  ClipboardList,
+  FilePenLine,
+  FileText,
   FolderKanban,
+  FolderOpen,
   Gavel,
   Handshake,
   House,
   Landmark,
+  Library,
   Mail,
   Megaphone,
   Printer,
@@ -17,6 +22,14 @@ import {
   Users,
   Wifi,
 } from 'lucide-react'
+
+/** Absolute http(s) URLs open in a new tab; everything else is an in-app route. */
+export function isExternalNavTo(to: string) {
+  return /^https?:\/\//i.test(to)
+}
+
+export const studentHandbookUrl =
+  'https://drive.google.com/file/d/1neq3kippfsVWgFeWYepQWOx04X4TaUlE/view?usp=sharing'
 
 export type NavLinkItem = {
   label: string
@@ -71,7 +84,7 @@ export const siteName = {
 }
 
 export const contact = {
-  email: 'puplawstudentcouncilofficial@gmail.com',
+  email: 'studentcouncil@pupcolsc.com',
   office: 'PUP College of Law Student Council Office',
   address: 'PUP Main Campus, College of Law, Anonas St., Sta. Mesa, Manila 1016.',
   secRegistration: 'SEC Reg. No. 2022030045051-05',
@@ -125,19 +138,22 @@ export const footerColumns = [
     ],
   },
   {
-    title: 'Documents',
+    title: 'Resources',
     links: [
+      { label: 'Student Handbook', to: studentHandbookUrl },
       { label: 'Governance & resolutions', to: '/transparency' },
-      { label: 'Student Handbook', to: '/documents/student-handbook' },
-      { label: 'Guidelines', to: '/documents/guidelines' },
       { label: 'Announcements', to: '/announcements' },
     ],
   },
 ] as const
 
 export const primaryCta: NavLinkItem = {
-  label: 'Start for free',
-  description: 'Student Services Portal',
+  label: 'Login to Portal',
+  to: '/login',
+}
+
+export const portalCta: NavLinkItem = {
+  label: 'Student Services Portal',
   to: '/portal',
 }
 
@@ -171,12 +187,6 @@ export const navItems: NavItem[] = [
         title: 'Homepage',
         links: [
           {
-            label: 'Officers',
-            to: '/#officers',
-            icon: Users,
-            description: 'Featured Council officers for A.Y. 2026–2027.',
-          },
-          {
             label: 'Announcements',
             to: '/#bulletin',
             icon: Megaphone,
@@ -186,13 +196,7 @@ export const navItems: NavItem[] = [
             label: 'Calendar',
             to: '/#calendar',
             icon: CalendarCheck,
-            description: 'Academic calendar for A.Y. 2026–2027.',
-          },
-          {
-            label: 'Organizations',
-            to: '/#organizations',
-            icon: Handshake,
-            description: 'Accredited law student organizations.',
+            description: 'Academic calendar and key school dates.',
           },
           {
             label: 'FAQs',
@@ -230,7 +234,7 @@ export const navItems: NavItem[] = [
             label: 'Executive',
             to: '/governance/executive',
             icon: Gavel,
-            description: 'Officers for A.Y. 2026–2027.',
+            description: 'Officers for the public academic year.',
           },
         ],
       },
@@ -269,17 +273,90 @@ export const navItems: NavItem[] = [
             icon: Scale,
             description: 'Board and Commission on Appointments resolutions, Series of 2026.',
           },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Resources',
+    title: 'Resources',
+    icon: Library,
+    groups: [
+      {
+        title: 'Forms',
+        wide: true,
+        note: 'Official academic forms and templates for College of Law students.',
+        links: [
           {
-            label: 'Student Handbook',
-            to: '/documents/student-handbook',
-            icon: BookMarked,
-            description: 'Policies and guidelines for PUP law students.',
+            label: 'Accreditation Form',
+            to: 'https://drive.google.com/file/d/1QVsG7qF_f3GN1MVR19y6SuknU-ZJlsCQ/view?usp=sharing',
+            icon: FileText,
           },
           {
-            label: 'Guidelines',
-            to: '/documents/guidelines',
+            label: 'Affidavit of Change of Grade Format',
+            to: 'https://docs.google.com/document/d/1t0JLxFS4ysLVFJpt5VmoxdQrN_m496xu/edit?usp=sharing&ouid=117853699207286348297&rtpof=true&sd=true',
+            icon: FilePenLine,
+          },
+          {
+            label: 'PUP ACE Form — Adding of Subject',
+            to: 'https://drive.google.com/file/d/1WFKLhj3TWoDFALvFvXzmJO8bSMMcwai-/view?usp=sharing',
+            icon: ClipboardList,
+          },
+          {
+            label: 'PUP ACE Form — Change of Schedule/Subject',
+            to: 'https://drive.google.com/file/d/1JdAriJUHTK-GnW0rYyfxu_hKSjYfB8Ko/view?usp=sharing',
+            icon: ClipboardList,
+          },
+          {
+            label: 'PUP ACE Form — Withdrawal',
+            to: 'https://drive.google.com/file/d/1lv4m80iNljzCpPJzol_7ojq-5jXBAnMF/view?usp=sharing',
+            icon: ClipboardList,
+          },
+          {
+            label: 'Application for Re-Admission',
+            to: 'https://drive.google.com/file/d/1iwkS1l2xkktuL3XIhK1FQWPqvlc2t0Nl/view?usp=sharing',
+            icon: FileText,
+          },
+          {
+            label: 'PUP Completion Form R-1',
+            to: 'https://drive.google.com/file/d/1-U4Ah7EjhzV3Qp2zkIqx_8PUvKGkj8lH/view?usp=sharing',
+            icon: FileText,
+          },
+          {
+            label: 'R0-Form Enrollment Form for Override',
+            to: 'https://docs.google.com/document/d/17wC0eEKKh9JIPH3-fsHSzNpU_3spSsYk/edit?usp=sharing&ouid=117853699207286348297&rtpof=true&sd=true',
+            icon: FilePenLine,
+          },
+          {
+            label: 'Sample Letter of Appeal — Quality Point Average System',
+            to: 'https://docs.google.com/document/d/1YGstMT4iQKyT-iRLYKEwPQPSAJ9EcrP5/edit?usp=sharing&ouid=117853699207286348297&rtpof=true&sd=true',
             icon: ScrollText,
-            description: 'Official Council guidelines and procedures.',
+          },
+          {
+            label: 'Sample Letter of Appeal — Scholastic Delinquency',
+            to: 'https://docs.google.com/document/d/1btguPxZR6UWCuaP6VD8tTUPc9AKXhxNg/edit?usp=sharing&ouid=117853699207286348297&rtpof=true&sd=true',
+            icon: ScrollText,
+          },
+          {
+            label: 'Sample Letter of Appeal — Two-Strike Rule',
+            to: 'https://docs.google.com/document/d/1vcPmHVQ5GpXkSbcokBTZYBq0RqzQT-DO/edit?usp=sharing&ouid=117853699207286348297&rtpof=true&sd=true',
+            icon: ScrollText,
+          },
+          {
+            label: 'Promissory Notes',
+            to: 'https://drive.google.com/drive/folders/1ySxUEjMevUF2eqfMQz1caG2xJ4j1NCXW?usp=sharing',
+            icon: FolderOpen,
+          },
+        ],
+      },
+      {
+        title: 'Student Handbook',
+        links: [
+          {
+            label: 'Student Handbook',
+            to: studentHandbookUrl,
+            icon: BookMarked,
+            description: 'Policies and guidelines for PUP law students.',
           },
         ],
       },

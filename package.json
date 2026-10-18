@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:production": "tsc -b && vite build && node scripts/build-production.mjs",
     "lint": "oxlint",
     "preview": "vite preview"
   },
@@ -19,6 +20,7 @@
     "radix-ui": "^1.8.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-easy-crop": "^6.2.4",
     "react-router-dom": "^7.18.4",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0"

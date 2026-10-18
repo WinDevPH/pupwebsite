@@ -45,11 +45,22 @@ import { Announcements } from '@/components/home/Announcements'
 import { FaqList } from '@/components/home/Faq'
 import { EventsCalendar } from '@/components/home/EventsCalendar'
 import { ShopPanel } from '@/components/portal/Shop'
-import { shops } from '@/components/portal/catalog'
-import { findReservation, type StoredReservation } from '@/components/portal/reservations'
+import { loadShopCatalog, shops, type ShopCatalog } from '@/components/portal/catalog'
+import {
+  findReservation,
+  reservationFromApi,
+  type StoredReservation,
+} from '@/components/portal/reservations'
 import { contact } from '@/components/layout/nav-data'
 import { setPageScrollLocked } from '@/hooks/useLenis'
 import { Snackbar, type SnackVariant } from '@/components/ui/Snackbar'
+import {
+  submitPortalRequest,
+  trackPortalRequest,
+  type PortalRequestRecord,
+} from '@/lib/requests-api'
+import { formatPhDate } from '@/lib/datetime'
+import { getReservationByCode } from '@/lib/reservations-api'
 import { cn } from '@/lib/utils'
 
 const subjects: { label: string; icon: LucideIcon }[] = [
@@ -64,7 +75,7 @@ const subjects: { label: string; icon: LucideIcon }[] = [
 const maxFileBytes = 10 * 1024 * 1024
 
 const fieldClass =
-  'h-12 w-full min-w-0 rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 text-base text-zinc-900 outline-none transition-[background-color,border-color,box-shadow] placeholder:text-zinc-400 focus:border-brand-400 focus:bg-white focus:ring-4 focus:ring-brand-100 aria-invalid:border-maroon-600 aria-invalid:focus:ring-maroon-100 sm:text-sm'
+  'h-12 w-full min-w-0 rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 text-base text-zinc-900 outline-none transition-[background-color,border-color,box-shadow] placeholder:text-zinc-400 focus:border-brand-400 focus:bg-white focus:ring-4 focus:ring-brand-100 aria-invalid:border-maroon-600 aria-invalid:focus:ring-maroon-100 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-brand-400 dark:focus:bg-zinc-900 dark:focus:ring-brand-500/25'
 
 type Errors = Partial<Record<'name' | 'email' | 'subject' | 'body' | 'file', string>>
 
@@ -123,52 +134,7 @@ const reservationSteps = [
   },
 ]
 
-function trackingId() {
-  const now = new Date()
-  const date = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, '0'),
-    String(now.getDate()).padStart(2, '0'),
-  ].join('')
-  const code = Math.random().toString(36).slice(2, 6).toUpperCase()
-  return `COL-${date}-${code}`
-}
-
-function wait(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms))
-}
-
-type StoredRequest = {
-  id: string
-  name: string
-  email: string
-  subject: string
-  attachment: string
-  submittedAt: string
-  status: 'Submitted' | 'Not sent'
-}
-
-const requestStoreKey = 'pup-col-sc-requests'
-
-function readRequests(): StoredRequest[] {
-  try {
-    const raw = localStorage.getItem(requestStoreKey)
-    const parsed = raw ? (JSON.parse(raw) as StoredRequest[]) : []
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-function saveRequest(entry: StoredRequest) {
-  const next = [entry, ...readRequests().filter((item) => item.id !== entry.id)]
-  localStorage.setItem(requestStoreKey, JSON.stringify(next))
-}
-
-function findRequest(id: string) {
-  const needle = id.trim().toUpperCase()
-  return readRequests().find((item) => item.id.toUpperCase() === needle) ?? null
-}
+type StoredRequest = PortalRequestRecord
 
 function previewKind(file: File): 'image' | 'pdf' | 'text' | 'none' {
   const name = file.name.toLowerCase()
@@ -214,7 +180,6 @@ export default function Portal() {
   const [fileKey, setFileKey] = useState(0)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
-  const [tracking, setTracking] = useState(trackingId)
   const [submitted, setSubmitted] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [tab, setTab] = useState<PortalTab>(tabFromHash)
@@ -225,6 +190,17 @@ export default function Portal() {
   )
   const snackTimer = useRef<number | null>(null)
   const snackId = useRef(0)
+  const [shopCatalog, setShopCatalog] = useState<ShopCatalog>(shops)
+
+  useEffect(() => {
+    let cancelled = false
+    void loadShopCatalog().then((catalog) => {
+      if (!cancelled) setShopCatalog(catalog)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function dismissSnack() {
     if (snackTimer.current) window.clearTimeout(snackTimer.current)
@@ -273,7 +249,6 @@ export default function Portal() {
     setFileKey((key) => key + 1)
     setPreviewOpen(false)
     setErrors({})
-    setTracking(trackingId())
     setSubmitted(false)
     setNotice(null)
   }
@@ -329,46 +304,30 @@ export default function Portal() {
       return
     }
 
-    const id = tracking
     setSubmitting(true)
-    await wait(480)
-    setSubmitting(false)
-    setSubmitted(true)
-    saveRequest({
-      id,
+    setNotice(null)
+    const result = await submitPortalRequest({
       name: name.trim(),
       email: email.trim(),
       subject,
-      attachment: file!.name,
-      submittedAt: new Date().toISOString(),
-      status: contact.email ? 'Submitted' : 'Not sent',
+      body: body.trim(),
+      file: file!,
     })
+    setSubmitting(false)
 
-    if (!contact.email) {
-      setNotice(
-        `Request saved. Tracking ID ${id}. The Council email has not been published, so it was not sent.`,
-      )
-      showSnackbar('Your request has been saved.', 'info')
+    if (!result.ok) {
+      setNotice(result.error)
+      showSnackbar(result.error, 'error')
       return
     }
 
-    const message = [
-      `Tracking ID: ${id}`,
-      `Name: ${name.trim()}`,
-      `Email: ${email.trim()}`,
-      `Subject: ${subject}`,
-      `Attachment: ${file!.name} (attach this file before sending)`,
-      '',
-      body.trim(),
-    ].join('\n')
-
-    window.location.href = `mailto:${contact.email}?subject=${encodeURIComponent(
-      `[${id}] ${subject}`,
-    )}&body=${encodeURIComponent(message)}`
-    setNotice(
-      `Your email app will open a message to the Student Council. Attach ${file!.name} before sending. Your tracking ID is ${id}.`,
+    const id = result.data.item.id
+    setSubmitted(true)
+    setNotice(`${result.data.message} Tracking ID ${id}.`)
+    showSnackbar(
+      result.data.mailSent ? 'Your request has been submitted.' : 'Your request has been saved.',
+      result.data.mailSent ? 'success' : 'info',
     )
-    showSnackbar('Your request has been submitted.', 'success')
   }
 
   const ready = Boolean(name.trim() && email.trim() && subject && body.trim() && file)
@@ -481,7 +440,12 @@ export default function Portal() {
         aria-labelledby="portal-tab-locker"
         hidden={tab !== 'locker'}
       >
-        <ShopPanel shop="locker" title={shops.locker.title} kicker={shops.locker.kicker} items={shops.locker.items} />
+        <ShopPanel
+          shop="locker"
+          title={shopCatalog.locker.title}
+          kicker={shopCatalog.locker.kicker}
+          items={shopCatalog.locker.items}
+        />
       </div>
       <div
         id="portal-panel-merch"
@@ -489,7 +453,12 @@ export default function Portal() {
         aria-labelledby="portal-tab-merch"
         hidden={tab !== 'merch'}
       >
-        <ShopPanel shop="merch" title={shops.merch.title} kicker={shops.merch.kicker} items={shops.merch.items} />
+        <ShopPanel
+          shop="merch"
+          title={shopCatalog.merch.title}
+          kicker={shopCatalog.merch.kicker}
+          items={shopCatalog.merch.items}
+        />
       </div>
       <div
         id="portal-panel-faq"
@@ -699,9 +668,7 @@ export default function Portal() {
                       className={cn(
                         'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
                         submitted
-                          ? contact.email
-                            ? 'bg-brand-50 text-brand-800'
-                            : 'bg-maroon-100 text-maroon-800'
+                          ? 'bg-brand-50 text-brand-800'
                           : ready
                             ? 'bg-emerald-50 text-emerald-800'
                             : 'bg-zinc-100 text-zinc-600',
@@ -710,23 +677,11 @@ export default function Portal() {
                       <span
                         className={cn(
                           'size-1.5 rounded-full',
-                          submitted
-                            ? contact.email
-                              ? 'bg-brand-600'
-                              : 'bg-maroon-700'
-                            : ready
-                              ? 'bg-emerald-500'
-                              : 'bg-zinc-400',
+                          submitted ? 'bg-brand-600' : ready ? 'bg-emerald-500' : 'bg-zinc-400',
                         )}
                         aria-hidden
                       />
-                      {submitted
-                        ? contact.email
-                          ? 'Opened in email'
-                          : 'Not sent'
-                        : ready
-                          ? 'Ready'
-                          : 'Incomplete'}
+                      {submitted ? 'Submitted' : ready ? 'Ready' : 'Incomplete'}
                     </span>
                   </dd>
                 </div>
@@ -765,9 +720,7 @@ export default function Portal() {
               </button>
               <p className="text-center text-xs leading-relaxed text-zinc-500" role="status">
                 {notice ??
-                  (contact.email
-                    ? `Submit opens an email to ${contact.email}. Add the attachment in your email app before sending.`
-                    : 'Submit is directed to the Student Council email. That address has not been published yet.')}
+                  `Submit sends your request and attachment to ${contact.email}. A tracking ID and confirmation go to your email.`}
               </p>
             </div>
           </aside>
@@ -814,22 +767,39 @@ function TrackRequest({
     }
     setPending(true)
     setError('')
-    await wait(480)
-    const reserved = findReservation(next)
-    const request = findRequest(next)
     const preferReservation = next.toUpperCase().startsWith('RSV')
-    const reservationMatch = preferReservation ? reserved : reserved && !request ? reserved : null
-    const requestMatch = reservationMatch ? null : request
+
+    let reserved: StoredReservation | null = null
+    const fromApi = await getReservationByCode(next)
+    if (fromApi.ok) {
+      reserved = reservationFromApi(fromApi.data.item)
+    } else {
+      reserved = findReservation(next)
+    }
+
+    let requestMatch: StoredRequest | null = null
+    if (!preferReservation || !reserved) {
+      const tracked = await trackPortalRequest(next)
+      if (tracked.ok) requestMatch = tracked.data.item
+    }
+
+    const reservationMatch = preferReservation
+      ? reserved
+      : reserved && !requestMatch
+        ? reserved
+        : null
+    const requestResult = reservationMatch ? null : requestMatch
+
     setReservation(reservationMatch)
-    setResult(requestMatch)
-    const found = Boolean(reservationMatch || requestMatch)
+    setResult(requestResult)
+    const found = Boolean(reservationMatch || requestResult)
     setTone(found ? 'found' : 'missing')
     setShake((count) => count + 1)
     setPending(false)
     showSnackbar(
       reservationMatch
         ? 'Your reservation has been found.'
-        : requestMatch
+        : requestResult
           ? 'Your request has been found.'
           : 'No matching record was found.',
       found ? 'success' : 'error',
@@ -844,43 +814,36 @@ function TrackRequest({
     setTone(null)
   }
 
-  const filed = result
-    ? new Date(result.submittedAt).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : ''
-  const reservedOn = reservation
-    ? new Date(reservation.submittedAt).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : ''
+  const filed = result ? formatPhDate(result.submittedAt) : ''
+  const reservedOn = reservation ? formatPhDate(reservation.submittedAt) : ''
 
   return (
     <form
       onSubmit={onTrack}
       noValidate
-      className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_10px_28px_-18px_rgba(30,5,65,0.45)] sm:rounded-3xl"
+      className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_10px_28px_-18px_rgba(30,5,65,0.45)] sm:rounded-3xl dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[0_10px_28px_-18px_rgba(0,0,0,0.55)]"
     >
       <div className="grid min-w-0 items-stretch lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
         <section className="flex min-w-0 flex-col p-4 sm:p-6">
-          <h2 className="inline-flex items-center gap-2 text-base font-semibold text-zinc-950">
-            <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700">
+          <h2 className="inline-flex items-center gap-2 text-base font-semibold text-zinc-950 dark:text-zinc-50">
+            <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
               <Search className="size-3.5" aria-hidden />
             </span>
             Track
           </h2>
-          <p className="mt-1 text-sm text-zinc-500">Use a request tracking ID or a reservation ID.</p>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Use a request tracking ID or a reservation ID.
+          </p>
           <div className="mt-5">
-            <label htmlFor={fieldId} className="inline-flex items-center gap-2 text-sm font-medium text-zinc-800">
-              <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700">
+            <label
+              htmlFor={fieldId}
+              className="inline-flex items-center gap-2 text-sm font-medium text-zinc-800 dark:text-zinc-200"
+            >
+              <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
                 <Hash className="size-3.5" aria-hidden />
               </span>
               Reference ID
-              <span className="text-maroon-700"> *</span>
+              <span className="text-maroon-700 dark:text-maroon-400"> *</span>
             </label>
             <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-start">
               <div className="min-w-0 flex-1">
@@ -896,14 +859,16 @@ function TrackRequest({
                   placeholder="COL-20261013-AB12 or RSV-AB12CD"
                   className={fieldClass}
                 />
-                {error ? <p className="mt-1.5 text-xs text-maroon-700">{error}</p> : null}
+                {error ? (
+                  <p className="mt-1.5 text-xs text-maroon-700 dark:text-maroon-400">{error}</p>
+                ) : null}
               </div>
               <div className="grid grid-cols-2 gap-3 sm:flex sm:shrink-0">
                 <button
                   type="submit"
                   disabled={pending}
                   aria-busy={pending}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-brand-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-wait disabled:opacity-80 sm:min-w-28"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-brand-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-wait disabled:opacity-80 sm:min-w-28 dark:bg-brand-600 dark:hover:bg-brand-500"
                 >
                   {pending ? (
                     <Loader2 className="size-4 animate-spin" strokeWidth={2.25} aria-hidden />
@@ -916,7 +881,7 @@ function TrackRequest({
                   type="button"
                   onClick={clearTrack}
                   disabled={pending || (!code && !error && !result && !reservation)}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-28"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-28 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
                 >
                   <X className="size-4" aria-hidden />
                   Clear
@@ -924,13 +889,14 @@ function TrackRequest({
               </div>
             </div>
           </div>
-          <div className="mt-4 flex gap-2.5 rounded-2xl border border-brand-100 bg-brand-50 px-3 py-2.5 text-sm leading-5 text-brand-900 sm:mt-5 sm:gap-3 sm:px-4 sm:py-3">
-            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white">
+          <div className="mt-4 flex gap-2.5 rounded-2xl border border-brand-100 bg-brand-50 px-3 py-2.5 text-sm leading-5 text-brand-900 sm:mt-5 sm:gap-3 sm:px-4 sm:py-3 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-100">
+            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-brand-700 text-white dark:bg-brand-500">
               <Info className="size-3" aria-hidden />
             </span>
             <p>
               <span className="font-semibold">Note: </span>
-              The ID is in your confirmation email. A request shows the document and status. A reservation shows the item, quantity, and total.
+              The ID is in your confirmation email. A request shows the document and status. A
+              reservation shows the item and total.
             </p>
           </div>
         </section>
@@ -938,10 +904,12 @@ function TrackRequest({
         <section
           key={shake}
           className={cn(
-            'min-w-0 border-t border-zinc-100 bg-[#f7f6fb] p-4 sm:p-6 lg:border-t-0 lg:border-l',
+            'min-w-0 border-t border-zinc-100 bg-[#f7f6fb] p-4 sm:p-6 lg:border-t-0 lg:border-l dark:border-zinc-800 dark:bg-zinc-900/70',
             shake > 0 && 'result-shake',
-            tone === 'found' && 'bg-emerald-50/40',
-            tone === 'missing' && 'bg-maroon-50/40',
+            tone === 'found' &&
+              'bg-emerald-50/50 dark:bg-emerald-500/[0.12] dark:border-emerald-500/20',
+            tone === 'missing' &&
+              'bg-maroon-50/50 dark:bg-maroon-500/[0.12] dark:border-maroon-500/20',
           )}
         >
           {reservation ? (
@@ -961,13 +929,13 @@ function TrackEmpty({ missing, code }: { missing: boolean; code: string }) {
   const Icon = missing ? Info : Search
   return (
     <div className="flex h-full min-h-52 flex-col items-center justify-center px-4 text-center">
-      <span className="flex size-11 items-center justify-center rounded-2xl bg-white text-brand-700 shadow-[0_8px_20px_-14px_rgba(30,5,65,0.6)] ring-1 ring-zinc-200">
+      <span className="flex size-11 items-center justify-center rounded-2xl bg-white text-brand-700 shadow-[0_8px_20px_-14px_rgba(30,5,65,0.6)] ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-brand-300 dark:shadow-[0_8px_20px_-14px_rgba(0,0,0,0.65)] dark:ring-zinc-700">
         <Icon className="size-5" aria-hidden />
       </span>
-      <h2 className="mt-3 text-base font-semibold text-zinc-950">
+      <h2 className="mt-3 text-base font-semibold text-zinc-950 dark:text-zinc-50">
         {missing ? 'No match' : 'Result'}
       </h2>
-      <p className="mt-1 max-w-xs text-sm leading-5 text-zinc-500">
+      <p className="mt-1 max-w-xs text-sm leading-5 text-zinc-500 dark:text-zinc-400">
         {missing
           ? `Nothing is filed under ${code}.`
           : 'Enter a tracking ID or reservation ID. The match shows here.'}
@@ -983,21 +951,23 @@ function ReservationResult({
   reservation: StoredReservation | null
   filed: string
 }) {
-  const sent = reservation?.status === 'Submitted'
-  const blank = <span className="font-medium text-zinc-400">—</span>
+  const statusKey = (reservation?.status ?? '').trim().toLowerCase()
+  const cancelled = statusKey === 'cancelled' || reservation?.status === 'Not sent'
+  const pending = statusKey === 'pending'
+  const blank = <span className="font-medium text-zinc-400 dark:text-zinc-500">—</span>
   const ItemIcon = reservation?.shop === 'locker' ? LockKeyhole : Shirt
   return (
     <>
-      <h2 className="inline-flex items-center gap-2 text-base font-semibold text-zinc-950">
-        <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700">
+      <h2 className="inline-flex items-center gap-2 text-base font-semibold text-zinc-950 dark:text-zinc-50">
+        <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
           <Bookmark className="size-3.5" aria-hidden />
         </span>
         Reservation
       </h2>
       <dl className="mt-4 grid min-w-0">
-        <div className="flex min-h-9 min-w-0 items-center justify-between gap-3 border-b border-zinc-100 pb-3">
-          <dt className="inline-flex shrink-0 items-center gap-2 text-sm text-zinc-500">
-            <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700">
+        <div className="flex min-h-9 min-w-0 items-center justify-between gap-3 border-b border-zinc-100 pb-3 dark:border-zinc-800">
+          <dt className="inline-flex shrink-0 items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+            <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
               <Hash className="size-3.5" aria-hidden />
             </span>
             Reservation ID
@@ -1005,21 +975,29 @@ function ReservationResult({
           <dd
             className={cn(
               'min-w-0 text-right text-sm font-semibold tracking-wide break-all',
-              reservation ? 'text-brand-800' : 'text-zinc-400',
+              reservation
+                ? 'text-brand-800 dark:text-brand-300'
+                : 'text-zinc-400 dark:text-zinc-500',
             )}
           >
             {reservation ? reservation.id : blank}
           </dd>
         </div>
         <TrackDetail icon={ItemIcon} label="Item" value={reservation?.item ?? ''} />
-        <TrackDetail icon={Tag} label="Quantity" value={reservation ? String(reservation.quantity) : ''} />
+        {!reservation || reservation.shop === 'merch' ? (
+          <TrackDetail
+            icon={Tag}
+            label="Quantity"
+            value={reservation ? String(reservation.quantity) : ''}
+          />
+        ) : null}
         <TrackDetail icon={Info} label="Total" value={reservation?.total ?? ''} />
         <TrackDetail icon={CircleUser} label="Name" value={reservation?.name ?? ''} />
         <TrackDetail icon={GraduationCap} label="Year level" value={reservation?.year ?? ''} />
         <TrackDetail icon={Clock} label="Filed" value={filed} />
         <div className="flex min-h-9 min-w-0 items-center justify-between gap-3 pt-3">
-          <dt className="inline-flex shrink-0 items-center gap-2 text-sm text-zinc-500">
-            <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700">
+          <dt className="inline-flex shrink-0 items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+            <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
               <CircleDot className="size-3.5" aria-hidden />
             </span>
             Status
@@ -1029,11 +1007,22 @@ function ReservationResult({
               <span
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
-                  sent ? 'bg-emerald-50 text-emerald-800' : 'bg-maroon-100 text-maroon-800',
+                  cancelled
+                    ? 'bg-maroon-100 text-maroon-800 dark:bg-maroon-500/15 dark:text-maroon-300'
+                    : pending
+                      ? 'bg-amber-50 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300'
+                      : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
                 )}
               >
                 <span
-                  className={cn('size-1.5 rounded-full', sent ? 'bg-emerald-500' : 'bg-maroon-700')}
+                  className={cn(
+                    'size-1.5 rounded-full',
+                    cancelled
+                      ? 'bg-maroon-700 dark:bg-maroon-400'
+                      : pending
+                        ? 'bg-amber-500'
+                        : 'bg-emerald-500',
+                  )}
                   aria-hidden
                 />
                 {reservation.status}
@@ -1049,20 +1038,20 @@ function ReservationResult({
 }
 
 function TrackResult({ result, filed }: { result: StoredRequest | null; filed: string }) {
-  const sent = result?.status === 'Submitted'
-  const blank = <span className="font-medium text-zinc-400">—</span>
+  const sent = result?.status === 'Submitted' || result?.status === 'Received'
+  const blank = <span className="font-medium text-zinc-400 dark:text-zinc-500">—</span>
   return (
     <>
-      <h2 className="inline-flex items-center gap-2 text-base font-semibold text-zinc-950">
-        <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700">
+      <h2 className="inline-flex items-center gap-2 text-base font-semibold text-zinc-950 dark:text-zinc-50">
+        <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
           <Send className="size-3.5" aria-hidden />
         </span>
         Request
       </h2>
       <dl className="mt-4 grid min-w-0">
-        <div className="flex min-h-9 min-w-0 items-center justify-between gap-3 border-b border-zinc-100 pb-3">
-          <dt className="inline-flex shrink-0 items-center gap-2 text-sm text-zinc-500">
-            <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700">
+        <div className="flex min-h-9 min-w-0 items-center justify-between gap-3 border-b border-zinc-100 pb-3 dark:border-zinc-800">
+          <dt className="inline-flex shrink-0 items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+            <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
               <Hash className="size-3.5" aria-hidden />
             </span>
             Tracking ID
@@ -1070,7 +1059,7 @@ function TrackResult({ result, filed }: { result: StoredRequest | null; filed: s
           <dd
             className={cn(
               'min-w-0 text-right text-sm font-semibold tracking-wide break-all',
-              result ? 'text-brand-800' : 'text-zinc-400',
+              result ? 'text-brand-800 dark:text-brand-300' : 'text-zinc-400 dark:text-zinc-500',
             )}
           >
             {result ? result.id : blank}
@@ -1081,8 +1070,8 @@ function TrackResult({ result, filed }: { result: StoredRequest | null; filed: s
         <TrackDetail icon={CircleUser} label="Sender" value={result?.name ?? ''} />
         <TrackDetail icon={Clock} label="Filed" value={filed} />
         <div className="flex min-h-9 min-w-0 items-center justify-between gap-3 pt-3">
-          <dt className="inline-flex shrink-0 items-center gap-2 text-sm text-zinc-500">
-            <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700">
+          <dt className="inline-flex shrink-0 items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+            <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
               <CircleDot className="size-3.5" aria-hidden />
             </span>
             Status
@@ -1092,11 +1081,16 @@ function TrackResult({ result, filed }: { result: StoredRequest | null; filed: s
               <span
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
-                  sent ? 'bg-emerald-50 text-emerald-800' : 'bg-maroon-100 text-maroon-800',
+                  sent
+                    ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
+                    : 'bg-maroon-100 text-maroon-800 dark:bg-maroon-500/15 dark:text-maroon-300',
                 )}
               >
                 <span
-                  className={cn('size-1.5 rounded-full', sent ? 'bg-emerald-500' : 'bg-maroon-700')}
+                  className={cn(
+                    'size-1.5 rounded-full',
+                    sent ? 'bg-emerald-500' : 'bg-maroon-700 dark:bg-maroon-400',
+                  )}
                   aria-hidden
                 />
                 {result.status}
@@ -1121,15 +1115,15 @@ function TrackDetail({
   value: string
 }) {
   return (
-    <div className="flex min-h-12 min-w-0 items-start justify-between gap-3 border-b border-zinc-100 py-3">
-      <dt className="inline-flex shrink-0 items-center gap-2 text-sm text-zinc-500">
-        <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700">
+    <div className="flex min-h-12 min-w-0 items-start justify-between gap-3 border-b border-zinc-100 py-3 dark:border-zinc-800">
+      <dt className="inline-flex shrink-0 items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+        <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
           <Icon className="size-3.5" aria-hidden />
         </span>
         {label}
       </dt>
-      <dd className="min-w-0 pt-0.5 text-right text-sm font-semibold break-words text-zinc-900">
-        {value || <span className="font-medium text-zinc-400">—</span>}
+      <dd className="min-w-0 pt-0.5 text-right text-sm font-semibold break-words text-zinc-900 dark:text-zinc-100">
+        {value || <span className="font-medium text-zinc-400 dark:text-zinc-500">—</span>}
       </dd>
     </div>
   )

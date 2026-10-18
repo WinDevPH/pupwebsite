@@ -14,63 +14,51 @@ import {
   Eye,
   Flag,
   Gavel,
-  Globe,
   GraduationCap,
-  Handshake,
-  HeartHandshake,
   Images,
   Landmark,
   LifeBuoy,
+  Loader2,
   Mail,
   MailCheck,
   MapPin,
   Megaphone,
-  MessagesSquare,
   Network,
   Printer,
-  Radio,
   Scale,
-  ScrollText,
   ShieldCheck,
   Target,
   Users,
   Wifi,
-  Workflow,
   X,
   type LucideIcon,
 } from 'lucide-react'
-import councilCandid from '@/assets/council/groups/council-candid.jpg'
-import councilFormal from '@/assets/council/groups/council-formal.jpg'
-import councilPolo from '@/assets/council/groups/council-polo.jpg'
-import councilPoloCircle from '@/assets/council/groups/council-polo-circle.jpg'
-import officersFormal from '@/assets/council/groups/officers-formal.jpg'
-import officersPolo from '@/assets/council/groups/officers-polo.jpg'
-import biato from '@/assets/council/people/biato.jpg'
-import briones from '@/assets/council/people/briones.jpg'
-import cuyugan from '@/assets/council/people/cuyugan.jpg'
-import deLeon from '@/assets/council/people/de-leon.jpg'
-import festin from '@/assets/council/people/festin.jpg'
-import guadana from '@/assets/council/people/guadana.jpg'
-import orante from '@/assets/council/people/orante.jpg'
-import pago from '@/assets/council/people/pago.jpg'
-import ramos from '@/assets/council/people/ramos.jpg'
-import rana from '@/assets/council/people/rana.jpg'
-import salazar from '@/assets/council/people/salazar.jpg'
-import sanchez from '@/assets/council/people/sanchez.jpg'
-import santos from '@/assets/council/people/santos.jpg'
-import sarabia from '@/assets/council/people/sarabia.jpg'
-import tercero from '@/assets/council/people/tercero.jpg'
-import toribio from '@/assets/council/people/toribio.jpg'
-import velasco from '@/assets/council/people/velasco.jpg'
 import collegeOfLaw from '@/assets/logos/college-of-law.jpg'
 import lawStudentsSociety from '@/assets/logos/law-students-society.jpg'
 import studentCouncil from '@/assets/logos/student-council.png'
 import studentCouncilMark from '@/assets/logos/student-council-mark.jpg'
-import { contact, siteName } from '@/components/layout/nav-data'
+import {
+  isExternalNavTo,
+  siteName,
+  studentHandbookUrl,
+} from '@/components/layout/nav-data'
+import { mapProjectRecord } from '@/components/home/project-data'
+import { Organizations } from '@/components/home/OrgDirectory'
 import { Reveal, useRevealViewport } from '@/components/motion/Reveal'
 import { Button } from '@/components/ui/button'
-import { fadeUp, stagger } from '@/lib/motion'
+import { useAboutContent } from '@/hooks/useAboutContent'
+import { councilYearKicker, useCouncilBoard } from '@/hooks/useCouncilBoard'
 import { setPageScrollLocked } from '@/hooks/useLenis'
+import { RichTextContent } from '@/components/ui/RichTextEditor'
+import { aboutIcon } from '@/lib/about-content-icons'
+import type {
+  AboutHistoryItem,
+  AboutListItem,
+} from '@/lib/about-content-api'
+import { useSiteContact } from '@/hooks/useSiteContact'
+import { listPublicGallery, type GalleryImageRecord } from '@/lib/gallery-api'
+import { listProjects } from '@/lib/projects-api'
+import { fadeUp, stagger } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
 const seals = [
@@ -80,50 +68,21 @@ const seals = [
   { src: studentCouncil, label: 'Student Council' },
 ]
 
-const galleryPhotos = [
-  {
-    src: councilFormal,
-    title: 'The Student Council',
-    caption: 'Formal portrait',
-    alt: 'Members of the PUP College of Law Student Council',
-  },
-  {
-    src: councilCandid,
-    title: 'The Student Council',
-    caption: 'Together',
-    alt: 'PUP College of Law Student Council in formal attire',
-  },
-  {
-    src: officersFormal,
-    title: 'Officers',
-    caption: 'Formal portrait',
-    alt: 'Officers of the PUP College of Law Student Council',
-  },
-  {
-    src: councilPolo,
-    title: 'The Student Council',
-    caption: 'College shirts',
-    alt: 'PUP College of Law Student Council in college shirts',
-  },
-  {
-    src: officersPolo,
-    title: 'Officers',
-    caption: 'College shirts',
-    alt: 'Officers of the PUP College of Law Student Council in college shirts',
-  },
-  {
-    src: councilPoloCircle,
-    title: 'The Student Council',
-    caption: 'Circle',
-    alt: 'PUP College of Law Student Council gathered together',
-  },
-]
+type GalleryPhoto = {
+  src: string
+  title: string
+  caption: string
+  alt: string
+}
 
-const mission =
-  'The PUP College of Law Student Council, in cognizance of its vision, commits itself to act as the unifying and motivating force among the law studentry and student activities related to them. Its focus is to promote the welfare of the law students in line with the mission-vision of the Polytechnic University of the Philippines. Among others, it shall be the forefront in protecting and upholding the democratic rights and welfare of the students, maintaining institutional integrity, and serving as the primary representation of all law students in administrative and academic affairs.'
-
-const vision =
-  'The PUP College of Law Student Council envisions itself as the premier law student government of the Polytechnic University of the Philippines which unites, empowers, and motivates the student body toward the realization of their legal and professional goals, working toward the common good, justice, and the rule of law in the spirit of dedicated service.'
+function toGalleryPhoto(image: GalleryImageRecord): GalleryPhoto {
+  return {
+    src: image.src,
+    title: image.title,
+    caption: image.caption,
+    alt: image.alt || image.title,
+  }
+}
 
 const tabs = [
   { id: 'overview', label: 'Overview' },
@@ -133,81 +92,14 @@ const tabs = [
   { id: 'goals', label: 'Goals' },
   { id: 'agenda', label: 'Term agenda' },
   { id: 'officers', label: 'Officers' },
+  { id: 'organizations', label: 'Accredited Organizations' },
   { id: 'structure', label: 'Structure' },
-  { id: 'advisers', label: 'Advisers' },
+  { id: 'advisers', label: 'Advisory Board' },
   { id: 'commissions', label: 'Commissions' },
   { id: 'gallery', label: 'Gallery' },
 ] as const
 
 type TabId = (typeof tabs)[number]['id']
-
-const termGoals: { icon: LucideIcon; title: string; text: string }[] = [
-  {
-    icon: MessagesSquare,
-    title: 'Participatory Governance',
-    text: 'To establish digital avenues, online helpdesks, and feedback networks where law students can easily stay updated on council activities, raise concerns, and suggest improvements.',
-  },
-  {
-    icon: CalendarCheck,
-    title: 'Ease of Doing Student Activities',
-    text: 'To streamline administrative processes and recommend efficient requirements, enabling local law student organizations and committees to execute academic and extracurricular events expeditiously.',
-  },
-  {
-    icon: Workflow,
-    title: 'Efficient and Effective Internal Organization',
-    text: 'To establish necessary administrative committees, streamline internal council protocols, and harmonize the functions of the Student Council with class beadles and recognized organizations.',
-  },
-  {
-    icon: Scale,
-    title: 'Genuine Student Representation',
-    text: 'To champion law student rights to due process and equal protection, expedite the adoption of student-centric policies, and ensure inclusive transparency in administrative and academic affairs.',
-  },
-  {
-    icon: GraduationCap,
-    title: 'Academic & Welfare Transition Support',
-    text: "To implement projects, masterclasses, and resource drives that address law students' academic pressures and schedule transitions.",
-  },
-  {
-    icon: Handshake,
-    title: 'Responsible and Unified Student Council',
-    text: 'To cultivate a deep sense of camaraderie, integrity, and ethical responsibility among all Council officers and class representatives.',
-  },
-  {
-    icon: Megaphone,
-    title: 'Legal Campaigns & Advocacies',
-    text: 'To implement relevant and timely advocacy initiatives that increase awareness of social realities and position law students at the forefront of justice and nation-building.',
-  },
-  {
-    icon: HeartHandshake,
-    title: 'Socio-Civic and Community Engagement',
-    text: "To spearhead meaningful community-oriented programs aligned with the legal profession's commitment to public service.",
-  },
-  {
-    icon: Flag,
-    title: 'Lawan Identity & Culture',
-    text: 'To carry out initiatives and communications that highlight the diverse talents, resilience, and exceptionality within the PUP College of Law studentry.',
-  },
-  {
-    icon: ScrollText,
-    title: 'Council Transparency',
-    text: 'To provide the student body with accessible platform, including this centralized website, to view Board Resolutions, financial liquidation reports, and project statuses.',
-  },
-  {
-    icon: Radio,
-    title: 'Transformational Public Presence',
-    text: "To expand the council's digital reach, establish modern information dissemination systems, and ensure seamless communication across all law student batches.",
-  },
-  {
-    icon: Network,
-    title: 'Inter-Org & Local Alliance Work',
-    text: "To fully realize the council's role as the central channel of communication among law student organizations, the Bar Operations, and the Student Journal.",
-  },
-  {
-    icon: Globe,
-    title: 'Establishment of External Networks',
-    text: 'To foster strong connections with external law student associations, bar organizations, and legal sectors outside the University.',
-  },
-]
 
 const ease = [0.16, 1, 0.3, 1] as const
 
@@ -222,6 +114,7 @@ function tabFromLocation(): TabId {
 }
 
 export default function TheCouncil() {
+  const { sections } = useAboutContent()
   const [tab, setTab] = useState<TabId>(tabFromLocation)
 
   useEffect(() => {
@@ -329,12 +222,19 @@ export default function TheCouncil() {
             className="min-h-0"
           >
             {tab === 'overview' ? <OverviewPanel /> : null}
-            {tab === 'history' ? <HistoryPanel /> : null}
-            {tab === 'mandate' ? <MandatePanel /> : null}
-            {tab === 'values' ? <ValuesPanel /> : null}
-            {tab === 'goals' ? <GoalsPanel /> : null}
-            {tab === 'agenda' ? <AgendaPanel /> : null}
+            {tab === 'history' ? <HistoryPanel items={sections.history.items} /> : null}
+            {tab === 'mandate' ? <MandatePanel items={sections.mandate.items} /> : null}
+            {tab === 'values' ? (
+              <ValuesPanel
+                mission={sections.mission.text}
+                vision={sections.vision.text}
+                values={sections.values.items}
+              />
+            ) : null}
+            {tab === 'goals' ? <GoalsPanel goals={sections.goals.items} /> : null}
+            {tab === 'agenda' ? <AgendaPanel items={sections.agenda.items} /> : null}
             {tab === 'officers' ? <OfficersPanel /> : null}
+            {tab === 'organizations' ? <Organizations /> : null}
             {tab === 'structure' ? <StructurePanel /> : null}
             {tab === 'advisers' ? <AdvisersPanel /> : null}
             {tab === 'commissions' ? <CommissionsPanel /> : null}
@@ -397,7 +297,10 @@ const requestSteps: { title: string; detail: string; icon: LucideIcon }[] = [
   },
 ]
 
-const councilProjects: { label: string; to: string; icon: LucideIcon }[] = [
+type CouncilProjectLink = { label: string; to: string; icon: LucideIcon }
+
+/** Shown until the projects API responds (or if it is unreachable). */
+const councilProjectsFallback: CouncilProjectLink[] = [
   { label: 'Board Meetings', to: '/projects/board-meetings', icon: CalendarCheck },
   { label: 'Lex in Motion', to: '/projects/lex-in-motion', icon: Megaphone },
   { label: 'Free Printing Service', to: '/projects/free-printing', icon: Printer },
@@ -409,44 +312,10 @@ const councilProjects: { label: string; to: string; icon: LucideIcon }[] = [
 const directory: { label: string; to: string; icon: LucideIcon }[] = [
   { label: 'Student Services Portal', to: '/portal', icon: LifeBuoy },
   { label: 'Announcements', to: '/announcements', icon: Megaphone },
-  { label: 'Student Handbook', to: '/documents/student-handbook', icon: BookMarked },
-  { label: 'Guidelines', to: '/documents/guidelines', icon: ScrollText },
+  { label: 'Student Handbook', to: studentHandbookUrl, icon: BookMarked },
   { label: 'Legislative', to: '/governance/legislative', icon: Scale },
   { label: 'Executive', to: '/governance/executive', icon: Gavel },
   { label: 'Contact', to: '/#contact', icon: Mail },
-]
-
-const coreValues: { icon: LucideIcon; title: string; text: string }[] = [
-  {
-    icon: Scale,
-    title: 'The Rule of Law & Constitutionalism',
-    text: 'Acting as the steadfast vanguard of the Philippine Constitution and laws, upholding legal integrity, and ensuring that all actions respect established legal frameworks.',
-  },
-  {
-    icon: GraduationCap,
-    title: 'Academic Excellence',
-    text: 'Promoting continuous growth in the legal profession through novel and vital studies designed to contribute profound knowledge to the Philippine legal system.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Ethical Conduct & Integrity',
-    text: 'Securing the highest standard of ethical conduct for council members, students, and the legal profession as a whole, strictly prohibiting the use of council names or property for personal gain.',
-  },
-  {
-    icon: HeartHandshake,
-    title: 'Fundamental Human Rights & Dignity',
-    text: 'Unwaveringly upholding fundamental respect for human dignity, the protection of individual rights and liberties, equality, and justice for every individual.',
-  },
-  {
-    icon: Landmark,
-    title: 'Democratic Representation & Due Process',
-    text: "Safeguarding every student's right to due process, equal protection, active participation in governance, and freedom of expression.",
-  },
-  {
-    icon: Eye,
-    title: 'Transparency & Accountability',
-    text: 'Providing the student body with accessible records, documents, and papers pertaining to all official acts, transactions, and decisions of the Council.',
-  },
 ]
 
 const overviewPoints: { icon: LucideIcon; title: string; text: string }[] = [
@@ -470,6 +339,25 @@ const overviewPoints: { icon: LucideIcon; title: string; text: string }[] = [
 function OverviewPanel() {
   const reduce = useReducedMotion() === true
   const viewport = useRevealViewport()
+  const siteContact = useSiteContact()
+  const [councilProjects, setCouncilProjects] =
+    useState<CouncilProjectLink[]>(councilProjectsFallback)
+
+  useEffect(() => {
+    let cancelled = false
+    void listProjects().then((result) => {
+      if (cancelled || !result.ok || result.data.items.length === 0) return
+      setCouncilProjects(
+        result.data.items.map((item) => {
+          const project = mapProjectRecord(item)
+          return { label: project.label, to: `/projects/${project.slug}`, icon: project.icon }
+        }),
+      )
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <>
@@ -483,7 +371,7 @@ function OverviewPanel() {
                 id="overview-title"
                 className="mt-4 font-hero text-[clamp(1.85rem,0.9rem+2.4vw,3.25rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950"
               >
-                The governing body of <span className="text-brand-600">law students</span>
+                The Governing Body of <span className="text-brand-600">Law Students</span>
               </h2>
             </header>
             <div className="mt-5 space-y-3 text-left text-[15px] leading-7 text-zinc-600">
@@ -555,7 +443,7 @@ function OverviewPanel() {
             kicker="Help desk"
             title={
               <>
-                How a request <span className="text-brand-600">moves</span>
+                How a Request <span className="text-brand-600">Moves</span>
               </>
             }
             text="The path used in the Student Services Portal, from the first email to the reply."
@@ -603,10 +491,10 @@ function OverviewPanel() {
             kicker="In action"
             title={
               <>
-                Projects and <span className="text-brand-600">initiatives</span>
+                Projects and <span className="text-brand-600">Initiatives</span>
               </>
             }
-            text="Six programs the Student Council runs for law students."
+            text="Programs the Student Council runs for law students."
           />
         </Reveal>
         <ul className="mt-[clamp(1.5rem,1rem+1.5vw,2.25rem)] grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -647,16 +535,16 @@ function OverviewPanel() {
             <ul className="relative mt-6 space-y-4">
               <li className="flex gap-3 text-sm leading-6 text-white/80">
                 <MapPin className="mt-0.5 size-4 shrink-0 text-gold-300" aria-hidden />
-                <span>{contact.address}</span>
+                <span>{siteContact.address}</span>
               </li>
               <li className="flex gap-3 text-sm leading-6 text-white/80">
                 <Clock className="mt-0.5 size-4 shrink-0 text-gold-300" aria-hidden />
-                <span>{contact.hours}</span>
+                <span>{siteContact.hours}</span>
               </li>
               <li className="flex gap-3 text-sm leading-6 text-white/80">
                 <BadgeCheck className="mt-0.5 size-4 shrink-0 text-gold-300" aria-hidden />
                 <span>
-                  Established {siteName.established}. {contact.secRegistration}
+                  Established {siteName.established}. {siteContact.secRegistration}
                 </span>
               </li>
             </ul>
@@ -672,20 +560,38 @@ function OverviewPanel() {
           <nav aria-label="Related pages" className="h-full rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6">
             <Eyebrow icon={BookMarked}>Directory</Eyebrow>
             <ul className="mt-5 grid gap-1 sm:grid-cols-2">
-              {directory.map((item) => (
-                <li key={item.to}>
-                  <Link
-                    to={item.to}
-                    className="group flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-                  >
+              {directory.map((item) => {
+                const className =
+                  'group flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500'
+                const body = (
+                  <>
                     <IconTile icon={item.icon} />
                     <span className="min-w-0 flex-1 text-sm font-medium text-zinc-800 group-hover:text-brand-800">
                       {item.label}
                     </span>
                     <ChevronsRight className="size-4 shrink-0 text-brand-300 group-hover:text-brand-700" aria-hidden />
-                  </Link>
-                </li>
-              ))}
+                  </>
+                )
+
+                return (
+                  <li key={item.to}>
+                    {isExternalNavTo(item.to) ? (
+                      <a
+                        href={item.to}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={className}
+                      >
+                        {body}
+                      </a>
+                    ) : (
+                      <Link to={item.to} className={className}>
+                        {body}
+                      </Link>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           </nav>
         </Reveal>
@@ -696,16 +602,46 @@ function OverviewPanel() {
 }
 
 function GalleryPanel() {
+  const [photos, setPhotos] = useState<GalleryPhoto[]>([])
+  const [year, setYear] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [open, setOpen] = useState<number | null>(null)
-  const shot = open === null ? null : galleryPhotos[open]
+  const shot = open === null ? null : photos[open]
 
   useEffect(() => {
-    if (open === null) return
+    let cancelled = false
+    setLoading(true)
+    setError('')
+    void listPublicGallery().then((result) => {
+      if (cancelled) return
+      if (!result.ok) {
+        setPhotos([])
+        setYear(null)
+        setError(result.error)
+        setLoading(false)
+        return
+      }
+      setPhotos(result.data.images.map(toGalleryPhoto))
+      setYear(result.data.academicYear)
+      setLoading(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (open === null || photos.length === 0) return
     const onKey = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(null)
-      if (event.key === 'ArrowRight') setOpen((index) => (index === null ? index : (index + 1) % galleryPhotos.length))
+      if (event.key === 'ArrowRight') {
+        setOpen((index) => (index === null ? index : (index + 1) % photos.length))
+      }
       if (event.key === 'ArrowLeft') {
-        setOpen((index) => (index === null ? index : (index - 1 + galleryPhotos.length) % galleryPhotos.length))
+        setOpen((index) =>
+          index === null ? index : (index - 1 + photos.length) % photos.length,
+        )
       }
     }
     document.addEventListener('keydown', onKey)
@@ -717,27 +653,64 @@ function GalleryPanel() {
       document.body.style.overflow = previous
       setPageScrollLocked(false)
     }
-  }, [open])
+  }, [open, photos.length])
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-[clamp(2.5rem,1.6rem+2.4vw,4rem)] sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <SectionKicker icon={Images}>Gallery</SectionKicker>
+          <SectionKicker icon={Images}>
+            {year ? `Gallery · A.Y. ${year}` : 'Gallery'}
+          </SectionKicker>
           <h2 className="mt-4 font-hero text-[clamp(1.85rem,0.9rem+2.4vw,3.25rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950">
-            Council <span className="text-brand-600">photographs</span>
+            Council <span className="text-brand-600">Photographs</span>
           </h2>
         </div>
-        <p className="text-sm font-medium text-zinc-500">{galleryPhotos.length} photographs</p>
+        <p className="text-sm font-medium text-zinc-500">
+          {loading ? 'Loading…' : `${photos.length} photograph${photos.length === 1 ? '' : 's'}`}
+        </p>
       </div>
 
-      <ul className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-6 lg:grid-rows-[13.5rem_13.5rem_15rem]">
-        {galleryPhotos.map((photo, index) => (
-          <li key={photo.src} className={galleryLayout[index]}>
-            <GalleryCard photo={photo} featured={index === 0} onOpen={() => setOpen(index)} />
-          </li>
-        ))}
-      </ul>
+      {loading ? (
+        <div className="mt-16 flex items-center justify-center gap-2 text-sm text-zinc-500">
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+          Loading gallery…
+        </div>
+      ) : null}
+      {!loading && error ? (
+        <p className="mt-16 text-center text-sm text-zinc-500">{error}</p>
+      ) : null}
+      {!loading && !error && photos.length === 0 ? (
+        <p className="mt-16 text-center text-sm text-zinc-500">
+          No photographs published for the public academic year.
+        </p>
+      ) : null}
+
+      {!loading && !error && photos.length > 0 ? (
+        <ul
+          className={cn(
+            'mt-8 grid grid-cols-2 gap-3',
+            photos.length === 6
+              ? 'lg:grid-cols-6 lg:grid-rows-[13.5rem_13.5rem_15rem]'
+              : 'sm:grid-cols-3 lg:grid-cols-4',
+          )}
+        >
+          {photos.map((photo, index) => (
+            <li
+              key={`${photo.src}-${index}`}
+              className={
+                photos.length === 6
+                  ? (galleryLayout[index] ?? galleryLayout[galleryLayout.length - 1])
+                  : index === 0
+                    ? 'col-span-2 min-h-64 sm:col-span-2 lg:col-span-2 lg:min-h-72'
+                    : 'min-h-44'
+              }
+            >
+              <GalleryCard photo={photo} featured={index === 0} onOpen={() => setOpen(index)} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       {shot ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8" role="presentation">
@@ -776,7 +749,9 @@ function GalleryPanel() {
                   className="absolute top-1/2 left-3 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-xl bg-transparent text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] sm:bg-white sm:text-brand-950 sm:shadow-[0_10px_24px_-12px_rgba(8,0,24,0.9)] sm:ring-1 sm:ring-black/10 sm:drop-shadow-none"
                   aria-label="Previous photograph"
                   onClick={() =>
-                    setOpen((index) => (index === null ? 0 : (index - 1 + galleryPhotos.length) % galleryPhotos.length))
+                    setOpen((index) =>
+                      index === null ? 0 : (index - 1 + photos.length) % photos.length,
+                    )
                   }
                 >
                   <ChevronLeft className="size-5" aria-hidden />
@@ -785,7 +760,9 @@ function GalleryPanel() {
                   type="button"
                   className="absolute top-1/2 right-3 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-xl bg-transparent text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] sm:bg-brand-700 sm:shadow-[0_10px_24px_-12px_rgba(8,0,24,0.9)] sm:drop-shadow-none"
                   aria-label="Next photograph"
-                  onClick={() => setOpen((index) => (index === null ? 0 : (index + 1) % galleryPhotos.length))}
+                  onClick={() =>
+                    setOpen((index) => (index === null ? 0 : (index + 1) % photos.length))
+                  }
                 >
                   <ChevronRight className="size-5" aria-hidden />
                 </button>
@@ -793,10 +770,13 @@ function GalleryPanel() {
               <div className="flex items-end justify-between gap-4 px-4 py-3 text-white">
                 <p className="min-w-0">
                   <span className="block text-sm font-semibold">{shot.title}</span>
-                  <span className="mt-0.5 block text-xs tracking-[0.12em] text-white/70 uppercase">{shot.caption}</span>
+                  <span className="mt-0.5 block text-xs tracking-[0.12em] text-white/70 uppercase">
+                    {shot.caption}
+                  </span>
                 </p>
                 <p className="shrink-0 text-xs font-semibold tracking-[0.14em] text-gold-300 uppercase">
-                  {String((open ?? 0) + 1).padStart(2, '0')} / {String(galleryPhotos.length).padStart(2, '0')}
+                  {String((open ?? 0) + 1).padStart(2, '0')} /{' '}
+                  {String(photos.length).padStart(2, '0')}
                 </p>
               </div>
             </div>
@@ -821,7 +801,7 @@ function GalleryCard({
   featured = false,
   onOpen,
 }: {
-  photo: (typeof galleryPhotos)[number]
+  photo: GalleryPhoto
   featured?: boolean
   onOpen: () => void
 }) {
@@ -915,12 +895,20 @@ function IconTile({ icon: Icon }: { icon: LucideIcon }) {
   )
 }
 
-function ValuesPanel() {
+function ValuesPanel({
+  mission,
+  vision,
+  values,
+}: {
+  mission: string
+  vision: string
+  values: AboutListItem[]
+}) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-[clamp(2.5rem,1.6rem+2.4vw,4rem)] sm:px-6 lg:px-8">
       <SectionKicker icon={Scale}>Constitution</SectionKicker>
       <h2 className="mt-4 max-w-3xl font-hero text-[clamp(1.85rem,0.9rem+2.4vw,3.25rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950">
-        Mission, vision, and <span className="text-brand-600">core values</span>
+        Mission, Vision, and <span className="text-brand-600">Core Values</span>
       </h2>
 
       <div className="mt-8 grid gap-3 lg:grid-cols-2">
@@ -932,16 +920,16 @@ function ValuesPanel() {
         Council constitutional core values
       </h3>
       <ol className="mt-4 grid gap-3 sm:grid-cols-2">
-        {coreValues.map((value, index) => (
-          <li key={value.title} className="rounded-2xl border border-zinc-200 bg-white p-5">
+        {values.map((value, index) => (
+          <li key={`${value.title}-${index}`} className="rounded-2xl border border-zinc-200 bg-white p-5">
             <div className="flex items-start justify-between gap-3">
-              <IconTile icon={value.icon} />
+              <IconTile icon={aboutIcon(value.icon)} />
               <span className="font-hero text-2xl leading-none text-brand-200">
                 {String(index + 1).padStart(2, '0')}
               </span>
             </div>
             <h3 className="mt-4 text-sm font-semibold text-brand-950">{value.title}</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">{value.text}</p>
+            <RichTextContent html={value.text} className="mt-2 text-sm leading-6 text-zinc-600" />
           </li>
         ))}
       </ol>
@@ -968,45 +956,18 @@ function Statement({
           {title}
         </h3>
       </div>
-      <p className="mt-4 text-[15px] leading-7 text-zinc-600">{text}</p>
+      <RichTextContent html={text} className="mt-4 text-[15px] leading-7 text-zinc-600" />
     </article>
   )
 }
 
-const historyMarks: { when: string; title: string; text: string; note: string }[] = [
-  {
-    when: 'On record',
-    title: 'Registered with the SEC',
-    text: `${contact.secRegistration}. The Council keeps this registration with the Securities and Exchange Commission and remains the student government of the College of Law.`,
-    note: 'Student Council register',
-  },
-  {
-    when: '2013',
-    title: 'The College offers the Juris Doctor',
-    text: 'The College opened with the Bachelor of Laws. In 2013, PUP was among the first law schools in the Philippines to offer the Juris Doctor program.',
-    note: 'PUP College of Law',
-  },
-  {
-    when: 'August 19, 2008',
-    title: 'Council officers take their oath',
-    text: 'Officers of the PUP College of Law Supreme Student Council took their oath at the University President’s office. Dean Atty. Roseller De La Pena escorted them. The oath bound each officer to the duties of the Council, its Constitution, and its laws.',
-    note: 'Oath of office, recorded that day',
-  },
-  {
-    when: 'May 25, 2001',
-    title: 'The College of Law is established',
-    text: 'The PUP Board of Regents approved Resolution No. 115, Series of 2001, so the College of Law could open in the first semester of A.Y. 2001–2002. In January 2001 the University President asked the Dean of the College of Accountancy and Law to prepare the proposal under DECS Order No. 27 and CHED Memorandum Order No. 46, series of 1996. The University Academic Council endorsed it in a letter dated the same day.',
-    note: 'PUP College of Law',
-  },
-]
-
-function HistoryPanel() {
+function HistoryPanel({ items }: { items: AboutHistoryItem[] }) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-[clamp(2.5rem,1.6rem+2.4vw,4rem)] sm:px-6 lg:px-8">
       <header className="max-w-2xl">
         <SectionKicker icon={Landmark}>History</SectionKicker>
         <h2 className="mt-4 font-hero text-[clamp(1.85rem,0.9rem+2.6vw,3.25rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950">
-          Council <span className="text-brand-600">history</span>
+          Council <span className="text-brand-600">History</span>
         </h2>
         <p className="mt-4 text-[15px] leading-7 text-zinc-600">
           From the opening of the College of Law to the Council on the public register.
@@ -1014,14 +975,18 @@ function HistoryPanel() {
       </header>
 
       <ol className="mt-8 grid w-full gap-3">
-        {historyMarks.map((item) => (
-          <li key={item.when}>
+        {items.map((item, index) => (
+          <li key={`${item.when}-${index}`}>
             <article className="rounded-2xl border border-zinc-200 bg-white p-4 sm:grid sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:items-start sm:gap-6 sm:p-5">
               <p className="font-hero text-xl leading-none text-brand-600 sm:pt-0.5">{item.when}</p>
               <div className="mt-3 min-w-0 sm:mt-0">
                 <h3 className="text-sm font-semibold text-brand-950">{item.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-zinc-600">{item.text}</p>
-                <p className="mt-3 text-[11px] font-semibold tracking-[0.14em] text-zinc-400 uppercase">{item.note}</p>
+                <RichTextContent html={item.text} className="mt-2 text-sm leading-6 text-zinc-600" />
+                {item.note ? (
+                  <p className="mt-3 text-[11px] font-semibold tracking-[0.14em] text-zinc-400 uppercase">
+                    {item.note}
+                  </p>
+                ) : null}
               </div>
             </article>
           </li>
@@ -1041,70 +1006,63 @@ function HistoryPanel() {
   )
 }
 
-function MandatePanel() {
+function MandatePanel({ items }: { items: AboutListItem[] }) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-[clamp(2.5rem,1.6rem+2.4vw,4rem)] sm:px-6 lg:px-8">
       <header>
         <SectionKicker icon={Gavel}>Mandate</SectionKicker>
         <h2 className="mt-4 font-hero text-[clamp(1.85rem,0.9rem+2.4vw,3.25rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950">
-          Student Council <span className="text-brand-600">in action</span>
+          Student Council <span className="text-brand-600">In Action</span>
         </h2>
       </header>
       <ul className="mt-8 grid gap-3 lg:grid-cols-2">
-        <li className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-4 sm:gap-4 sm:p-5">
-          <IconTile icon={Workflow} />
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-brand-950">Projects and policies</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">
-              The {siteName.short} {siteName.unit} is the forefront project manager of all student projects and
-              policies, committed to ensuring the attainment of transformative objectives for all its initiatives,
-              from initiation and formulation to implementation and conclusion.
-            </p>
-          </div>
-        </li>
-        <li className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-4 sm:gap-4 sm:p-5">
-          <IconTile icon={Handshake} />
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-brand-950">With the College</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">
-              The PUP COL SC works hand-in-hand with the College of Law administration, the Dean’s Office, faculty
-              members, and different student organizations to accomplish and implement key academic and
-              student-welfare events.
-            </p>
-          </div>
-        </li>
+        {items.map((item, index) => (
+          <li
+            key={`${item.title}-${index}`}
+            className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-4 sm:gap-4 sm:p-5"
+          >
+            <IconTile icon={aboutIcon(item.icon)} />
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-brand-950">{item.title}</h3>
+              <RichTextContent html={item.text} className="mt-2 text-sm leading-6 text-zinc-600" />
+            </div>
+          </li>
+        ))}
       </ul>
     </div>
   )
 }
 
-function GoalsPanel() {
+function GoalsPanel({ goals }: { goals: AboutListItem[] }) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-[clamp(2.5rem,1.6rem+2.4vw,4rem)] sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <SectionKicker icon={Target}>Term goals</SectionKicker>
           <h2 className="mt-4 font-hero text-[clamp(1.85rem,0.9rem+2.4vw,3.25rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950">
-            What this term <span className="text-brand-600">sets out to do</span>
+            What This Term <span className="text-brand-600">Sets Out to Do</span>
           </h2>
         </div>
-        <p className="text-sm font-medium text-zinc-500">{termGoals.length} goals</p>
+        <p className="text-sm font-medium text-zinc-500">{goals.length} goals</p>
       </div>
 
       <ol className="mt-8 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
-        {termGoals.map((goal, index) => (
+        {goals.map((goal, index) => (
           <li
-            key={goal.title}
+            key={`${goal.title}-${index}`}
             className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 gap-y-2 border-b border-zinc-100 px-4 py-4 last:border-b-0 sm:px-5 sm:py-5 lg:grid-cols-[2.5rem_minmax(12rem,16rem)_minmax(0,1fr)] lg:items-start lg:gap-4"
           >
             <p className="pt-1 font-hero text-xl leading-none text-brand-300 tabular-nums">
               {String(index + 1).padStart(2, '0')}
             </p>
             <div className="flex min-w-0 items-center gap-3">
-              <IconTile icon={goal.icon} />
+              <IconTile icon={aboutIcon(goal.icon)} />
               <h3 className="min-w-0 text-sm leading-5 font-semibold text-brand-950">{goal.title}</h3>
             </div>
-            <p className="col-start-2 text-sm leading-6 text-zinc-600 lg:col-start-3 lg:pt-1.5">{goal.text}</p>
+            <RichTextContent
+              html={goal.text}
+              className="col-start-2 text-sm leading-6 text-zinc-600 lg:col-start-3 lg:pt-1.5"
+            />
           </li>
         ))}
       </ol>
@@ -1112,7 +1070,7 @@ function GoalsPanel() {
   )
 }
 
-function AgendaPanel() {
+function AgendaPanel({ items }: { items: AboutListItem[] }) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-[clamp(2.5rem,1.6rem+2.4vw,4rem)] sm:px-6 lg:px-8">
       <header>
@@ -1122,29 +1080,18 @@ function AgendaPanel() {
         </h2>
       </header>
       <ul className="mt-8 grid gap-3 lg:grid-cols-2">
-        <li className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-4 sm:gap-4 sm:p-5">
-          <IconTile icon={HeartHandshake} />
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-brand-950">Student welfare</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">
-              We are seeing a year of sustainable student-welfare activities and programs at every front, both a
-              culmination of all rigorous academic efforts and the beginning of a long journey toward the legal
-              profession. The path of legal education may, at times, be filled with pressure and tests of endurance,
-              but through our passion for justice and truth, we will strive forward.
-            </p>
-          </div>
-        </li>
-        <li className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-4 sm:gap-4 sm:p-5">
-          <IconTile icon={Scale} />
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-brand-950">Rule of law</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">
-              Relieving our identities as resolute law students and future advocates in these demanding times, we
-              will face all hurdles and establish milestones, in genuine representation of the PUP College of Law
-              student body. Together, let us uphold excellence, service, and the rule of law!
-            </p>
-          </div>
-        </li>
+        {items.map((item, index) => (
+          <li
+            key={`${item.title}-${index}`}
+            className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-4 sm:gap-4 sm:p-5"
+          >
+            <IconTile icon={aboutIcon(item.icon)} />
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-brand-950">{item.title}</h3>
+              <RichTextContent html={item.text} className="mt-2 text-sm leading-6 text-zinc-600" />
+            </div>
+          </li>
+        ))}
       </ul>
     </div>
   )
@@ -1157,126 +1104,190 @@ type Seat = {
   photo?: string
 }
 
-const executiveOfficers: Seat[] = [
-  { role: 'President', name: 'Toribio, Russel Angelo O.', photo: toribio },
-  { role: 'Vice President Internal', name: 'de Leon, Kristoffer Red S.', photo: deLeon },
-  { role: 'Vice President External', name: 'Salazar, Marvin L.', photo: salazar },
-  { role: 'Secretary-General', name: 'Velasco, Jesca O.', photo: velasco },
-  { role: 'Finance Officer', name: 'Biato, Yvonne', photo: biato },
-  { role: 'Auditor', name: 'Orante, Amaziah Perseus G.', photo: orante },
-  { role: 'Communications Officer', name: 'Tercero, Shein', photo: tercero },
-]
+function RosterLoading() {
+  return (
+    <div className="flex items-center justify-center gap-2 py-20 text-sm text-zinc-500">
+      <Loader2 className="size-4 animate-spin" aria-hidden />
+      Loading roster…
+    </div>
+  )
+}
 
-const yearRepresentatives: Seat[] = [
-  { role: 'Year 1', name: 'Roxas, Jayson', photo: ramos },
-  { role: 'Year 2', name: 'Rana, John Ivan H.', photo: rana },
-  { role: 'Year 3', name: 'Guadaña, Almira P.', photo: guadana },
-  { role: 'Year 4', name: 'Vacant', vacant: true },
-]
-
-const associates: Seat[] = [
-  { role: 'Presidential Affairs', name: 'Jessica Mae T. Asuncion' },
-  { role: 'Internal Affairs', name: 'Aldrich R. Sanchez', photo: sanchez },
-  { role: 'Secretariat', name: 'Cherie An M. Sarabia', photo: sarabia },
-  { role: 'External Affairs', name: 'Gleanna Marie B. Cuyugan', photo: cuyugan },
-  { role: 'Social Media Management', name: 'Jenina Denisse R. Cabrera' },
-]
-
-const advisoryBoard: Seat[] = [
-  { role: 'Dean, PUP College of Law', name: 'Atty. Gemy Lito L. Festin, LL.M.', photo: festin },
-  { role: 'Lead Faculty Adviser', name: 'Atty. Czarina C. Santos-Mahilum', photo: santos },
-  { role: 'Lead Faculty Adviser', name: 'Atty. Rex Norman E. Briones, LL.M.', photo: briones },
-  { role: 'Lead Faculty Adviser', name: 'Atty. Leslie Faye P. Pago', photo: pago },
-  { role: 'Lead Faculty Adviser', name: 'Atty. Kim Ranielle E. Abis' },
-]
-
-const appointments: Seat[] = [
-  { role: 'Chairperson', name: 'Russel Angelo O. Toribio', photo: toribio },
-  { role: 'Commissioner', name: 'Kristoffer Red S. De Leon', photo: deLeon },
-  { role: 'Commissioner', name: 'Marvin L. Salazar', photo: salazar },
-  { role: 'Commissioner and Clerk to the Commission', name: 'Jesca O. Velasco', photo: velasco },
-  { role: 'Commissioner', name: 'Ma. Yvonne B. Biato', photo: biato },
-  { role: 'Commissioner', name: 'Amaziah Perseus G. Orante', photo: orante },
-  { role: 'Commissioner', name: 'Shein Tercero', photo: tercero },
-  { role: 'Commissioner', name: 'Jayson G. Ramos', photo: ramos },
-  { role: 'Commissioner', name: 'John Ivan H. Rana', photo: rana },
-  { role: 'Commissioner', name: 'Almira P. Guadaña', photo: guadana },
-]
+function RosterEmpty({ message }: { message: string }) {
+  return <p className="py-16 text-center text-sm text-zinc-500">{message}</p>
+}
 
 function OfficersPanel() {
-  const [president, ...board] = executiveOfficers
+  const { year, loading, error, bySection } = useCouncilBoard('officers')
+  const executive = bySection('executive')
+  const yearReps = bySection('year_reps')
+  const associates = bySection('associates')
+  const [president, ...board] = executive
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-[clamp(2.5rem,1.6rem+2.4vw,4rem)] sm:px-6 lg:px-8">
-      <RosterHeading icon={Users} kicker="Officers" title={<>Executive <span className="text-brand-600">Board</span></>} />
-      <div className="mt-8">
-        <SeatCard seat={president} featured />
-      </div>
-      <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {board.map((seat) => (
-          <li key={seat.role}>
-            <SeatCard seat={seat} />
-          </li>
-        ))}
-      </ul>
+      <RosterHeading
+        icon={Users}
+        kicker={councilYearKicker('Officers', year)}
+        title={
+          <>
+            Executive <span className="text-brand-600">Board</span>
+          </>
+        }
+      />
+      {loading ? <RosterLoading /> : null}
+      {!loading && error ? <RosterEmpty message={error} /> : null}
+      {!loading && !error && !president ? (
+        <RosterEmpty message="No officers published for the public academic year." />
+      ) : null}
+      {!loading && !error && president ? (
+        <>
+          <div className="mx-auto mt-10 max-w-2xl">
+            <SeatCard seat={president} featured />
+          </div>
+          {board.length > 0 ? (
+            <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {board.map((seat) => (
+                <li key={`${seat.role}-${seat.name}`}>
+                  <SeatCard seat={seat} />
+                </li>
+              ))}
+            </ul>
+          ) : null}
 
-      <h3 className="mt-10 text-[11px] font-semibold tracking-[0.16em] text-brand-700 uppercase">
-        Year level representatives
-      </h3>
-      <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {yearRepresentatives.map((seat) => (
-          <li key={seat.role}>
-            <SeatCard seat={seat} />
-          </li>
-        ))}
-      </ul>
+          {yearReps.length > 0 ? (
+            <>
+              <RosterBand label="Year Level Representatives" />
+              <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {yearReps.map((seat) => (
+                  <li key={`${seat.role}-${seat.name}`}>
+                    <SeatCard seat={seat} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
 
-      <h3 className="mt-10 text-[11px] font-semibold tracking-[0.16em] text-brand-700 uppercase">
-        Associates
-      </h3>
-      <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-        {associates.map((seat) => (
-          <li key={seat.role}>
-            <SeatCard seat={seat} />
-          </li>
-        ))}
-      </ul>
+          {associates.length > 0 ? (
+            <>
+              <RosterBand label="Associates" />
+              <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {associates.map((seat) => (
+                  <li key={`${seat.role}-${seat.name}`}>
+                    <SeatCard seat={seat} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </>
+      ) : null}
     </div>
   )
 }
 
 function StructurePanel() {
-  const president = executiveOfficers[0]
-  const lineOfficers = executiveOfficers.slice(1, 4)
-  const staffOfficers = executiveOfficers.slice(4)
+  const officers = useCouncilBoard('officers')
+  const advisory = useCouncilBoard('advisory')
+  const loading = officers.loading || advisory.loading
+  const error = officers.error || advisory.error
+  const executive = officers.bySection('executive')
+  const yearReps = officers.bySection('year_reps')
+  const associates = officers.bySection('associates')
+  const advisorySeats = advisory.bySection('advisory')
+  const [dean, ...facultyAdvisers] = advisorySeats
+  const president = executive[0]
+  const lineOfficers = executive.slice(1, 4)
+  const staffOfficers = executive.slice(4)
+  const structureYear = officers.year ?? advisory.year
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-[clamp(2.5rem,1.6rem+2.4vw,4rem)] sm:px-6 lg:px-8">
-      <RosterHeading icon={Network} kicker="Structure" title={<>Organization <span className="text-brand-600">chart</span></>} />
+      <RosterHeading
+        icon={Network}
+        kicker={councilYearKicker('Structure', structureYear)}
+        title={
+          <>
+            Organization <span className="text-brand-600">Chart</span>
+          </>
+        }
+      />
+      {loading ? <RosterLoading /> : null}
+      {!loading && error ? <RosterEmpty message={error} /> : null}
+      {!loading && !error && !dean && !president ? (
+        <RosterEmpty message="No organization chart data published yet." />
+      ) : null}
+      {!loading && !error && (dean || president) ? (
+        <>
+          <div className="mt-8 flex flex-col items-center [&>:first-child]:mt-0 lg:hidden">
+            {dean ? (
+              <>
+                <ChartBand label="Advisory Board" />
+                <div className="w-full max-w-sm">
+                  <OrgNode seat={dean} lead compact />
+                </div>
+                {facultyAdvisers.length > 0 ? (
+                  <MobileRow people={facultyAdvisers} grouped />
+                ) : null}
+              </>
+            ) : null}
+            {president ? (
+              <>
+                <ChartBand label="Executive Board" />
+                <div className="w-full max-w-sm">
+                  <OrgNode seat={president} lead compact />
+                </div>
+                {lineOfficers.length > 0 ? <MobileRow people={lineOfficers} /> : null}
+                {staffOfficers.length > 0 ? <MobileRow people={staffOfficers} /> : null}
+              </>
+            ) : null}
+            {yearReps.length > 0 ? (
+              <>
+                <ChartBand label="Year level representatives" />
+                <MobileRow people={yearReps} grouped />
+              </>
+            ) : null}
+            {associates.length > 0 ? (
+              <>
+                <ChartBand label="Associates" />
+                <MobileRow people={associates} grouped />
+              </>
+            ) : null}
+          </div>
 
-      <div className="mt-8 flex flex-col items-center lg:hidden">
-        <div className="w-full max-w-sm">
-          <OrgNode seat={president} lead compact />
-        </div>
-        <MobileRow people={lineOfficers} />
-        <MobileRow people={staffOfficers} />
-        <ChartBand label="Year level representatives" />
-        <MobileRow people={yearRepresentatives} grouped />
-        <ChartBand label="Associates" />
-        <MobileRow people={associates} grouped />
-      </div>
-
-      <div className="mt-8 hidden w-full overflow-x-auto lg:block">
-        <div className="mx-auto flex w-max min-w-full flex-col items-center py-2">
-          <OrgRow people={[president]} root />
-          <OrgRow people={lineOfficers} />
-          <OrgRow people={staffOfficers} />
-          <ChartBand label="Year level representatives" />
-          <OrgRow people={yearRepresentatives} />
-          <ChartBand label="Associates" />
-          <OrgRow people={associates} />
-        </div>
-      </div>
+          <div className="mt-8 hidden w-full overflow-x-auto lg:block">
+            <div className="mx-auto flex w-max min-w-full flex-col items-center py-2 [&>:first-child]:mt-0">
+              {dean ? (
+                <>
+                  <ChartBand label="Advisory Board" />
+                  <OrgRow people={[dean]} root />
+                  {facultyAdvisers.length > 0 ? <OrgRow people={facultyAdvisers} /> : null}
+                </>
+              ) : null}
+              {president ? (
+                <>
+                  <ChartBand label="Executive Board" />
+                  <OrgRow people={[president]} />
+                  {lineOfficers.length > 0 ? <OrgRow people={lineOfficers} /> : null}
+                  {staffOfficers.length > 0 ? <OrgRow people={staffOfficers} /> : null}
+                </>
+              ) : null}
+              {yearReps.length > 0 ? (
+                <>
+                  <ChartBand label="Year level representatives" />
+                  <OrgRow people={yearReps} />
+                </>
+              ) : null}
+              {associates.length > 0 ? (
+                <>
+                  <ChartBand label="Associates" />
+                  <OrgRow people={associates} />
+                </>
+              ) : null}
+            </div>
+          </div>
+        </>
+      ) : null}
     </div>
   )
 }
@@ -1292,49 +1303,99 @@ function ChartBand({ label }: { label: string }) {
 }
 
 function AdvisersPanel() {
-  const [dean, ...faculty] = advisoryBoard
+  const { year, loading, error, bySection } = useCouncilBoard('advisory')
+  const seats = bySection('advisory')
+  const [dean, ...faculty] = seats
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-[clamp(2.5rem,1.6rem+2.4vw,4rem)] sm:px-6 lg:px-8">
       <RosterHeading
         icon={GraduationCap}
-        kicker="Advisory Board · 2026–2027"
-        title={<>Faculty <span className="text-brand-600">advisers</span></>}
+        kicker={councilYearKicker('Advisory Board', year)}
+        title={
+          <>
+            Faculty <span className="text-brand-600">Advisory Board</span>
+          </>
+        }
       />
-      <div className="mt-8">
-        <SeatCard seat={dean} featured />
-      </div>
-      <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-        {faculty.map((seat) => (
-          <li key={seat.name}>
-            <SeatCard seat={seat} />
-          </li>
-        ))}
-      </ul>
+      {loading ? <RosterLoading /> : null}
+      {!loading && error ? <RosterEmpty message={error} /> : null}
+      {!loading && !error && !dean ? (
+        <RosterEmpty message="No advisers published for the public academic year." />
+      ) : null}
+      {!loading && !error && dean ? (
+        <>
+          <div className="mx-auto mt-10 max-w-2xl">
+            <SeatCard seat={dean} featured />
+          </div>
+          {faculty.length > 0 ? (
+            <>
+              <RosterBand label="Lead Faculty Advisers" />
+              <ul className="mt-5 grid gap-4 sm:grid-cols-2">
+                {faculty.map((seat) => (
+                  <li key={`${seat.role}-${seat.name}`}>
+                    <SeatCard seat={seat} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </>
+      ) : null}
     </div>
   )
 }
 
 function CommissionsPanel() {
-  const [chair, ...members] = appointments
+  const { year, loading, error, bySection } = useCouncilBoard('commissioners')
+  const seats = bySection('commission')
+  const [chair, ...members] = seats
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-[clamp(2.5rem,1.6rem+2.4vw,4rem)] sm:px-6 lg:px-8">
       <RosterHeading
         icon={Scale}
-        kicker="Commissions"
-        title={<>Commission on <span className="text-brand-600">Appointments</span></>}
+        kicker={councilYearKicker('Commissions', year)}
+        title={
+          <>
+            Commission on <span className="text-brand-600">Appointments</span>
+          </>
+        }
       />
-      <div className="mt-8">
-        <SeatCard seat={chair} featured />
-      </div>
-      <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {members.map((seat) => (
-          <li key={seat.name}>
-            <SeatCard seat={seat} />
-          </li>
-        ))}
-      </ul>
+      {loading ? <RosterLoading /> : null}
+      {!loading && error ? <RosterEmpty message={error} /> : null}
+      {!loading && !error && !chair ? (
+        <RosterEmpty message="No commissioners published for the public academic year." />
+      ) : null}
+      {!loading && !error && chair ? (
+        <>
+          <div className="mx-auto mt-10 max-w-2xl">
+            <SeatCard seat={chair} featured />
+          </div>
+          {members.length > 0 ? (
+            <>
+              <RosterBand label="Commissioners" />
+              <ul className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {members.map((seat) => (
+                  <li key={`${seat.role}-${seat.name}`}>
+                    <SeatCard seat={seat} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+function RosterBand({ label }: { label: string }) {
+  return (
+    <div className="mt-12 flex w-full items-center gap-4">
+      <span className="h-px flex-1 bg-brand-200" aria-hidden />
+      <p className="text-[11px] font-semibold tracking-[0.16em] text-brand-700 uppercase">{label}</p>
+      <span className="h-px flex-1 bg-brand-200" aria-hidden />
     </div>
   )
 }
@@ -1382,18 +1443,50 @@ function Mark({
 }
 
 function SeatCard({ seat, featured = false }: { seat: Seat; featured?: boolean }) {
+  const photo = Boolean(seat.photo) && !seat.vacant
+
   return (
     <article
       className={cn(
-        'flex items-center gap-3 rounded-2xl border bg-white p-3.5',
+        'flex h-full items-center rounded-2xl border bg-white',
         seat.vacant ? 'border-dashed border-zinc-300' : 'border-zinc-200',
-        featured && 'w-full border-brand-200',
+        featured
+          ? 'gap-5 border-brand-200 p-5 shadow-[0_16px_36px_-28px_rgba(30,5,65,0.45)] sm:gap-6 sm:p-6'
+          : 'gap-4 p-4 sm:gap-5 sm:p-5',
       )}
     >
-      <Mark src={seat.photo} prominent={featured} muted={seat.vacant} />
+      <img
+        src={photo ? seat.photo : studentCouncil}
+        alt=""
+        width={featured ? 112 : 88}
+        height={featured ? 112 : 88}
+        className={cn(
+          'shrink-0 bg-white',
+          photo ? 'object-cover object-[center_18%]' : 'rounded-full object-contain p-1.5',
+          featured ? 'size-24 sm:size-28' : 'size-20 sm:size-[5.5rem]',
+          photo ? 'rounded-2xl' : 'rounded-full',
+          'border border-zinc-200',
+          featured && 'ring-2 ring-gold-400',
+          seat.vacant && 'border-dashed opacity-40',
+        )}
+      />
       <div className="min-w-0">
-        <p className="text-[11px] leading-4 font-semibold tracking-[0.12em] text-brand-700 uppercase">{seat.role}</p>
-        <p className="mt-0.5 text-sm leading-5 font-semibold break-words text-brand-950">{seat.name}</p>
+        <p
+          className={cn(
+            'font-semibold tracking-[0.12em] text-brand-700 uppercase',
+            featured ? 'text-xs leading-4' : 'text-[11px] leading-4',
+          )}
+        >
+          {seat.role}
+        </p>
+        <p
+          className={cn(
+            'mt-1.5 font-semibold break-words text-brand-950',
+            featured ? 'text-lg leading-snug sm:text-xl' : 'text-[15px] leading-snug sm:text-base',
+          )}
+        >
+          {seat.name}
+        </p>
       </div>
     </article>
   )

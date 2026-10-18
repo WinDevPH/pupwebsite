@@ -17,9 +17,9 @@ import { useReducedMotion } from 'motion/react'
 import { useLocation } from 'react-router-dom'
 import { Reveal } from '@/components/motion/Reveal'
 import { SectionKicker } from '@/components/ui/SectionKicker'
-import { organizations, organizationsYear } from '@/components/home/org-directory'
+import { useOrganizations } from '@/hooks/useOrganizations'
 
-const orgIcons: Record<(typeof organizations)[number]['id'], LucideIcon> = {
+const orgIcons: Record<string, LucideIcon> = {
   codal: Church,
   lacp: Scale,
   comelec: Vote,
@@ -33,6 +33,7 @@ const orgIcons: Record<(typeof organizations)[number]['id'], LucideIcon> = {
 const copies = [0, 1] as const
 
 export function Organizations() {
+  const { items: organizations, year: organizationsYear } = useOrganizations()
   const location = useLocation()
   const reduce = useReducedMotion() === true
   const scrollerRef = useRef<HTMLUListElement>(null)
@@ -202,7 +203,7 @@ export function Organizations() {
           >
             {copies.map((copy) =>
               organizations.map((org) => {
-                const Icon = orgIcons[org.id]
+                const Icon = orgIcons[org.id] ?? Landmark
                 const hidden = copy === 1
                 return (
                   <li key={`${org.id}-${copy}`} className="w-[16.5rem] shrink-0" aria-hidden={hidden || undefined}>

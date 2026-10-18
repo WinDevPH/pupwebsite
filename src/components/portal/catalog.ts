@@ -2,6 +2,7 @@ import lockerBay from '@/assets/shop/locker-bay.jpg'
 import collegeShirt from '@/assets/shop/college-shirt.jpg'
 import collegePolo from '@/assets/shop/college-polo.jpg'
 import lanyard from '@/assets/shop/lanyard.jpg'
+import { buildShops, listShopItems } from '@/lib/shop-api'
 
 export type ShopId = 'locker' | 'merch'
 
@@ -20,7 +21,10 @@ export type ShopItem = {
   availability?: 'reserved' | 'out'
 }
 
-export const shops: Record<ShopId, { title: string; kicker: string; items: ShopItem[] }> = {
+export type ShopCatalog = Record<ShopId, { title: string; kicker: string; items: ShopItem[] }>
+
+/** Bundled fallback used when the shop API is unreachable. Live data comes from `loadShopCatalog`. */
+export const shops: ShopCatalog = {
   locker: {
     title: 'Bookings for Locker',
     kicker: 'Locker',
@@ -69,13 +73,34 @@ export const shops: Record<ShopId, { title: string; kicker: string; items: ShopI
   },
 }
 
-export function findShopItem(
+export type ShopLookup = { shop: ShopId; listing: ShopCatalog[ShopId]; item: ShopItem }
+
+function lookupShopItem(
+  catalog: ShopCatalog,
   shop: string | undefined,
   itemId: string | undefined,
-): { shop: ShopId; listing: (typeof shops)[ShopId]; item: ShopItem } | null {
+): ShopLookup | null {
   if (shop !== 'locker' && shop !== 'merch') return null
-  const listing = shops[shop]
+  const listing = catalog[shop]
   const item = listing.items.find((entry) => entry.id === itemId)
   if (!item) return null
   return { shop, listing, item }
+}
+
+export function findShopItem(shop: string | undefined, itemId: string | undefined) {
+  return lookupShopItem(shops, shop, itemId)
+}
+
+/** Load published shop items from the CMS API. Falls back to the bundled catalog on failure. */
+export async function loadShopCatalog(): Promise<ShopCatalog> {
+  const result = await listShopItems()
+  if (!result.ok) return shops
+  return buildShops(result.data.items)
+}
+
+export async function findShopItemAsync(
+  shop: string | undefined,
+  itemId: string | undefined,
+): Promise<ShopLookup | null> {
+  return lookupShopItem(await loadShopCatalog(), shop, itemId)
 }

@@ -9,6 +9,7 @@
       name="description"
       content="Official website of the Polytechnic University of the Philippines College of Law Student Council."
     />
+    <meta name="theme-color" content="#ffffff" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -18,10 +19,19 @@
     <title>PUP College of Law Student Council</title>
     <script>
       try {
-        var storedTheme = localStorage.getItem('pup-colsc-theme')
-        var theme = storedTheme === 'dark' ? 'dark' : 'light'
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        var stored = localStorage.getItem('pup-colsc-theme')
+        var theme =
+          stored === 'light' || stored === 'dark'
+            ? stored
+            : prefersDark
+              ? 'dark'
+              : 'light'
         if (theme === 'dark') document.documentElement.classList.add('dark')
+        else document.documentElement.classList.remove('dark')
         document.documentElement.style.colorScheme = theme
+        var meta = document.querySelector('meta[name="theme-color"]')
+        if (meta) meta.setAttribute('content', theme === 'dark' ? '#07070b' : '#ffffff')
       } catch (e) {}
     </script>
   </head>

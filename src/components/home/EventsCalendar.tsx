@@ -17,18 +17,18 @@ import {
   Sun,
   type LucideIcon,
 } from 'lucide-react'
-import examPhoto from '@/assets/calendar/exam.jpg'
 import { SectionKicker } from '@/components/ui/SectionKicker'
-import defensePhoto from '@/assets/calendar/defense.jpg'
-import holidayPhoto from '@/assets/calendar/holiday.jpg'
-import enrollmentPhoto from '@/assets/calendar/enrollment.jpg'
+import { PH_TIMEZONE } from '@/lib/datetime'
 import { cn } from '@/lib/utils'
 import { easeOut } from '@/lib/motion'
 import { Reveal } from '@/components/motion/Reveal'
 import { useHashScroll } from '@/hooks/useHashScroll'
 import emptyCalendar from '@/assets/calendar/empty.jpg'
+import { studentHandbookUrl } from '@/components/layout/nav-data'
+import { listCalendarEvents, type CalendarKind } from '@/lib/calendar-api'
+import { stripHtml } from '@/lib/rich-text'
 
-type Kind = 'holiday' | 'exam' | 'enrollment' | 'academic'
+type Kind = CalendarKind
 
 type CalEvent = {
   id: string
@@ -36,6 +36,8 @@ type CalEvent = {
   start: string
   end: string
   kind: Kind
+  description: string | null
+  image: string | null
 }
 
 const kindMeta: Record<
@@ -58,7 +60,7 @@ const kindMeta: Record<
     accent: 'border-l-gold-500',
     badge: 'bg-gold-500 text-brand-950',
     tone: 'text-gold-600',
-    image: holidayPhoto,
+    image: '/calendar/defaults/holiday.jpg',
     icon: Sun,
   },
   exam: {
@@ -68,7 +70,7 @@ const kindMeta: Record<
     accent: 'border-l-brand-700',
     badge: 'bg-brand-700 text-white',
     tone: 'text-brand-700',
-    image: examPhoto,
+    image: '/calendar/defaults/exam.jpg',
     icon: GraduationCap,
   },
   enrollment: {
@@ -78,7 +80,7 @@ const kindMeta: Record<
     accent: 'border-l-brand-400',
     badge: 'bg-brand-600 text-white',
     tone: 'text-brand-600',
-    image: enrollmentPhoto,
+    image: '/calendar/defaults/enrollment.jpg',
     icon: ClipboardPen,
   },
   academic: {
@@ -88,175 +90,9 @@ const kindMeta: Record<
     accent: 'border-l-maroon-700',
     badge: 'bg-maroon-700 text-white',
     tone: 'text-maroon-700',
-    image: defensePhoto,
+    image: '/calendar/defaults/academic.jpg',
     icon: BookOpen,
   },
-}
-
-const events: CalEvent[] = [
-  { id: 'encoding-1', title: 'Encoding of subject offerings', start: '2026-05-18', end: '2026-05-22', kind: 'academic' },
-  { id: 'enroll-1st', title: 'First year onsite enrollment', start: '2026-06-01', end: '2026-06-30', kind: 'enrollment' },
-  { id: 'independence', title: 'Independence Day', start: '2026-06-12', end: '2026-06-12', kind: 'holiday' },
-  { id: 'col-council-jun', title: 'COL special academic council', start: '2026-06-15', end: '2026-06-15', kind: 'academic' },
-  { id: 'enroll-2nd-a', title: 'Second year onsite enrollment', start: '2026-06-19', end: '2026-06-19', kind: 'enrollment' },
-  { id: 'enroll-2nd-b', title: 'Second year onsite enrollment', start: '2026-06-22', end: '2026-06-22', kind: 'enrollment' },
-  { id: 'enroll-34', title: 'Third and fourth year enrollment', start: '2026-06-23', end: '2026-06-23', kind: 'enrollment' },
-  { id: 'manila-2026', title: 'Manila Day', start: '2026-06-24', end: '2026-06-24', kind: 'holiday' },
-  { id: 'commencement-jun', title: 'Year-end commencement exercises', start: '2026-06-25', end: '2026-06-26', kind: 'academic' },
-  { id: 'enroll-irregular', title: 'Irregular students enrollment', start: '2026-06-29', end: '2026-07-01', kind: 'enrollment' },
-  { id: 'univ-council', title: 'University academic council', start: '2026-06-30', end: '2026-06-30', kind: 'academic' },
-  { id: 'adjust-jul', title: 'Adjustment period', start: '2026-07-02', end: '2026-07-03', kind: 'academic' },
-  { id: 'faculty-jul', title: 'Faculty meeting', start: '2026-07-04', end: '2026-07-04', kind: 'academic' },
-  { id: 'sem1-start', title: 'First semester starts', start: '2026-07-08', end: '2026-07-08', kind: 'academic' },
-  { id: 'orientation-jul', title: 'Student orientation', start: '2026-07-08', end: '2026-07-11', kind: 'academic' },
-  { id: 'tuition-jul', title: 'Last day to pay tuition and fees', start: '2026-07-23', end: '2026-07-23', kind: 'academic' },
-  { id: 'withdraw-jul', title: 'Last day to file a withdrawal', start: '2026-07-23', end: '2026-07-23', kind: 'academic' },
-  { id: 'commencement-aug', title: 'University year-end commencement', start: '2026-08-18', end: '2026-08-20', kind: 'academic' },
-  { id: 'heroes', title: 'National Heroes Day', start: '2026-08-31', end: '2026-08-31', kind: 'holiday' },
-  { id: 'bar-1', title: 'Bar examinations, day 1', start: '2026-09-06', end: '2026-09-06', kind: 'exam' },
-  { id: 'bar-2', title: 'Bar examinations, day 2', start: '2026-09-09', end: '2026-09-09', kind: 'exam' },
-  { id: 'bar-3', title: 'Bar examinations, day 3', start: '2026-09-13', end: '2026-09-13', kind: 'exam' },
-  { id: 'midterm-1', title: 'Midterm examinations', start: '2026-09-18', end: '2026-09-24', kind: 'exam' },
-  { id: 'midyear-filing', title: 'Mid-year graduation filing', start: '2026-09-30', end: '2026-10-15', kind: 'academic' },
-  { id: 'thesis', title: 'Thesis defense', start: '2026-10-10', end: '2026-10-11', kind: 'exam' },
-  { id: 'encoding-oct', title: 'Encoding of subject offerings', start: '2026-10-16', end: '2026-10-20', kind: 'academic' },
-  { id: 'all-saints', title: "All Saints' Day", start: '2026-11-01', end: '2026-11-01', kind: 'holiday' },
-  { id: 'all-souls', title: "All Souls' Day", start: '2026-11-02', end: '2026-11-02', kind: 'holiday' },
-  { id: 'finals-1', title: 'Final examinations', start: '2026-11-06', end: '2026-11-12', kind: 'exam' },
-  { id: 'sem1-end', title: 'End of first semester', start: '2026-11-12', end: '2026-11-12', kind: 'academic' },
-  { id: 'grades-1', title: 'Encoding of grades', start: '2026-11-13', end: '2026-11-19', kind: 'academic' },
-  { id: 'grade-sheets-1', title: 'Submission of grade sheets', start: '2026-11-20', end: '2026-11-21', kind: 'academic' },
-  { id: 'enroll-nov-1', title: 'First year onsite enrollment', start: '2026-11-23', end: '2026-11-23', kind: 'enrollment' },
-  { id: 'enroll-nov-2', title: 'Second year onsite enrollment', start: '2026-11-24', end: '2026-11-24', kind: 'enrollment' },
-  { id: 'enroll-nov-34', title: 'Third and fourth year enrollment', start: '2026-11-25', end: '2026-11-25', kind: 'enrollment' },
-  { id: 'enroll-nov-irr', title: 'Irregular students enrollment', start: '2026-11-26', end: '2026-11-27', kind: 'enrollment' },
-  { id: 'faculty-nov', title: 'Faculty meeting', start: '2026-11-28', end: '2026-11-28', kind: 'academic' },
-  { id: 'bonifacio', title: 'Bonifacio Day', start: '2026-11-30', end: '2026-11-30', kind: 'holiday' },
-  { id: 'sem2-start', title: 'Second semester starts', start: '2026-12-02', end: '2026-12-02', kind: 'academic' },
-  { id: 'adjust-dec', title: 'Adjustment period', start: '2026-12-01', end: '2026-12-04', kind: 'academic' },
-  { id: 'orientation-dec', title: 'Student orientation', start: '2026-12-02', end: '2026-12-04', kind: 'academic' },
-  { id: 'immaculate', title: 'Feast of the Immaculate Conception', start: '2026-12-08', end: '2026-12-08', kind: 'holiday' },
-  { id: 'pupclee-app-1', title: 'PUPCLEE batch 1 application', start: '2026-12-09', end: '2026-12-09', kind: 'exam' },
-  { id: 'tuition-dec', title: 'Last day to pay tuition and fees', start: '2026-12-17', end: '2026-12-17', kind: 'academic' },
-  { id: 'withdraw-dec', title: 'Last day to file a withdrawal', start: '2026-12-17', end: '2026-12-17', kind: 'academic' },
-  { id: 'christmas-break', title: 'Christmas vacation', start: '2026-12-20', end: '2027-01-03', kind: 'holiday' },
-  { id: 'christmas-eve', title: 'Christmas Eve', start: '2026-12-24', end: '2026-12-24', kind: 'holiday' },
-  { id: 'christmas', title: 'Christmas Day', start: '2026-12-25', end: '2026-12-25', kind: 'holiday' },
-  { id: 'rizal', title: 'Rizal Day', start: '2026-12-30', end: '2026-12-30', kind: 'holiday' },
-  { id: 'nye', title: "New Year's Eve", start: '2026-12-31', end: '2026-12-31', kind: 'holiday' },
-  { id: 'nyd', title: "New Year's Day", start: '2027-01-01', end: '2027-01-01', kind: 'holiday' },
-  { id: 'classes-resume', title: 'Classes resume', start: '2027-01-04', end: '2027-01-04', kind: 'academic' },
-  { id: 'pupclee-deadline', title: 'PUPCLEE batch 1 application deadline', start: '2027-01-22', end: '2027-01-22', kind: 'exam' },
-  { id: 'lunar', title: 'Lunar New Year', start: '2027-02-06', end: '2027-02-06', kind: 'holiday' },
-  { id: 'pupclee-written-1', title: 'PUPCLEE batch 1 written exam', start: '2027-02-07', end: '2027-02-07', kind: 'exam' },
-  { id: 'midterm-2', title: 'Midterm examinations', start: '2027-02-18', end: '2027-02-23', kind: 'exam' },
-  { id: 'yearend-filing', title: 'Year-end graduation filing', start: '2027-02-17', end: '2027-02-28', kind: 'academic' },
-  { id: 'edsa', title: 'EDSA Revolution anniversary', start: '2027-02-25', end: '2027-02-25', kind: 'holiday' },
-  { id: 'pupclee-app-2', title: 'PUPCLEE batch 2 application', start: '2027-03-01', end: '2027-03-01', kind: 'exam' },
-  { id: 'pupclee-interview-1', title: 'PUPCLEE batch 1 interview', start: '2027-03-06', end: '2027-03-07', kind: 'exam' },
-  { id: 'eid', title: 'Eid al-Fitr', start: '2027-03-10', end: '2027-03-10', kind: 'holiday' },
-  { id: 'pupclee-results-1', title: 'PUPCLEE batch 1 results', start: '2027-03-22', end: '2027-03-22', kind: 'exam' },
-  { id: 'maundy', title: 'Maundy Thursday', start: '2027-03-25', end: '2027-03-25', kind: 'holiday' },
-  { id: 'good-friday', title: 'Good Friday', start: '2027-03-26', end: '2027-03-26', kind: 'holiday' },
-  { id: 'black-saturday', title: 'Black Saturday', start: '2027-03-27', end: '2027-03-27', kind: 'holiday' },
-  { id: 'pupclee-permits', title: 'PUPCLEE batch 2 permits', start: '2027-03-29', end: '2027-03-29', kind: 'exam' },
-  { id: 'kagitingan', title: 'Araw ng Kagitingan', start: '2027-04-09', end: '2027-04-09', kind: 'holiday' },
-  { id: 'finals-grad', title: 'Finals, graduating students', start: '2027-04-15', end: '2027-04-21', kind: 'exam' },
-  { id: 'grades-grad', title: 'Encoding of graduating grades', start: '2027-04-22', end: '2027-04-23', kind: 'academic' },
-  { id: 'pupclee-docs', title: 'PUPCLEE batch 2 document deadline', start: '2027-04-23', end: '2027-04-23', kind: 'exam' },
-  { id: 'finals-nongrad', title: 'Finals, non-graduating students', start: '2027-04-22', end: '2027-04-28', kind: 'exam' },
-  { id: 'sem2-end', title: 'Second semester ends', start: '2027-04-28', end: '2027-04-28', kind: 'academic' },
-  { id: 'grades-nongrad', title: 'Encoding of non-graduating grades', start: '2027-05-03', end: '2027-05-05', kind: 'academic' },
-  { id: 'grade-sheets-2', title: 'Submission of grade sheets', start: '2027-05-06', end: '2027-05-14', kind: 'academic' },
-  { id: 'pupclee-written-2', title: 'PUPCLEE batch 2 written exam', start: '2027-05-09', end: '2027-05-09', kind: 'exam' },
-  { id: 'pupclee-interview-2', title: 'PUPCLEE batch 2 interview', start: '2027-05-29', end: '2027-05-30', kind: 'exam' },
-  { id: 'pupclee-results-2', title: 'PUPCLEE batch 2 results', start: '2027-06-07', end: '2027-06-07', kind: 'exam' },
-  { id: 'col-council-jun27', title: 'COL special academic council', start: '2027-06-18', end: '2027-06-18', kind: 'academic' },
-  { id: 'manila-2027', title: 'Manila Day', start: '2027-06-24', end: '2027-06-24', kind: 'holiday' },
-  { id: 'commencement-jun27', title: 'Year-end commencement exercises', start: '2027-06-28', end: '2027-06-29', kind: 'academic' },
-]
-
-const eventDescriptions: Record<string, string> = {
-  'encoding-1': 'Subjects for the coming term are encoded before enrollment opens.',
-  'enroll-1st': 'First-year students enroll onsite at the College of Law.',
-  independence: 'Regular holiday. No classes.',
-  'col-council-jun': 'The College of Law academic council meets on this date.',
-  'enroll-2nd-a': 'Second-year students enroll onsite.',
-  'enroll-2nd-b': 'Second-year students enroll onsite.',
-  'enroll-34': 'Third-year and fourth-year students enroll onsite.',
-  'manila-2026': 'City holiday in Manila. No classes.',
-  'commencement-jun': 'Year-end graduation rites for the College of Law.',
-  'enroll-irregular': 'Students with an irregular load enroll onsite.',
-  'univ-council': 'The university academic council meets on this date.',
-  'adjust-jul': 'Students may add or drop subjects during this period.',
-  'faculty-jul': 'Faculty meet before classes begin.',
-  'sem1-start': 'Classes for the first semester begin.',
-  'orientation-jul': 'Incoming students are oriented on college policies and schedules.',
-  'tuition-jul': 'Deadline to settle tuition and fees for the semester.',
-  'withdraw-jul': 'Last day a student may file a withdrawal for the term.',
-  'commencement-aug': 'University-wide year-end graduation rites.',
-  heroes: 'Regular holiday. No classes.',
-  'bar-1': 'First day of the bar examinations.',
-  'bar-2': 'Second day of the bar examinations.',
-  'bar-3': 'Third day of the bar examinations.',
-  'midterm-1': 'Midterm examinations for the first semester.',
-  'midyear-filing': 'Students file for mid-year graduation within this period.',
-  thesis: 'Scheduled defense for thesis candidates.',
-  'encoding-oct': 'Subjects for the next term are encoded before enrollment.',
-  'all-saints': 'Regular holiday. No classes.',
-  'all-souls': 'Special non-working day. No classes.',
-  'finals-1': 'Final examinations for the first semester.',
-  'sem1-end': 'Last day of classes for the first semester.',
-  'grades-1': 'Faculty encode grades after the final examinations.',
-  'grade-sheets-1': 'Grade sheets are submitted to the college.',
-  'enroll-nov-1': 'First-year students enroll onsite for the second semester.',
-  'enroll-nov-2': 'Second-year students enroll onsite for the second semester.',
-  'enroll-nov-34': 'Third-year and fourth-year students enroll onsite for the second semester.',
-  'enroll-nov-irr': 'Students with an irregular load enroll for the second semester.',
-  'faculty-nov': 'Faculty meet before the second semester begins.',
-  bonifacio: 'Regular holiday. No classes.',
-  'sem2-start': 'Classes for the second semester begin.',
-  'adjust-dec': 'Students may add or drop subjects during this period.',
-  'orientation-dec': 'Students are oriented at the start of the second semester.',
-  immaculate: 'Regular holiday. No classes.',
-  'pupclee-app-1': 'Application opens for the first batch of the College of Law entrance exam.',
-  'tuition-dec': 'Deadline to settle tuition and fees for the second semester.',
-  'withdraw-dec': 'Last day a student may file a withdrawal for the second semester.',
-  'christmas-break': 'Classes are suspended for the Christmas vacation.',
-  'christmas-eve': 'Holiday. No classes.',
-  christmas: 'Regular holiday. No classes.',
-  rizal: 'Regular holiday. No classes.',
-  nye: 'Holiday. No classes.',
-  nyd: 'Regular holiday. No classes.',
-  'classes-resume': 'Classes resume after the Christmas vacation.',
-  'pupclee-deadline': 'Last day to apply for the first batch of the entrance exam.',
-  lunar: 'Special non-working day. No classes.',
-  'pupclee-written-1': 'Written entrance examination for the first batch.',
-  'midterm-2': 'Midterm examinations for the second semester.',
-  'yearend-filing': 'Students file for year-end graduation within this period.',
-  edsa: 'Holiday observance. No classes.',
-  'pupclee-app-2': 'Application opens for the second batch of the entrance exam.',
-  'pupclee-interview-1': 'Interview schedule for the first batch of entrance examinees.',
-  eid: 'Regular holiday. No classes.',
-  'pupclee-results-1': 'Results are released for the first batch of the entrance exam.',
-  maundy: 'Regular holiday. No classes.',
-  'good-friday': 'Regular holiday. No classes.',
-  'black-saturday': 'Holiday. No classes.',
-  'pupclee-permits': 'Examination permits are released for the second batch.',
-  kagitingan: 'Regular holiday. No classes.',
-  'finals-grad': 'Final examinations for graduating students.',
-  'grades-grad': 'Faculty encode grades of graduating students.',
-  'pupclee-docs': 'Deadline to submit documents for the second batch of the entrance exam.',
-  'finals-nongrad': 'Final examinations for students who are not graduating.',
-  'sem2-end': 'Last day of classes for the second semester.',
-  'grades-nongrad': 'Faculty encode grades of non-graduating students.',
-  'grade-sheets-2': 'Grade sheets for the second semester are submitted.',
-  'pupclee-written-2': 'Written entrance examination for the second batch.',
-  'pupclee-interview-2': 'Interview schedule for the second batch of entrance examinees.',
-  'pupclee-results-2': 'Results are released for the second batch of the entrance exam.',
-  'col-council-jun27': 'The College of Law academic council meets on this date.',
-  'manila-2027': 'City holiday in Manila. No classes.',
-  'commencement-jun27': 'Year-end graduation rites for the College of Law.',
 }
 
 const weekdayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -271,8 +107,17 @@ const filters = [
 
 type FilterId = (typeof filters)[number]['id']
 
-const monthFormat = new Intl.DateTimeFormat('en-PH', { month: 'long', year: 'numeric' })
-const dayFormat = new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+const monthFormat = new Intl.DateTimeFormat('en-PH', {
+  timeZone: PH_TIMEZONE,
+  month: 'long',
+  year: 'numeric',
+})
+const dayFormat = new Intl.DateTimeFormat('en-PH', {
+  timeZone: PH_TIMEZONE,
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+})
 
 function dateKey(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -285,7 +130,7 @@ function parseKey(key: string) {
   return new Date(year, month - 1, day)
 }
 
-function eventsOn(key: string, filter: FilterId) {
+function eventsOn(events: CalEvent[], key: string, filter: FilterId) {
   return events.filter(
     (item) => item.start <= key && key <= item.end && (filter === 'all' || item.kind === filter),
   )
@@ -297,8 +142,8 @@ function spanDays(item: CalEvent) {
   return Math.round((end - start) / 86_400_000) + 1
 }
 
-function gridEvents(key: string, filter: FilterId) {
-  return eventsOn(key, filter).map((item) => ({
+function gridEvents(events: CalEvent[], key: string, filter: FilterId) {
+  return eventsOn(events, key, filter).map((item) => ({
     item,
     labeled: item.start === key || spanDays(item) <= 3,
   }))
@@ -315,6 +160,7 @@ function shortRange(start: string, end: string) {
   if (start === end) return dayFormat.format(from)
   const sameYear = from.getFullYear() === to.getFullYear()
   const startLabel = new Intl.DateTimeFormat('en-PH', {
+    timeZone: PH_TIMEZONE,
     month: 'short',
     day: 'numeric',
     year: sameYear ? undefined : 'numeric',
@@ -344,6 +190,9 @@ export function EventsCalendar() {
   const reduce = useReducedMotion() === true
   const today = useMemo(() => new Date(), [])
   const todayKey = dateKey(today)
+  const [events, setEvents] = useState<CalEvent[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1))
   const [selected, setSelected] = useState(todayKey)
   const [kind, setKind] = useState<FilterId>('all')
@@ -353,6 +202,36 @@ export function EventsCalendar() {
   const menuRef = useRef<HTMLDivElement>(null)
   useHashScroll('calendar')
   const filtering = kind !== 'all'
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    void listCalendarEvents().then((result) => {
+      if (cancelled) return
+      if (!result.ok) {
+        setEvents([])
+        setLoadError(result.error)
+        setLoading(false)
+        return
+      }
+      setEvents(
+        result.data.items.map((item) => ({
+          id: item.slug,
+          title: item.title,
+          start: item.start,
+          end: item.end,
+          kind: item.kind,
+          description: item.description,
+          image: item.image,
+        })),
+      )
+      setLoadError(null)
+      setLoading(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!filterOpen) {
@@ -389,7 +268,7 @@ export function EventsCalendar() {
   const year = cursor.getFullYear()
   const month = cursor.getMonth()
   const cells = monthCells(year, month)
-  const selectedEvents = eventsOn(selected, kind)
+  const selectedEvents = eventsOn(events, selected, kind)
   const selectedDate = parseKey(selected)
   const viewingToday = selected === todayKey
   const nextEvent = events
@@ -410,51 +289,65 @@ export function EventsCalendar() {
   }
 
   return (
-    <section id="calendar" aria-labelledby="calendar-title" className="scroll-mt-28 bg-surface">
+    <section
+      id="calendar"
+      aria-labelledby="calendar-title"
+      className="scroll-mt-28 bg-surface dark:bg-zinc-950"
+    >
       <div className="mx-auto max-w-7xl px-4 py-[clamp(3rem,2rem+3.2vw,5rem)] sm:px-6 lg:px-8">
         <Reveal>
         <header className="mx-auto max-w-3xl text-center">
           <SectionKicker icon={CalendarDays}>Calendar</SectionKicker>
           <h2
             id="calendar-title"
-            className="mt-[clamp(0.85rem,0.5rem+1vw,1.25rem)] font-hero text-[clamp(1.85rem,0.9rem+3vw,3.75rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950"
+            className="mt-[clamp(0.85rem,0.5rem+1vw,1.25rem)] font-hero text-[clamp(1.85rem,0.9rem+3vw,3.75rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950 dark:text-zinc-50"
           >
-            Upcoming <span className="text-brand-600">events</span>
+            Upcoming <span className="text-brand-600 dark:text-brand-400">Events</span>
           </h2>
-          <p className="mx-auto mt-[clamp(0.75rem,0.4rem+1vw,1.15rem)] max-w-lg text-[clamp(0.875rem,0.82rem+0.2vw,0.95rem)] leading-relaxed text-zinc-500">
+          <p className="mx-auto mt-[clamp(0.75rem,0.4rem+1vw,1.15rem)] max-w-lg text-[clamp(0.875rem,0.82rem+0.2vw,0.95rem)] leading-relaxed text-zinc-500 dark:text-zinc-400">
             Examinations, enrollment, and holiday breaks from the A.Y. 2026–2027 academic calendar.
           </p>
+          {loading ? (
+            <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400" aria-live="polite">
+              Loading calendar…
+            </p>
+          ) : null}
+          {loadError ? (
+            <p className="mt-3 text-sm text-maroon-700 dark:text-maroon-300" role="alert">
+              {loadError}
+            </p>
+          ) : null}
         </header>
         </Reveal>
 
-        <Reveal delay={0.08} className="mt-[clamp(1.5rem,1rem+1.5vw,2.25rem)] overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+        <Reveal delay={0.08} className="mt-[clamp(1.5rem,1rem+1.5vw,2.25rem)] overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
           <div className="grid items-stretch lg:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="min-w-0">
-          <div className="flex items-center gap-2 border-b border-zinc-100 p-3 sm:p-4">
+          <div className="flex items-center gap-2 border-b border-zinc-100 p-3 sm:p-4 dark:border-zinc-800">
             <button
               type="button"
               onClick={() => openDate(todayKey)}
-              className="inline-flex h-9 shrink-0 items-center rounded-lg border border-zinc-200 px-3 text-sm font-medium text-brand-800 transition-colors hover:bg-zinc-50"
+              className="inline-flex h-9 shrink-0 items-center rounded-lg border border-zinc-200 px-3 text-sm font-medium text-brand-800 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
               Today
             </button>
-            <div className="inline-flex h-9 min-w-0 items-center rounded-lg border border-zinc-200">
+            <div className="inline-flex h-9 min-w-0 items-center rounded-lg border border-zinc-200 dark:border-zinc-700 dark:bg-zinc-900">
               <button
                 type="button"
                 onClick={() => shiftMonth(-1)}
                 aria-label="Previous month"
-                className="inline-flex size-9 shrink-0 items-center justify-center text-brand-800 transition-colors hover:bg-zinc-50"
+                className="inline-flex size-9 shrink-0 items-center justify-center text-brand-800 transition-colors hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800"
               >
                 <ChevronLeft className="size-4" aria-hidden />
               </button>
-              <h3 className="min-w-0 truncate px-1 text-center text-sm font-semibold text-brand-950 sm:min-w-[9.5rem]">
+              <h3 className="min-w-0 truncate px-1 text-center text-sm font-semibold text-brand-950 sm:min-w-[9.5rem] dark:text-zinc-50">
                 {monthFormat.format(cursor)}
               </h3>
               <button
                 type="button"
                 onClick={() => shiftMonth(1)}
                 aria-label="Next month"
-                className="inline-flex size-9 shrink-0 items-center justify-center text-brand-800 transition-colors hover:bg-zinc-50"
+                className="inline-flex size-9 shrink-0 items-center justify-center text-brand-800 transition-colors hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800"
               >
                 <ChevronRight className="size-4" aria-hidden />
               </button>
@@ -469,13 +362,13 @@ export function EventsCalendar() {
                   'relative inline-flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-semibold transition-colors sm:px-3',
                   filtering
                     ? 'border-brand-700 bg-brand-700 text-white'
-                    : 'border-zinc-200 bg-white text-brand-950 hover:bg-zinc-50',
+                    : 'border-zinc-200 bg-white text-brand-950 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800',
                 )}
               >
                 <ListFilter className="size-3.5" strokeWidth={2.1} aria-hidden />
                 Filter
                 {filtering ? (
-                  <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-white ring-2 ring-brand-700" />
+                  <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-white ring-2 ring-brand-700 dark:bg-zinc-950" />
                 ) : null}
               </button>
               {filterOpen && menuPos
@@ -484,22 +377,24 @@ export function EventsCalendar() {
                       ref={menuRef}
                       role="menu"
                       style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 60 }}
-                      className="w-64 rounded-2xl border border-zinc-200 bg-white p-2 shadow-lg"
+                      className="w-64 rounded-2xl border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/50"
                     >
                   <div className="flex items-center gap-2 px-2 py-2">
-                    <div className="grid size-8 place-items-center rounded-lg bg-brand-50 text-brand-700">
+                    <div className="grid size-8 place-items-center rounded-lg bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
                       <ListFilter className="size-3.5" strokeWidth={2.1} aria-hidden />
                     </div>
                     <div className="min-w-0 leading-tight">
-                      <p className="text-[13px] font-semibold text-brand-950">Filters</p>
-                      <p className="text-[11.5px] text-zinc-500">Event type</p>
+                      <p className="text-[13px] font-semibold text-brand-950 dark:text-zinc-50">Filters</p>
+                      <p className="text-[11.5px] text-zinc-500 dark:text-zinc-400">Event type</p>
                     </div>
                   </div>
-                  <div className="border-t border-zinc-100 py-1">
+                  <div className="border-t border-zinc-100 py-1 dark:border-zinc-800">
                     {filters.map((item) => {
                       const selectedFilter = kind === item.id
                       const count =
-                        item.id === 'all' ? events.length : events.filter((event) => event.kind === item.id).length
+                        item.id === 'all'
+                          ? events.length
+                          : events.filter((event) => event.kind === item.id).length
                       return (
                         <button
                           key={item.id}
@@ -512,20 +407,22 @@ export function EventsCalendar() {
                           }}
                           className={cn(
                             'flex h-10 w-full items-center justify-between gap-3 rounded-xl px-2.5 text-left text-[13px] font-medium',
-                            selectedFilter ? 'bg-brand-50 text-brand-800' : 'text-brand-950 hover:bg-zinc-50',
+                            selectedFilter
+                              ? 'bg-brand-50 text-brand-800 dark:bg-brand-500/15 dark:text-brand-200'
+                              : 'text-brand-950 hover:bg-zinc-50 dark:text-zinc-100 dark:hover:bg-zinc-800',
                           )}
                         >
                           <span className="inline-flex min-w-0 items-center gap-2">
                             <item.icon className="size-3.5 shrink-0" aria-hidden />
                             {item.label}
                           </span>
-                          <span className="text-xs text-zinc-500">{count}</span>
+                          <span className="text-xs text-zinc-500 dark:text-zinc-400">{count}</span>
                         </button>
                       )
                     })}
                   </div>
                   {filtering ? (
-                    <div className="border-t border-zinc-100 px-2 py-2 text-center">
+                    <div className="border-t border-zinc-100 px-2 py-2 text-center dark:border-zinc-800">
                       <button
                         type="button"
                         role="menuitem"
@@ -533,7 +430,7 @@ export function EventsCalendar() {
                           setKind('all')
                           setFilterOpen(false)
                         }}
-                        className="text-xs font-semibold text-brand-700 hover:text-brand-600"
+                        className="text-xs font-semibold text-brand-700 hover:text-brand-600 dark:text-brand-300 dark:hover:text-brand-200"
                       >
                         Clear filters
                       </button>
@@ -551,11 +448,14 @@ export function EventsCalendar() {
             initial={reduce ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.25, ease: easeOut }}
-            className="@container m-2 min-w-0 rounded-xl border border-zinc-200 p-2 sm:m-3 sm:p-3"
+            className="@container m-2 min-w-0 rounded-xl border border-zinc-200 bg-zinc-50/40 p-2 sm:m-3 sm:p-3 dark:border-zinc-800 dark:bg-zinc-900/60"
           >
             <div className="grid grid-cols-7 gap-1 sm:gap-2">
               {weekdayLabels.map((label) => (
-                <div key={label} className="px-1 pb-2 text-left text-[10px] font-medium text-zinc-400 sm:text-xs">
+                <div
+                  key={label}
+                  className="px-1 pb-2 text-left text-[10px] font-medium text-zinc-400 sm:text-xs dark:text-zinc-500"
+                >
                   <span className="sm:hidden">{label.slice(0, 3)}</span>
                   <span className="hidden sm:inline">{label}</span>
                 </div>
@@ -563,7 +463,7 @@ export function EventsCalendar() {
               {cells.map((date) => {
                 const key = dateKey(date)
                 const inMonth = date.getMonth() === month
-                const listed = gridEvents(key, kind)
+                const listed = gridEvents(events, key, kind)
                 const labeled = listed.filter((entry) => entry.labeled)
                 const shown = labeled.slice(0, 3)
                 const extra = labeled.length - shown.length
@@ -578,16 +478,23 @@ export function EventsCalendar() {
                     aria-pressed={isSelected}
                     aria-current={isToday ? 'date' : undefined}
                     className={cn(
-                      'flex min-h-[4.25rem] flex-col rounded-lg border bg-white p-1 text-left sm:min-h-24 sm:rounded-xl sm:p-2 lg:min-h-[7.25rem]',
-                      inMonth ? 'border-zinc-200' : 'border-zinc-100 bg-zinc-50/70',
-                      isToday && 'border-brand-100 bg-brand-50',
-                      isSelected && 'border-dashed border-brand-600',
+                      'flex min-h-[4.25rem] flex-col rounded-lg border bg-white p-1 text-left sm:min-h-24 sm:rounded-xl sm:p-2 lg:min-h-[7.25rem] dark:bg-zinc-950',
+                      inMonth
+                        ? 'border-zinc-200 dark:border-zinc-800'
+                        : 'border-zinc-100 bg-zinc-50/70 dark:border-zinc-800/80 dark:bg-zinc-900/40',
+                      isToday &&
+                        'border-brand-100 bg-brand-50 dark:border-brand-500/35 dark:bg-brand-500/12',
+                      isSelected && 'border-dashed border-brand-600 dark:border-brand-400',
                     )}
                   >
                     <span
                       className={cn(
                         'text-[10px] font-medium tabular-nums sm:text-xs',
-                        isToday ? 'font-semibold text-brand-700' : inMonth ? 'text-brand-950' : 'text-zinc-400',
+                        isToday
+                          ? 'font-semibold text-brand-700 dark:text-brand-300'
+                          : inMonth
+                            ? 'text-brand-950 dark:text-zinc-100'
+                            : 'text-zinc-400 dark:text-zinc-600',
                       )}
                     >
                       {dayLabel(date)}
@@ -596,7 +503,9 @@ export function EventsCalendar() {
                       {shown.map(({ item }) => (
                         <span key={item.id} className="flex min-w-0 items-center gap-1">
                           <span className={cn('h-3 w-0.5 shrink-0 rounded-full', kindMeta[item.kind].bar)} aria-hidden />
-                          <span className="truncate text-[10px] leading-tight font-medium text-brand-950">{item.title}</span>
+                          <span className="truncate text-[10px] leading-tight font-medium text-brand-950 dark:text-zinc-200">
+                            {item.title}
+                          </span>
                         </span>
                       ))}
                       {bars.map(({ item }) => (
@@ -625,11 +534,11 @@ export function EventsCalendar() {
           </motion.div>
           </div>
 
-          <aside className="flex flex-col border-t border-zinc-200 bg-white p-4 shadow-none sm:p-5 lg:border-t-0 lg:border-l">
-            <div className="flex items-center justify-between gap-3 border-b border-zinc-100 pb-3">
-              <h3 className="text-lg font-semibold tracking-tight text-zinc-950">Schedule</h3>
-              <p className="flex items-center gap-1.5 text-[13px] font-medium text-zinc-500">
-                <CalendarDays className="size-3.5 text-brand-700" aria-hidden />
+          <aside className="flex flex-col border-t border-zinc-200 bg-white p-4 shadow-none sm:p-5 lg:border-t-0 lg:border-l dark:border-zinc-800 dark:bg-zinc-950 lg:dark:border-l-zinc-800">
+            <div className="flex items-center justify-between gap-3 border-b border-zinc-100 pb-3 dark:border-zinc-800">
+              <h3 className="text-lg font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">Schedule</h3>
+              <p className="flex items-center gap-1.5 text-[13px] font-medium text-zinc-500 dark:text-zinc-400">
+                <CalendarDays className="size-3.5 text-brand-700 dark:text-brand-300" aria-hidden />
                 {viewingToday ? 'Today, ' : ''}
                 {dayFormat.format(selectedDate)}
               </p>
@@ -650,15 +559,17 @@ export function EventsCalendar() {
                   height={640}
                   className="h-36 w-auto max-w-full object-contain"
                 />
-                <h4 className="mt-4 font-display text-xl font-medium text-brand-950">No events on this day</h4>
-                <p className="mt-1.5 max-w-[16rem] text-sm leading-6 text-zinc-500">
+                <h4 className="mt-4 font-display text-xl font-medium text-brand-950 dark:text-zinc-50">
+                  No events on this day
+                </h4>
+                <p className="mt-1.5 max-w-[16rem] text-sm leading-6 text-zinc-500 dark:text-zinc-400">
                   The academic calendar has nothing listed for {dayFormat.format(selectedDate)}.
                 </p>
                 {nextEvent ? (
                   <button
                     type="button"
                     onClick={() => openDate(nextEvent.start)}
-                    className="mt-5 inline-flex h-9 items-center rounded-lg border border-brand-200 px-3 text-sm font-semibold text-brand-800 hover:bg-brand-50"
+                    className="mt-5 inline-flex h-9 items-center rounded-lg border border-brand-200 px-3 text-sm font-semibold text-brand-800 hover:bg-brand-50 dark:border-brand-500/40 dark:text-brand-200 dark:hover:bg-brand-500/15"
                   >
                     Next date · {dayFormat.format(parseKey(nextEvent.start))}
                   </button>
@@ -670,12 +581,16 @@ export function EventsCalendar() {
                   const meta = kindMeta[item.kind]
                   const Icon = meta.icon
                   const days = spanDays(item)
+                  const cover = item.image || meta.image
                   return (
-                    <li key={item.id} className="flex overflow-hidden rounded-lg border border-zinc-200 bg-white">
+                    <li
+                      key={item.id}
+                      className="flex overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+                    >
                       <div className={cn('w-1 shrink-0', meta.bar)} aria-hidden />
                       <div className="relative w-[5.25rem] shrink-0 self-stretch">
                         <img
-                          src={meta.image}
+                          src={cover}
                           alt=""
                           width={168}
                           height={168}
@@ -683,7 +598,7 @@ export function EventsCalendar() {
                         />
                         <span
                           className={cn(
-                            'absolute right-1 bottom-1 inline-flex size-8 flex-col items-center justify-center rounded-full leading-none ring-2 ring-white',
+                            'absolute right-1 bottom-1 inline-flex size-8 flex-col items-center justify-center rounded-full leading-none ring-2 ring-white dark:ring-zinc-950',
                             meta.badge,
                           )}
                           aria-label={lengthLabel(item)}
@@ -703,13 +618,19 @@ export function EventsCalendar() {
                             {meta.label}
                           </span>
                         </p>
-                        <p className="mt-1.5 text-sm leading-5 font-semibold text-zinc-950">{item.title}</p>
-                        <p className="mt-1 line-clamp-2 text-[12px] leading-4 text-zinc-600">
-                          {eventDescriptions[item.id]}
+                        <p className="mt-1.5 text-sm leading-5 font-semibold text-zinc-950 dark:text-zinc-50">
+                          {item.title}
                         </p>
+                        {item.description ? (
+                          <p className="mt-1 line-clamp-2 text-[12px] leading-4 text-zinc-600 dark:text-zinc-400">
+                            {stripHtml(item.description)}
+                          </p>
+                        ) : null}
                         <p className={cn('mt-1.5 flex items-center gap-1.5 text-[12px] leading-4', meta.tone)}>
                           <CalendarRange className="size-3.5 shrink-0" aria-hidden />
-                          <span className="min-w-0 text-zinc-500">{shortRange(item.start, item.end)}</span>
+                          <span className="min-w-0 text-zinc-500 dark:text-zinc-400">
+                            {shortRange(item.start, item.end)}
+                          </span>
                         </p>
                       </div>
                     </li>
@@ -727,43 +648,65 @@ export function EventsCalendar() {
             aria-label="Quick links"
             className="mx-auto mt-[clamp(1.5rem,1rem+1.5vw,2.25rem)] max-w-3xl"
           >
-            <p className="text-center text-[11px] font-semibold tracking-[0.16em] text-brand-700 uppercase">
+            <p className="text-center text-[11px] font-semibold tracking-[0.16em] text-brand-700 uppercase dark:text-brand-300">
               Quick links
             </p>
             <ul className="mt-3 grid gap-3 sm:grid-cols-2">
               {[
                 {
                   label: 'Student Handbook',
-                  to: '/documents/student-handbook',
+                  href: studentHandbookUrl,
                   description: 'Policies and guidelines for PUP law students.',
                   icon: BookMarked,
                 },
                 {
-                  label: 'Guidelines',
-                  to: '/documents/guidelines',
-                  description: 'Official Council guidelines and procedures.',
+                  label: 'Transparency',
+                  to: '/transparency',
+                  description: 'Governance records and Council resolutions.',
                   icon: ScrollText,
                 },
-              ].map((item) => (
-                <li key={item.to}>
-                  <Link
-                    to={item.to}
-                    className="group flex h-full items-center gap-3 rounded-xl border border-zinc-200 bg-white px-3.5 py-3 transition-colors hover:border-brand-200"
-                  >
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-brand-100 text-brand-700">
+              ].map((item) => {
+                const className =
+                  'group flex h-full items-center gap-3 rounded-xl border border-zinc-200 bg-white px-3.5 py-3 transition-colors hover:border-brand-200 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-brand-500/40'
+                const body = (
+                  <>
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-brand-100 text-brand-700 dark:border-brand-500/30 dark:text-brand-300">
                       <item.icon className="size-4" aria-hidden />
                     </span>
                     <span className="min-w-0 flex-1 text-left">
-                      <span className="block text-sm font-semibold text-zinc-950">{item.label}</span>
-                      <span className="mt-0.5 block text-[13px] leading-5 text-zinc-500">{item.description}</span>
+                      <span className="block text-sm font-semibold text-zinc-950 dark:text-zinc-50">
+                        {item.label}
+                      </span>
+                      <span className="mt-0.5 block text-[13px] leading-5 text-zinc-500 dark:text-zinc-400">
+                        {item.description}
+                      </span>
                     </span>
                     <ChevronRight
                       className="size-4 shrink-0 text-zinc-400 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-brand-700"
                       aria-hidden
                     />
-                  </Link>
-                </li>
-              ))}
+                  </>
+                )
+
+                return (
+                  <li key={'href' in item ? item.href : item.to}>
+                    {'href' in item ? (
+                      <a
+                        href={item.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={className}
+                      >
+                        {body}
+                      </a>
+                    ) : (
+                      <Link to={item.to} className={className}>
+                        {body}
+                      </Link>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           </nav>
         </Reveal>

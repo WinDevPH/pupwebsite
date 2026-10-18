@@ -1,19 +1,16 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react'
-import { Clock, MailCheck, Play, ShieldCheck } from 'lucide-react'
+import { Play } from 'lucide-react'
 import councilCutout from '@/assets/council-cutout.webp'
-import collegeOfLaw from '@/assets/logos/college-of-law.jpg'
 import studentCouncil from '@/assets/logos/student-council.png'
 import studentCouncilMark from '@/assets/logos/student-council-mark.jpg'
 import lawStudentsSociety from '@/assets/logos/law-students-society.jpg'
 import statHours from '@/assets/stats/hours.webp'
-import statProjects from '@/assets/stats/projects.webp'
-import statResponse from '@/assets/stats/response.webp'
 import statYears from '@/assets/stats/years.webp'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { contact, primaryCta, siteName } from '@/components/layout/nav-data'
+import { portalCta, siteName } from '@/components/layout/nav-data'
 import { easeOut } from '@/lib/motion'
 
 const yearsServing = new Date().getFullYear() - siteName.established
@@ -35,20 +32,6 @@ const stats: Stat[] = [
     delay: 0.9,
   },
   {
-    image: statProjects,
-    value: '6',
-    label: 'Projects & initiatives',
-    className: 'bottom-[14%] left-[max(0px,calc(50%-37.75rem))]',
-    delay: 1.05,
-  },
-  {
-    image: statResponse,
-    value: '24–48h',
-    label: 'Response to concerns',
-    className: 'top-[10%] right-[max(0px,calc(50%-37.75rem))]',
-    delay: 1,
-  },
-  {
     image: statHours,
     value: 'Mon–Sat',
     label: 'Office & helpdesk hours',
@@ -58,13 +41,10 @@ const stats: Stat[] = [
 ]
 
 const seals = [
-  { src: collegeOfLaw, label: 'College of Law' },
   { src: studentCouncilMark, label: 'College of Law SC' },
   { src: lawStudentsSociety, label: 'Law Students Society' },
   { src: studentCouncil, label: 'Student Council' },
 ]
-
-const proofIcons = [ShieldCheck, MailCheck, Clock]
 
 const ease = [0.16, 1, 0.3, 1] as const
 
@@ -124,9 +104,17 @@ export function Hero() {
             variants={fadeUp}
             className="mt-[clamp(1rem,0.6rem+1vw,1.25rem)] max-w-2xl text-[clamp(0.9rem,0.82rem+0.25vw,1.125rem)] leading-relaxed text-zinc-500"
           >
-            The official website of the PUP College of Law Student Council. One
-            platform for announcements, student services, and the information
-            you need, where you can raise concerns and get answers.
+            The{' '}
+            <strong className="font-semibold text-zinc-700">
+              PUP College of Law Student Council Website
+            </strong>{' '}
+            is the official website of the PUP College of Law Student Council
+            designed to streamline information dissemination and empower the
+            student body. The website centralizes essential academic resources,
+            governance transparency, and student services, while integrating
+            profiles of recognized law student organizations to create a
+            unified platform dedicated to student welfare, support, and
+            community engagement.
           </motion.p>
 
           <motion.div
@@ -138,7 +126,7 @@ export function Hero() {
               size="lg"
               className="h-12 w-full rounded-xl px-6 shadow-lg shadow-brand-600/30 transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-xl hover:shadow-brand-600/35 sm:w-auto"
             >
-              <Link to={primaryCta.to}>{primaryCta.description}</Link>
+              <Link to={portalCta.to}>{portalCta.label}</Link>
             </Button>
             <Link
               to="/how-it-works"
@@ -154,39 +142,6 @@ export function Hero() {
             </Link>
           </motion.div>
 
-          <motion.div
-            variants={fadeUp}
-            className="mt-5 flex w-full flex-col items-center gap-2.5 text-center sm:mt-7 sm:w-auto sm:flex-row sm:gap-3 sm:text-left"
-          >
-            <div className="flex -space-x-2">
-              {proofIcons.map((Icon, i) => (
-                <span
-                  key={i}
-                  className="flex size-7 items-center justify-center rounded-full border-2 border-white bg-brand-100 text-brand-700 shadow-sm sm:size-8"
-                >
-                  <Icon className="size-3 sm:size-3.5" aria-hidden />
-                </span>
-              ))}
-              <span className="flex size-7 items-center justify-center rounded-full border-2 border-white bg-gold-400 text-[9px] font-bold text-brand-950 shadow-sm sm:size-8 sm:text-[10px]">
-                24h
-              </span>
-            </div>
-            <div className="leading-snug sm:leading-tight">
-              <p className="text-[13px] font-semibold text-brand-950 sm:text-sm">
-                Concerns answered within 24–48 hours
-              </p>
-              <p className="mt-0.5 text-[11px] text-zinc-500 sm:text-xs">
-                <span className="sm:hidden">
-                  Tracking ID by email
-                  <br />
-                  Office {contact.hours}
-                </span>
-                <span className="hidden sm:inline">
-                  Tracking ID by email · Office {contact.hours}
-                </span>
-              </p>
-            </div>
-          </motion.div>
         </motion.div>
 
         <CouncilShowcase />
@@ -280,14 +235,14 @@ function StatCard({ image, value, label, className, delay }: Stat) {
       <motion.div
         whileHover={{ y: -4 }}
         transition={{ duration: 0.25, ease }}
-        className="flex w-52 items-center gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-2.5 shadow-[0_10px_24px_-18px_rgba(30,5,65,0.45)]"
+        className="flex w-52 items-center gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-2.5 shadow-[0_10px_24px_-18px_rgba(30,5,65,0.45)] dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/50"
       >
         <img src={image} alt="" width={256} height={256} loading="lazy" className="size-11 shrink-0" />
         <div className="min-w-0 text-left">
-          <p className="font-display text-xl leading-none text-brand-950">
+          <p className="font-display text-xl leading-none text-brand-950 dark:text-zinc-50">
             <StatValue value={value} delay={delay} />
           </p>
-          <p className="mt-1 text-[11px] leading-snug text-zinc-500">{label}</p>
+          <p className="mt-1 text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">{label}</p>
         </div>
       </motion.div>
     </motion.div>

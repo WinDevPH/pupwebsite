@@ -22,9 +22,10 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
-import { findShopItem } from '@/components/portal/catalog'
-import { saveReservation } from '@/components/portal/reservations'
-import { contact, siteName } from '@/components/layout/nav-data'
+import { findShopItemAsync, type ShopLookup } from '@/components/portal/catalog'
+import { reservationFromApi, saveReservation } from '@/components/portal/reservations'
+import { siteName } from '@/components/layout/nav-data'
+import { createReservation } from '@/lib/reservations-api'
 import { cn } from '@/lib/utils'
 
 const fieldClass =
@@ -268,7 +269,8 @@ function pesos(value: number) {
 
 export default function Reservation() {
   const { shop: shopParam, itemId } = useParams()
-  const found = findShopItem(shopParam, itemId)
+  // undefined = loading, null = not listed
+  const [found, setFound] = useState<ShopLookup | null | undefined>(undefined)
   const formId = useId()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -279,7 +281,19 @@ export default function Reservation() {
   const [remarks, setRemarks] = useState('')
   const [errors, setErrors] = useState<FieldErrors>({})
   const [reserved, setReserved] = useState<string | null>(null)
+  const [mailNotice, setMailNotice] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setFound(undefined)
+    void findShopItemAsync(shopParam, itemId).then((lookup) => {
+      if (!cancelled) setFound(lookup)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [shopParam, itemId])
 
   useEffect(() => {
     const previous = document.title
@@ -290,6 +304,18 @@ export default function Reservation() {
       document.title = previous
     }
   }, [found])
+
+  if (found === undefined) {
+    return (
+      <main id="main-content" className="bg-[#f4f5f7]">
+        <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+          <p className="text-sm text-zinc-500" role="status">
+            Loading item…
+          </p>
+        </div>
+      </main>
+    )
+  }
 
   if (!found) {
     return (
@@ -305,7 +331,7 @@ export default function Reservation() {
   }
 
   const { listing, item, shop } = found
-  const count = Math.max(1, Number.parseInt(quantity, 10) || 1)
+  const count = shop === 'locker' ? 1 : Math.max(1, Number.parseInt(quantity, 10) || 1)
   const total = item.price * count
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -319,8 +345,11 @@ export default function Reservation() {
     if (!/^[A-Za-z0-9-]{4,20}$/.test(studentId.trim())) next.studentId = 'Enter a valid student ID.'
     if (!year) next.year = 'Select your year level.'
     if (item.availability === 'reserved') next.form = 'This item is reserved.'
-    else if (item.availability === 'out') next.form = 'This item is out of stock.'
-    else if (count > item.stock) next.form = `Only ${item.stock} in stock.`
+    else if (item.availability === 'out') {
+      next.form = shop === 'locker' ? 'This locker is unavailable.' : 'This item is out of stock.'
+    } else if (shop !== 'locker' && count > item.stock) {
+      next.form = `Only ${item.stock} in stock.`
+    }
     setErrors(next)
     const first = (['name', 'email', 'mobile', 'studentId', 'year'] as const).find((key) => next[key])
     if (first) {
@@ -329,43 +358,47 @@ export default function Reservation() {
     }
     if (next.form) return
     setSubmitting(true)
-    await wait(480)
-    const code = `RSV-${Date.now().toString(36).slice(-6).toUpperCase()}`
-    setReserved(code)
-    saveReservation({
-      id: code,
+    await wait(280)
+
+    const numericId = Number.parseInt(item.id, 10)
+    const shopItemId = Number.isFinite(numericId) && String(numericId) === item.id ? numericId : null
+
+    const created = await createReservation({
       shop,
-      item: item.name,
+      shopItemId,
+      itemKey: item.id,
+      itemName: item.name,
+      unitPrice: item.price,
       quantity: count,
-      total: pesos(total),
+      totalAmount: total,
       name: name.trim(),
+      email: email.trim(),
+      mobile: mobile.trim(),
+      studentId: studentId.trim(),
       year,
-      submittedAt: new Date().toISOString(),
-      status: contact.email ? 'Submitted' : 'Not sent',
+      remarks: remarks.trim(),
+      status: 'submitted',
+      public: true,
+      source: 'portal',
     })
+
+    if (!created.ok) {
+      setSubmitting(false)
+      setErrors({ form: created.error })
+      return
+    }
+
+    const record = created.data.item
+    const code = record.code
+    setReserved(code)
+    setMailNotice(
+      created.data.mail?.confirmSent
+        ? 'A confirmation email was sent to your inbox.'
+        : created.data.message ||
+            'Your reservation is saved. Keep this ID — email delivery may be unavailable.',
+    )
+    saveReservation(reservationFromApi(record))
     setSubmitting(false)
-    if (!contact.email) return
-    const message = [
-      `Reservation: ${code}`,
-      `Shop: ${listing.title}`,
-      `Item: ${item.name}`,
-      `Price: ${pesos(item.price)} ${item.unit}`,
-      `Quantity: ${count}`,
-      `Total: ${pesos(total)}`,
-      `Name: ${name.trim()}`,
-      `Email: ${email.trim()}`,
-      `Mobile: ${mobile.trim()}`,
-      `Student ID: ${studentId.trim()}`,
-      `Year level: ${year}`,
-      remarks.trim() ? `Remarks: ${remarks.trim()}` : '',
-      '',
-      'Reservation only. No checkout and no payment on the website.',
-    ]
-      .filter(Boolean)
-      .join('\n')
-    window.location.href = `mailto:${contact.email}?subject=${encodeURIComponent(
-      `[${code}] ${listing.title}: ${item.name}`,
-    )}&body=${encodeURIComponent(message)}`
   }
 
   return (
@@ -425,7 +458,15 @@ export default function Reservation() {
                     </span>
                     {found.shop === 'locker' ? 'Status' : 'In stock'}
                   </dt>
-                  <dd className="font-semibold text-zinc-950">{found.shop === 'locker' ? 'Available' : item.stock}</dd>
+                  <dd className="font-semibold text-zinc-950">
+                    {found.shop === 'locker'
+                      ? item.availability === 'reserved'
+                        ? 'Reserved'
+                        : item.availability === 'out'
+                          ? 'Unavailable'
+                          : 'Available'
+                      : item.stock}
+                  </dd>
                 </div>
                 {found.shop === 'merch' ? (
                   <div className="flex items-center justify-between gap-3 py-2.5">
@@ -463,13 +504,18 @@ export default function Reservation() {
                 <p className="mt-1 text-sm text-zinc-500">The Council confirms this by email. No payment is taken here.</p>
               </div>
               {reserved ? (
-                <p className="text-sm text-zinc-600">
-                  Reservation ID <span className="font-semibold tracking-wide text-brand-800">{reserved}</span>
-                  .{' '}
-                  <Link to="/portal#tracking" className="font-semibold text-brand-700">
-                    Track it
-                  </Link>
-                </p>
+                <div className="max-w-sm text-sm text-zinc-600">
+                  <p>
+                    Reservation ID{' '}
+                    <span className="font-semibold tracking-wide text-brand-800">{reserved}</span>.{' '}
+                    <Link to="/portal#tracking" className="font-semibold text-brand-700">
+                      Track it
+                    </Link>
+                  </p>
+                  {mailNotice ? (
+                    <p className="mt-1.5 text-[13px] leading-5 text-zinc-500">{mailNotice}</p>
+                  ) : null}
+                </div>
               ) : null}
             </div>
 

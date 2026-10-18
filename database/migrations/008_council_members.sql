@@ -1,0 +1,61 @@
+-- Council roster (officers, commissioners, advisory board) by academic year
+USE pup_col_sc;
+
+CREATE TABLE IF NOT EXISTS council_members (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  academic_year VARCHAR(32) NOT NULL,
+  board ENUM('officers', 'commissioners', 'advisory') NOT NULL,
+  section VARCHAR(64) NOT NULL,
+  role_title VARCHAR(255) NOT NULL,
+  full_name VARCHAR(255) NOT NULL,
+  photo_url VARCHAR(500) NULL,
+  is_vacant TINYINT(1) NOT NULL DEFAULT 0,
+  sort_order INT NOT NULL DEFAULT 0,
+  is_published TINYINT(1) NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_council_members_board_year (board, academic_year, sort_order, id),
+  KEY idx_council_members_published (is_published, board, academic_year)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Seed A.Y. 2026–2027 from the current public roster
+INSERT INTO council_members
+  (academic_year, board, section, role_title, full_name, photo_url, is_vacant, sort_order, is_published)
+VALUES
+  -- Officers · Executive Board
+  ('2026–2027', 'officers', 'executive', 'President', 'Toribio, Russel Angelo O.', '/council/people/toribio.jpg', 0, 10, 1),
+  ('2026–2027', 'officers', 'executive', 'Vice President Internal', 'de Leon, Kristoffer Red S.', '/council/people/de-leon.jpg', 0, 20, 1),
+  ('2026–2027', 'officers', 'executive', 'Vice President External', 'Salazar, Marvin L.', '/council/people/salazar.jpg', 0, 30, 1),
+  ('2026–2027', 'officers', 'executive', 'Secretary-General', 'Velasco, Jesca O.', '/council/people/velasco.jpg', 0, 40, 1),
+  ('2026–2027', 'officers', 'executive', 'Finance Officer', 'Biato, Yvonne', '/council/people/biato.jpg', 0, 50, 1),
+  ('2026–2027', 'officers', 'executive', 'Auditor', 'Orante, Amaziah Perseus G.', '/council/people/orante.jpg', 0, 60, 1),
+  ('2026–2027', 'officers', 'executive', 'Communications Officer', 'Tercero, Shein', '/council/people/tercero.jpg', 0, 70, 1),
+  -- Officers · Year Level Representatives
+  ('2026–2027', 'officers', 'year_reps', 'Year 1', 'Roxas, Jayson', '/council/people/ramos.jpg', 0, 110, 1),
+  ('2026–2027', 'officers', 'year_reps', 'Year 2', 'Rana, John Ivan H.', '/council/people/rana.jpg', 0, 120, 1),
+  ('2026–2027', 'officers', 'year_reps', 'Year 3', 'Guadaña, Almira P.', '/council/people/guadana.jpg', 0, 130, 1),
+  ('2026–2027', 'officers', 'year_reps', 'Year 4', 'Vacant', NULL, 1, 140, 1),
+  -- Officers · Associates
+  ('2026–2027', 'officers', 'associates', 'Presidential Affairs', 'Jessica Mae T. Asuncion', NULL, 0, 210, 1),
+  ('2026–2027', 'officers', 'associates', 'Internal Affairs', 'Aldrich R. Sanchez', '/council/people/sanchez.jpg', 0, 220, 1),
+  ('2026–2027', 'officers', 'associates', 'Secretariat', 'Cherie An M. Sarabia', '/council/people/sarabia.jpg', 0, 230, 1),
+  ('2026–2027', 'officers', 'associates', 'External Affairs', 'Gleanna Marie B. Cuyugan', '/council/people/cuyugan.jpg', 0, 240, 1),
+  ('2026–2027', 'officers', 'associates', 'Social Media Management', 'Jenina Denisse R. Cabrera', NULL, 0, 250, 1),
+  -- Commissioners
+  ('2026–2027', 'commissioners', 'commission', 'Chairperson', 'Russel Angelo O. Toribio', '/council/people/toribio.jpg', 0, 10, 1),
+  ('2026–2027', 'commissioners', 'commission', 'Commissioner', 'Kristoffer Red S. De Leon', '/council/people/de-leon.jpg', 0, 20, 1),
+  ('2026–2027', 'commissioners', 'commission', 'Commissioner', 'Marvin L. Salazar', '/council/people/salazar.jpg', 0, 30, 1),
+  ('2026–2027', 'commissioners', 'commission', 'Commissioner and Clerk to the Commission', 'Jesca O. Velasco', '/council/people/velasco.jpg', 0, 40, 1),
+  ('2026–2027', 'commissioners', 'commission', 'Commissioner', 'Ma. Yvonne B. Biato', '/council/people/biato.jpg', 0, 50, 1),
+  ('2026–2027', 'commissioners', 'commission', 'Commissioner', 'Amaziah Perseus G. Orante', '/council/people/orante.jpg', 0, 60, 1),
+  ('2026–2027', 'commissioners', 'commission', 'Commissioner', 'Shein Tercero', '/council/people/tercero.jpg', 0, 70, 1),
+  ('2026–2027', 'commissioners', 'commission', 'Commissioner', 'Jayson G. Ramos', '/council/people/ramos.jpg', 0, 80, 1),
+  ('2026–2027', 'commissioners', 'commission', 'Commissioner', 'John Ivan H. Rana', '/council/people/rana.jpg', 0, 90, 1),
+  ('2026–2027', 'commissioners', 'commission', 'Commissioner', 'Almira P. Guadaña', '/council/people/guadana.jpg', 0, 100, 1),
+  -- Advisory Board
+  ('2026–2027', 'advisory', 'advisory', 'Dean, PUP College of Law', 'Atty. Gemy Lito L. Festin, LL.M.', '/council/people/festin.jpg', 0, 10, 1),
+  ('2026–2027', 'advisory', 'advisory', 'Lead Faculty Adviser', 'Atty. Czarina C. Santos-Mahilum', '/council/people/santos.jpg', 0, 20, 1),
+  ('2026–2027', 'advisory', 'advisory', 'Lead Faculty Adviser', 'Atty. Rex Norman E. Briones, LL.M.', '/council/people/briones.jpg', 0, 30, 1),
+  ('2026–2027', 'advisory', 'advisory', 'Lead Faculty Adviser', 'Atty. Leslie Faye P. Pago', '/council/people/pago.jpg', 0, 40, 1),
+  ('2026–2027', 'advisory', 'advisory', 'Lead Faculty Adviser', 'Atty. Kim Ranielle E. Abis', NULL, 0, 50, 1);

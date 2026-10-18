@@ -2,22 +2,18 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
-import { CalendarDays, ChevronDown, ChevronUp, Clock, FileText, LayoutGrid, ListFilter, Megaphone, Newspaper, Search } from 'lucide-react'
-import assembly from '@/assets/announcements/assembly.jpg'
-import enrollment from '@/assets/announcements/enrollment.jpg'
-import legalAid from '@/assets/announcements/legal-aid.jpg'
-import consultation from '@/assets/announcements/consultation.jpg'
-import handbook from '@/assets/announcements/handbook.jpg'
-import printing from '@/assets/announcements/printing.jpg'
-import recap from '@/assets/announcements/recap.jpg'
-import townHall from '@/assets/announcements/town-hall.jpg'
+import { CalendarDays, ChevronDown, ChevronUp, Clock, FileText, LayoutGrid, ListFilter, Loader2, Megaphone, Newspaper, Search } from 'lucide-react'
 import emptyBulletin from '@/assets/announcements/empty-character.jpg'
-import { contact } from '@/components/layout/nav-data'
+import { formatPhDate, formatPhTime } from '@/lib/datetime'
 import { cn } from '@/lib/utils'
 import { easeOut } from '@/lib/motion'
 import { Reveal, useRevealViewport } from '@/components/motion/Reveal'
 import { SectionKicker } from '@/components/ui/SectionKicker'
 import { scrollPageTo } from '@/hooks/useLenis'
+import {
+  listAnnouncements,
+  type AnnouncementRecord,
+} from '@/lib/announcements-api'
 
 export type Kind = 'issuance' | 'event' | 'social'
 
@@ -31,6 +27,7 @@ export type Announcement = {
   href: string
   external?: boolean
   source?: string
+  body?: string | null
 }
 
 const kindMeta: Record<Kind, { label: string; icon: typeof FileText }> = {
@@ -48,101 +45,26 @@ const filters = [
 
 type FilterId = (typeof filters)[number]['id']
 
-const facebook = contact.socials.find((item) => item.name === 'Facebook')
-
-const announcements: Announcement[] = [
-  {
-    id: 'general-assembly',
-    kind: 'event',
-    title: 'General Assembly for the first semester',
-    summary: 'Call for all law students. The council presents the semester plan and opens the floor for concerns.',
-    date: '2026-10-18T14:00:00',
-    image: assembly,
-    href: '/announcements',
-  },
-  {
-    id: 'enrollment-advisory',
-    kind: 'issuance',
-    title: 'Advisory on the enrollment period',
-    summary: 'Enrollment dates, required documents, and where to raise a concern before the period closes.',
-    date: '2026-10-06T09:00:00',
-    image: enrollment,
-    href: '/announcements',
-  },
-  {
-    id: 'town-hall',
-    kind: 'social',
-    title: 'Town hall notes, posted on Facebook',
-    summary: 'Questions from the open forum and the council’s answers, posted on the official Facebook page.',
-    date: '2026-10-10T16:44:00',
-    image: townHall,
-    href: facebook?.href ?? '/announcements',
-    external: Boolean(facebook),
-    source: facebook ? `${facebook.name} ${facebook.handle}` : undefined,
-  },
-  {
-    id: 'legal-aid',
-    kind: 'event',
-    title: 'Legal Aid Clinic schedule',
-    summary: 'Free consultations for students. Clinic days, hours, and how to book a slot are listed here.',
-    date: '2026-09-28T10:00:00',
-    image: legalAid,
-    href: '/announcements',
-  },
-  {
-    id: 'consultation-hours',
-    kind: 'issuance',
-    title: 'Memorandum on consultation hours',
-    summary: 'The days and hours students may meet their professors for academic consultation.',
-    date: '2026-09-20T15:30:00',
-    image: consultation,
-    href: '/announcements',
-  },
-  {
-    id: 'handbook-update',
-    kind: 'issuance',
-    title: 'Student handbook update for the term',
-    summary: 'Revisions for this term, including the policies every student is expected to review.',
-    date: '2026-09-12T11:15:00',
-    image: handbook,
-    href: '/announcements',
-  },
-  {
-    id: 'printing-schedule',
-    kind: 'event',
-    title: 'Free printing service schedule',
-    summary: 'Open days, hours, and the page limit for the council’s free printing service.',
-    date: '2026-09-08T13:00:00',
-    image: printing,
-    href: '/announcements',
-  },
-  {
-    id: 'council-recap',
-    kind: 'social',
-    title: 'Week in review from the council page',
-    summary: 'Council work, events, and posts from the past week, shared from the official page.',
-    date: '2026-09-05T18:20:00',
-    image: recap,
-    href: facebook?.href ?? '/announcements',
-    external: Boolean(facebook),
-    source: facebook ? `${facebook.name} ${facebook.handle}` : undefined,
-  },
-]
-
-const dayFormat = new Intl.DateTimeFormat('en-PH', {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-})
-
-const timeFormat = new Intl.DateTimeFormat('en-PH', {
-  hour: 'numeric',
-  minute: '2-digit',
-})
+export function mapAnnouncementRecord(item: AnnouncementRecord): Announcement {
+  return {
+    id: item.slug,
+    kind: item.kind,
+    title: item.title,
+    summary: item.summary,
+    date: item.date,
+    image: item.image,
+    href: item.href,
+    external: item.external,
+    source: item.source ?? undefined,
+    body: item.body,
+  }
+}
 
 export function formatPosted(iso: string) {
-  const date = new Date(iso)
-  return `${dayFormat.format(date)} · ${timeFormat.format(date)}`
+  const dateLabel = formatPhDate(iso)
+  const timeLabel = formatPhTime(iso)
+  if (dateLabel === '—' || timeLabel === '—') return '—'
+  return `${dateLabel} · ${timeLabel}`
 }
 
 function matchesQuery(item: Announcement, needle: string) {
@@ -151,14 +73,10 @@ function matchesQuery(item: Announcement, needle: string) {
   return haystack.includes(needle)
 }
 
-export function getAnnouncement(id: string) {
-  return announcements.find((item) => item.id === id)
-}
-
-export function relatedAnnouncements(id: string, count = 3) {
-  const current = announcements.find((item) => item.id === id)
+export function relatedAnnouncements(items: Announcement[], id: string, count = 3) {
+  const current = items.find((item) => item.id === id)
   if (!current) return []
-  const rest = announcements
+  const rest = items
     .filter((item) => item.id !== id)
     .sort((a, b) => Date.parse(b.date) - Date.parse(a.date))
   const same = rest.filter((item) => item.kind === current.kind)
@@ -174,6 +92,9 @@ const pageSize = 6
 
 export function Announcements() {
   const location = useLocation()
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [filter, setFilter] = useState<FilterId>('all')
   const [query, setQuery] = useState('')
   const [limit, setLimit] = useState(pageSize)
@@ -182,6 +103,28 @@ export function Announcements() {
   const reduce = useReducedMotion() === true
   const viewport = useRevealViewport()
   const needle = query.trim().toLowerCase()
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      setLoadError('')
+      const result = await listAnnouncements()
+      if (cancelled) return
+      if (!result.ok) {
+        setAnnouncements([])
+        setLoadError(result.error)
+        setLoading(false)
+        return
+      }
+      setAnnouncements(result.data.items.map(mapAnnouncementRecord))
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const items = announcements
     .filter((item) => {
       const matchesKind = filter === 'all' || item.kind === filter
@@ -228,18 +171,22 @@ export function Announcements() {
   }
 
   return (
-    <section id="bulletin" aria-labelledby="bulletin-title" className="scroll-mt-28 bg-white">
+    <section
+      id="bulletin"
+      aria-labelledby="bulletin-title"
+      className="scroll-mt-28 bg-white dark:bg-zinc-950"
+    >
       <div className="mx-auto max-w-7xl px-4 py-[clamp(3rem,2rem+3.2vw,5rem)] sm:px-6 lg:px-8">
         <Reveal>
         <header className="mx-auto max-w-3xl text-center">
           <SectionKicker icon={Newspaper}>Bulletin</SectionKicker>
           <h2
             id="bulletin-title"
-            className="mt-[clamp(0.85rem,0.5rem+1vw,1.25rem)] font-hero text-[clamp(1.85rem,0.9rem+3vw,3.75rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950"
+            className="mt-[clamp(0.85rem,0.5rem+1vw,1.25rem)] font-hero text-[clamp(1.85rem,0.9rem+3vw,3.75rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950 dark:text-zinc-50"
           >
-            Latest <span className="text-brand-600">announcements</span>
+            Latest <span className="text-brand-600 dark:text-brand-400">Announcements</span>
           </h2>
-          <p className="mx-auto mt-[clamp(0.75rem,0.4rem+1vw,1.15rem)] max-w-lg text-[clamp(0.875rem,0.82rem+0.2vw,0.95rem)] leading-relaxed text-zinc-500">
+          <p className="mx-auto mt-[clamp(0.75rem,0.4rem+1vw,1.15rem)] max-w-lg text-[clamp(0.875rem,0.82rem+0.2vw,0.95rem)] leading-relaxed text-zinc-500 dark:text-zinc-400">
             Official issuances, event posters, and updates from the council's
             channels.
           </p>
@@ -262,7 +209,7 @@ export function Announcements() {
                 setLimit(pageSize)
               }}
               placeholder="Search announcements"
-              className="h-11 w-full rounded-xl border border-brand-200 bg-white pr-4 pl-10 text-sm text-brand-950 outline-none placeholder:text-zinc-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+              className="h-11 w-full rounded-xl border border-brand-200 bg-white pr-4 pl-10 text-sm text-brand-950 outline-none placeholder:text-zinc-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-brand-400 dark:focus:ring-brand-500/25"
             />
           </label>
           <BulletinFilter
@@ -276,7 +223,17 @@ export function Announcements() {
         </div>
         </Reveal>
 
-        {items.length === 0 ? (
+        {loading ? (
+          <div className="mt-16 flex items-center justify-center gap-2 text-sm text-zinc-500">
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+            Loading bulletin…
+          </div>
+        ) : loadError ? (
+          <div className="mt-10 rounded-2xl border border-zinc-200 bg-zinc-50 px-6 py-10 text-center">
+            <p className="font-display text-lg font-medium text-brand-950">Bulletin unavailable</p>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-zinc-500">{loadError}</p>
+          </div>
+        ) : items.length === 0 ? (
           <EmptyBulletin searching={needle !== ''} />
         ) : (
           <ul
@@ -296,7 +253,7 @@ export function Announcements() {
           </ul>
         )}
 
-        {visible.length < items.length || limit > pageSize ? (
+        {!loading && !loadError && (visible.length < items.length || limit > pageSize) ? (
           <div className="mt-[clamp(1.5rem,1rem+1.4vw,2.25rem)] flex items-center gap-4">
             <span className="h-px flex-1 bg-brand-100" aria-hidden />
             {limit > pageSize ? (
