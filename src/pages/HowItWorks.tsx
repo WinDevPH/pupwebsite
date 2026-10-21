@@ -7,29 +7,41 @@ import { Reveal } from '@/components/motion/Reveal'
 import { SectionKicker } from '@/components/ui/SectionKicker'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import requestSubmit from '@/assets/how-it-works/request-submit.jpg'
+import requestAck from '@/assets/how-it-works/request-ack.jpg'
+import requestReview from '@/assets/how-it-works/request-review.jpg'
+import requestReply from '@/assets/how-it-works/request-reply.jpg'
+import reserveChoose from '@/assets/how-it-works/reserve-choose.jpg'
+import reserveDetails from '@/assets/how-it-works/reserve-details.jpg'
+import reserveSend from '@/assets/how-it-works/reserve-send.jpg'
+import reserveTrack from '@/assets/how-it-works/reserve-track.jpg'
 
-type FlowStep = { title: string; detail: string; icon: LucideIcon }
+type FlowStep = { title: string; detail: string; icon: LucideIcon; image: string }
 
 const requestSteps: FlowStep[] = [
   {
     title: 'Submit the request',
     detail: 'A tracking ID is sent to the email you entered.',
     icon: Mail,
+    image: requestSubmit,
   },
   {
     title: 'Acknowledgement',
     detail: 'The Council replies within 24 to 48 hours of receipt.',
     icon: Clock,
+    image: requestAck,
   },
   {
     title: 'Confidential review',
     detail: 'Grievances and personal inquiries stay with authorized Executive Officers.',
     icon: ShieldCheck,
+    image: requestReview,
   },
   {
     title: 'Reply',
     detail: 'Updates are sent back to that same email.',
     icon: MailCheck,
+    image: requestReply,
   },
 ]
 
@@ -38,21 +50,25 @@ const reservationSteps: FlowStep[] = [
     title: 'Choose merch or a locker',
     detail: 'Open Bookings for Locker or Selling of Merch and pick an item.',
     icon: Package,
+    image: reserveChoose,
   },
   {
     title: 'Enter your details',
     detail: 'Name, email, mobile, student ID, and year. Merch also asks for a quantity.',
     icon: IdCard,
+    image: reserveDetails,
   },
   {
     title: 'Send the reservation',
     detail: 'The email goes to the Council, and a reservation ID is saved.',
     icon: Bookmark,
+    image: reserveSend,
   },
   {
     title: 'Track the reservation ID',
     detail: 'Look up that ID on the Tracking tab.',
     icon: Search,
+    image: reserveTrack,
   },
 ]
 
@@ -124,7 +140,7 @@ export default function HowItWorks() {
         </Reveal>
 
         <Reveal delay={0.06}>
-          <FlowChart key={selected.id} steps={selected.steps} panelId="guide-panel" labelledBy={`guide-tab-${selected.id}`} />
+          <FlowChart steps={selected.steps} panelId="guide-panel" labelledBy={`guide-tab-${selected.id}`} />
         </Reveal>
 
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -171,6 +187,11 @@ function FlowChart({
     if (reduce || paused || event.animationName !== 'step-progress') return
     setActive((current) => (current + 1) % steps.length)
   }
+
+  useEffect(() => {
+    setActive(0)
+    setPaused(false)
+  }, [steps])
 
   useEffect(() => {
     return () => {
@@ -259,32 +280,46 @@ function StepCard({
           if (event.detail === 0) onSelect(index, 'key')
         }}
         className={cn(
-          'flex h-full w-full flex-col rounded-2xl border bg-white p-5 text-left transition-[background-color,border-color,box-shadow] duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
+          'flex h-full w-full flex-col overflow-hidden rounded-2xl border bg-white text-left transition-[background-color,border-color,box-shadow,transform] duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
           active
-            ? 'border-brand-300 bg-brand-50/70 shadow-[0_18px_40px_-28px_rgba(117,36,219,0.7)]'
+            ? 'border-brand-300 shadow-[0_22px_44px_-26px_rgba(117,36,219,0.72)]'
             : 'border-zinc-200 hover:border-brand-200',
         )}
       >
-        <span className="flex items-center justify-between gap-3">
-          <span
+        <span className="relative aspect-[5/4] overflow-hidden bg-[#f3f0ff]">
+          <img
+            src={step.image}
+            alt=""
+            width={1024}
+            height={1024}
             className={cn(
-              'flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors duration-300',
-              active ? 'bg-brand-600 text-white' : 'bg-brand-50 text-brand-700',
+              'h-full w-full object-cover object-[center_40%] transition-transform duration-500',
+              active ? 'scale-[1.03]' : 'scale-100',
             )}
-          >
-            <Icon className="size-4" aria-hidden />
+          />
+          <span className="absolute top-3 left-3 flex items-center gap-2">
+            <span
+              className={cn(
+                'flex size-9 shrink-0 items-center justify-center rounded-xl shadow-sm transition-colors duration-300',
+                active ? 'bg-brand-600 text-white' : 'bg-white/90 text-brand-700',
+              )}
+            >
+              <Icon className="size-4" aria-hidden />
+            </span>
           </span>
           <span
             className={cn(
-              'text-xs font-semibold tabular-nums tracking-wide transition-colors duration-300',
-              active ? 'text-brand-700' : 'text-zinc-400',
+              'absolute top-3 right-3 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums tracking-wide shadow-sm',
+              active ? 'bg-brand-600 text-white' : 'bg-white/90 text-zinc-500',
             )}
           >
             {String(index + 1).padStart(2, '0')}
           </span>
         </span>
-        <span className="mt-4 text-[15px] font-semibold tracking-tight text-brand-950">{step.title}</span>
-        <span className="mt-1.5 text-sm leading-6 text-zinc-500">{step.detail}</span>
+        <span className="flex flex-1 flex-col px-5 pt-3 pb-5">
+          <span className="text-[15px] font-semibold tracking-tight text-brand-950">{step.title}</span>
+          <span className="mt-1.5 text-sm leading-6 text-zinc-500">{step.detail}</span>
+        </span>
       </button>
     </li>
   )

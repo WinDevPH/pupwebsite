@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { FolderKanban } from 'lucide-react'
+import { useReducedMotion } from 'motion/react'
+import { ProjectArt } from '@/components/home/ProjectArt'
 import { mapProjectRecord, type Project } from '@/components/home/project-data'
 import { Reveal } from '@/components/motion/Reveal'
 import { SectionKicker } from '@/components/ui/SectionKicker'
@@ -43,6 +45,7 @@ export function Projects() {
   const activeRef = useRef(0)
   const suppressClick = useRef(false)
   const [dragging, setDragging] = useState(false)
+  const reduce = useReducedMotion() === true
   const count = items.length
   const project = items[active] ?? null
   activeRef.current = active
@@ -173,7 +176,7 @@ export function Projects() {
           <div
             ref={stageRef}
             className={cn(
-              'relative mx-auto h-[clamp(12.5rem,30vw,19.5rem)] max-w-7xl touch-pan-y select-none [perspective:1400px]',
+              'relative mx-auto h-[clamp(15.5rem,38vw,25rem)] max-w-7xl touch-pan-y select-none [perspective:1400px]',
               dragging ? 'cursor-grabbing' : 'cursor-grab',
             )}
             onPointerDown={onPointerDown}
@@ -188,7 +191,7 @@ export function Projects() {
                   <li
                     key={item.slug}
                     aria-hidden={place.hidden || undefined}
-                    className="absolute top-1/2 left-1/2 w-[clamp(8.75rem,22vw,14.5rem)] [transform-style:preserve-3d] motion-reduce:transition-none"
+                    className="absolute top-1/2 left-1/2 w-[clamp(11rem,28vw,18.5rem)] [transform-style:preserve-3d] motion-reduce:transition-none"
                     style={{
                       transform: `translate(-50%, -50%) translateX(${place.x}px) rotateY(${place.rotate}deg) scale(${place.scale})`,
                       zIndex: place.z,
@@ -201,9 +204,9 @@ export function Projects() {
                       <Link
                         to={`/projects/${item.slug}`}
                         aria-label={item.label}
-                        className="block aspect-[3/4] overflow-hidden rounded-[1.15rem] shadow-[0_24px_40px_-28px_rgba(30,5,65,0.55)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                        className="block aspect-[3/4] overflow-hidden rounded-[1.15rem] bg-[#f3f0ff] shadow-[0_24px_40px_-28px_rgba(30,5,65,0.55)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 dark:bg-[#16101f]"
                       >
-                        <img src={item.image} alt="" draggable={false} className="size-full object-cover" />
+                        <ProjectArt icon={item.iconKey} src={item.image} live={!reduce} />
                       </Link>
                     ) : (
                       <button
@@ -211,12 +214,12 @@ export function Projects() {
                         aria-label={`Show ${item.label}`}
                         tabIndex={place.hidden ? -1 : 0}
                         onClick={() => setActive(index)}
-                        className="relative block aspect-[3/4] w-full overflow-hidden rounded-[1.15rem] shadow-[0_18px_36px_-24px_rgba(30,5,65,0.45)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                        className="relative block aspect-[3/4] w-full overflow-hidden rounded-[1.15rem] bg-[#f3f0ff] shadow-[0_18px_36px_-24px_rgba(30,5,65,0.45)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 dark:bg-[#16101f]"
                       >
-                        <img src={item.image} alt="" draggable={false} className="size-full object-cover" />
+                        <ProjectArt icon={item.iconKey} src={item.image} live={!reduce && distance < 2} />
                         <span
                           aria-hidden
-                          className={cn('absolute inset-0', distance === 1 ? 'bg-black/20' : 'bg-black/40')}
+                          className={cn('absolute inset-0', distance === 1 ? 'bg-black/15' : 'bg-black/30')}
                         />
                       </button>
                     )}
@@ -233,6 +236,11 @@ export function Projects() {
             <p className="mt-1 font-sans text-[clamp(1.35rem,1rem+1vw,1.85rem)] leading-none font-semibold tracking-tight text-brand-950">
               {project.label}
             </p>
+            {project.summary ? (
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">
+                {project.summary}
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}

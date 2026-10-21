@@ -250,13 +250,33 @@ html.dark body {
   animation-play-state: paused;
 }
 
+.project-art-photo {
+  display: block;
+}
+
+.project-art-photo.is-live {
+  animation: project-art-float 5.2s ease-in-out infinite;
+}
+
+@keyframes project-art-float {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .snackbar-in,
   .sheet-up,
   .result-shake,
   .scroll-mouse-wheel,
   .step-progress,
-  .logo-marquee {
+  .logo-marquee,
+  .hero-neon-orb,
+  .project-art-photo.is-live {
     animation: none;
   }
 }
@@ -286,7 +306,7 @@ html.dark {
 }
 
 /* —— Surfaces —— */
-html.dark .bg-white:not([class*='dark:bg-']),
+html.dark .bg-white:not([class*='dark:bg-']):not(.hero-wash):not(.hero-blend),
 html.dark .hover\:bg-white:hover:not([class*='dark:hover:bg-']),
 html.dark .focus\:bg-white:focus:not([class*='dark:focus:bg-']),
 html.dark .focus-within\:bg-white:focus-within {
@@ -484,12 +504,107 @@ html.dark .ring-1.ring-black\/10 {
   --tw-ring-color: rgb(255 255 255 / 0.08);
 }
 
-/* Heroes keep a violet field in dark mode. The light gradient uses literal white
-   and lavender, which would otherwise sit on top of the dark page. */
 html.dark .hero-wash {
   background:
-    radial-gradient(ellipse 70% 42% at 50% 22%, rgb(138 60 245 / 0.42), transparent 68%),
-    linear-gradient(180deg, #07070b 0%, #1a1028 40%, #2a1458 68%, #0c0a12 100%);
+    radial-gradient(ellipse 62% 46% at 50% 0%, rgb(138 60 245 / 0.26), transparent 66%),
+    linear-gradient(180deg, #0c0a12 0%, #07070b 58%, #07070b 100%);
+}
+
+.hero-neon {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+}
+
+.hero-neon-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(72px);
+  will-change: transform, opacity;
+  animation: hero-neon-drift 14s ease-in-out infinite;
+}
+
+.hero-neon-orb--violet {
+  top: -8%;
+  left: -6%;
+  width: min(34rem, 72vw);
+  height: min(22rem, 46vw);
+  background: radial-gradient(circle, rgb(138 60 245 / 0.22) 0%, transparent 70%);
+  animation-delay: 0s;
+}
+
+.hero-neon-orb--gold {
+  top: 18%;
+  right: -8%;
+  width: min(26rem, 58vw);
+  height: min(18rem, 40vw);
+  background: radial-gradient(circle, rgb(242 183 5 / 0.16) 0%, transparent 72%);
+  animation-delay: -4s;
+}
+
+.hero-neon-orb--maroon {
+  bottom: 8%;
+  left: 6%;
+  width: min(22rem, 50vw);
+  height: min(16rem, 36vw);
+  background: radial-gradient(circle, rgb(155 28 28 / 0.12) 0%, transparent 70%);
+  animation-delay: -8s;
+}
+
+.hero-neon-orb--peach {
+  bottom: -6%;
+  left: 50%;
+  width: min(40rem, 86vw);
+  height: min(20rem, 44vw);
+  translate: -50% 0;
+  background: radial-gradient(circle, rgb(255 186 160 / 0.28) 0%, rgb(219 198 255 / 0.14) 46%, transparent 72%);
+  animation-delay: -2s;
+}
+
+html.dark .hero-neon-orb--violet {
+  background: radial-gradient(circle, rgb(168 85 247 / 0.42) 0%, rgb(117 36 219 / 0.12) 58%, transparent 74%);
+  filter: blur(64px);
+}
+
+html.dark .hero-neon-orb--gold {
+  background: radial-gradient(circle, rgb(250 204 21 / 0.28) 0%, rgb(242 183 5 / 0.08) 60%, transparent 74%);
+  filter: blur(60px);
+}
+
+html.dark .hero-neon-orb--maroon {
+  background: radial-gradient(circle, rgb(244 63 94 / 0.22) 0%, rgb(155 28 28 / 0.1) 58%, transparent 74%);
+  filter: blur(58px);
+}
+
+html.dark .hero-neon-orb--peach {
+  background: radial-gradient(circle, rgb(138 60 245 / 0.32) 0%, rgb(242 183 5 / 0.1) 48%, transparent 74%);
+  filter: blur(70px);
+}
+
+.hero-neon-cast {
+  background: radial-gradient(ellipse at center, rgb(255 214 200 / 0.22) 0%, transparent 72%);
+  filter: blur(36px);
+}
+
+html.dark .hero-neon-cast {
+  background: radial-gradient(
+    ellipse at center,
+    rgb(168 85 247 / 0.28) 0%,
+    rgb(242 183 5 / 0.1) 42%,
+    transparent 72%
+  );
+}
+
+@keyframes hero-neon-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate3d(2.5%, -3%, 0) scale(1.08);
+    opacity: 0.78;
+  }
 }
 
 .auth-wash {
@@ -588,12 +703,23 @@ html.dark header.header-blend {
 }
 
 html.dark .hero-blend {
+  background-color: #07070b;
   margin-top: -4.5rem;
   padding-top: 4.5rem;
 }
 
 html.dark .hero-glow {
   background-color: rgb(196 150 255 / 0.2);
+}
+
+.hero-cast {
+  filter: drop-shadow(0 22px 28px rgba(30, 5, 65, 0.08));
+}
+
+html.dark .hero-cast {
+  filter:
+    drop-shadow(0 0 16px rgba(191, 154, 255, 0.16))
+    drop-shadow(0 16px 28px rgba(8, 0, 24, 0.4));
 }
 
 /* Hero soft washes keep a violet tint; cards use the generic bg-white remap. */

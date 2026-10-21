@@ -26,6 +26,10 @@ import { useHashScroll } from '@/hooks/useHashScroll'
 import emptyCalendar from '@/assets/calendar/empty.jpg'
 import { studentHandbookUrl } from '@/components/layout/nav-data'
 import { listCalendarEvents, type CalendarKind } from '@/lib/calendar-api'
+import {
+  currentAcademicYearStart,
+  formatAcademicYear,
+} from '@/lib/council-members-api'
 import { stripHtml } from '@/lib/rich-text'
 
 type Kind = CalendarKind
@@ -305,7 +309,8 @@ export function EventsCalendar() {
             Upcoming <span className="text-brand-600 dark:text-brand-400">Events</span>
           </h2>
           <p className="mx-auto mt-[clamp(0.75rem,0.4rem+1vw,1.15rem)] max-w-lg text-[clamp(0.875rem,0.82rem+0.2vw,0.95rem)] leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Examinations, enrollment, and holiday breaks from the A.Y. 2026–2027 academic calendar.
+            Examinations, enrollment, and holiday breaks from the A.Y.{' '}
+            {formatAcademicYear(currentAcademicYearStart())} academic calendar.
           </p>
           {loading ? (
             <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400" aria-live="polite">

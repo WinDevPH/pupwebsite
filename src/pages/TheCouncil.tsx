@@ -146,22 +146,6 @@ export default function TheCouncil() {
             }}
             className="flex w-full max-w-4xl flex-col items-center text-center"
           >
-            <motion.div
-              variants={rise}
-              className="mb-[clamp(0.75rem,0.4rem+1vw,1.25rem)] flex max-w-full flex-wrap items-center justify-center gap-[clamp(0.5rem,0.25rem+0.8vw,1rem)]"
-            >
-              {seals.map((seal) => (
-                <img
-                  key={seal.src}
-                  src={seal.src}
-                  alt={seal.label}
-                  width={64}
-                  height={64}
-                  className="size-[clamp(2.25rem,1.5rem+2.2vw,4rem)] rounded-full border border-zinc-200 bg-white object-contain p-0.5 shadow-[0_8px_16px_-12px_rgba(30,5,65,0.5)]"
-                />
-              ))}
-            </motion.div>
-
             <motion.h1
               id="council-page-title"
               variants={rise}
@@ -1575,22 +1559,10 @@ function OrgNode({ seat, lead = false, compact = false }: { seat: Seat; lead?: b
 }
 
 function HeroBackdrop() {
-  const reduce = useReducedMotion() === true
-
   return (
-    <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden bg-white">
-      <div className="hero-wash absolute inset-0 bg-[linear-gradient(180deg,white_0%,var(--color-brand-50)_55%,#e4d4fb_100%)]" />
-      <motion.div
-        className="hero-glow absolute top-0 left-1/2 h-80 w-[36rem] rounded-full bg-white/80 blur-3xl"
-        initial={{ x: '-58%' }}
-        animate={{ x: reduce ? '-50%' : '-42%' }}
-        transition={
-          reduce
-            ? { duration: 0 }
-            : { duration: 9, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut' }
-        }
-      />
-      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent" />
+    <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden bg-white dark:bg-[#07070b]">
+      <div className="hero-wash absolute inset-0 bg-white" />
+      <div className="absolute bottom-0 left-1/2 h-[14rem] w-[min(36rem,80%)] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_50%_80%,rgba(255,186,160,0.28)_0%,rgba(255,214,200,0.12)_42%,transparent_72%)] blur-3xl dark:bg-[radial-gradient(circle_at_50%_20%,rgba(138,60,245,0.28)_0%,transparent_70%)]" />
     </div>
   )
 }

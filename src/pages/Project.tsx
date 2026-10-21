@@ -108,28 +108,32 @@ export default function Project() {
 
         <Reveal>
           <article className="mt-3 overflow-hidden rounded-2xl border border-zinc-200 bg-white sm:mt-5">
-            <img
-              src={project.image}
-              alt=""
-              width={1280}
-              height={720}
-              className="h-[clamp(11rem,18vw,17.5rem)] w-full bg-zinc-100 object-cover"
-            />
-            <div className="px-4 py-5 sm:px-8 sm:py-8">
-              <SectionKicker icon={Icon}>Project</SectionKicker>
-              <h1 className="mt-2 font-hero text-[clamp(1.75rem,1.2rem+1.6vw,2.75rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950">
-                {project.label}
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600 sm:text-base sm:leading-7">
-                {project.summary}
-              </p>
-              {project.body ? (
-                <div className="mt-4 max-w-2xl">
-                  <RichTextContent html={project.body} className="text-sm leading-6 text-zinc-600 sm:text-[15px]" />
-                </div>
-              ) : null}
+            <div className="lg:grid lg:grid-cols-[minmax(18rem,26rem)_minmax(0,1fr)] lg:items-stretch">
+              <img
+                src={project.image}
+                alt=""
+                width={768}
+                height={1024}
+                className="h-[clamp(11rem,18vw,17.5rem)] w-full bg-zinc-100 object-cover lg:h-full lg:min-h-[22rem]"
+              />
+              <div className="px-4 py-5 sm:px-8 sm:py-8 lg:flex lg:flex-col lg:justify-center">
+                <SectionKicker icon={Icon}>Project</SectionKicker>
+                <h1 className="mt-2 font-hero text-[clamp(1.75rem,1.2rem+1.6vw,2.75rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950">
+                  {project.label}
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600 sm:text-base sm:leading-7">
+                  {project.summary}
+                </p>
+                {project.body ? (
+                  <div className="mt-4 max-w-2xl">
+                    <RichTextContent html={project.body} className="text-sm leading-6 text-zinc-600 sm:text-[15px]" />
+                  </div>
+                ) : null}
+              </div>
+            </div>
 
-              <div className="mt-6 grid gap-6 border-t border-zinc-200 pt-6 sm:mt-8 sm:gap-8 sm:pt-8 md:grid-cols-2">
+            <div className="px-4 pb-5 sm:px-8 sm:pb-8">
+              <div className="grid gap-6 border-t border-zinc-200 pt-6 sm:gap-8 sm:pt-8 md:grid-cols-2">
                 <section aria-labelledby="project-links" className="min-w-0">
                   <h2 id="project-links" className="text-[11px] font-semibold tracking-[0.16em] text-zinc-500 uppercase">
                     Links

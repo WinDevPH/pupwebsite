@@ -1,50 +1,34 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react'
-import { Play } from 'lucide-react'
-import councilCutout from '@/assets/council-cutout.webp'
+import { motion, useReducedMotion } from 'motion/react'
+import {
+  BookOpen,
+  Clock,
+  GraduationCap,
+  Lightbulb,
+  Play,
+  Scale,
+  Shield,
+} from 'lucide-react'
+import heroLawStudents from '@/assets/hero-law-students.png'
 import studentCouncil from '@/assets/logos/student-council.png'
 import studentCouncilMark from '@/assets/logos/student-council-mark.jpg'
 import lawStudentsSociety from '@/assets/logos/law-students-society.jpg'
-import statHours from '@/assets/stats/hours.webp'
-import statYears from '@/assets/stats/years.webp'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { portalCta, siteName } from '@/components/layout/nav-data'
-import { easeOut } from '@/lib/motion'
-
-const yearsServing = new Date().getFullYear() - siteName.established
-
-type Stat = {
-  image: string
-  value: string
-  label: string
-  className: string
-  delay: number
-}
-
-const stats: Stat[] = [
-  {
-    image: statYears,
-    value: `${yearsServing}+`,
-    label: 'Years serving law students',
-    className: 'top-[10%] left-[max(0px,calc(50%-37.75rem))]',
-    delay: 0.9,
-  },
-  {
-    image: statHours,
-    value: 'Mon–Sat',
-    label: 'Office & helpdesk hours',
-    className: 'bottom-[14%] right-[max(0px,calc(50%-37.75rem))]',
-    delay: 1.15,
-  },
-]
+import { portalCta } from '@/components/layout/nav-data'
+import {
+  currentAcademicYearStart,
+  formatAcademicYear,
+  getCouncilDisplaySettings,
+} from '@/lib/council-members-api'
 
 const seals = [
   { src: studentCouncilMark, label: 'College of Law SC' },
   { src: lawStudentsSociety, label: 'Law Students Society' },
   { src: studentCouncil, label: 'Student Council' },
 ]
+
+const fallbackAcademicYear = formatAcademicYear(currentAcademicYearStart())
 
 const ease = [0.16, 1, 0.3, 1] as const
 
@@ -61,7 +45,7 @@ export function Hero() {
     >
       <Backdrop />
 
-      <div className="relative mx-auto flex max-w-7xl flex-col items-center px-4 pt-[clamp(2.25rem,1.4rem+3vw,5rem)] sm:px-6 lg:px-8">
+      <div className="relative mx-auto flex max-w-7xl flex-col items-center px-4 pt-[clamp(2.25rem,1.4rem+3vw,5rem)] pb-0 sm:px-6 lg:px-8">
         <motion.div
           initial="hidden"
           animate="show"
@@ -71,20 +55,8 @@ export function Hero() {
           }}
           className="flex w-full max-w-4xl flex-col items-center text-center"
         >
-          <motion.div
-            variants={fadeUp}
-            className="mb-[clamp(0.75rem,0.4rem+1vw,1.25rem)] flex items-center justify-center gap-[clamp(0.5rem,0.25rem+0.8vw,1rem)]"
-          >
-            {seals.map((seal) => (
-              <img
-                key={seal.src}
-                src={seal.src}
-                alt={seal.label}
-                width={64}
-                height={64}
-                className="size-[clamp(2.25rem,1.5rem+2.2vw,4rem)] rounded-full border border-zinc-200 bg-white object-contain p-0.5 shadow-[0_8px_16px_-12px_rgba(30,5,65,0.5)]"
-              />
-            ))}
+          <motion.div variants={fadeUp} className="mb-5 sm:mb-6">
+            <HeroCouncilRow />
           </motion.div>
 
           <motion.h1
@@ -106,15 +78,11 @@ export function Hero() {
           >
             The{' '}
             <strong className="font-semibold text-zinc-700">
-              PUP College of Law Student Council Website
-            </strong>{' '}
-            is the official website of the PUP College of Law Student Council
-            designed to streamline information dissemination and empower the
-            student body. The website centralizes essential academic resources,
-            governance transparency, and student services, while integrating
-            profiles of recognized law student organizations to create a
-            unified platform dedicated to student welfare, support, and
-            community engagement.
+              official website of the PUP College of Law Student Council
+            </strong>
+            , built to share information and support the student body. Academic
+            resources, governance, student services, and recognized
+            organizations — in one place.
           </motion.p>
 
           <motion.div
@@ -141,132 +109,131 @@ export function Hero() {
               How It Works?
             </Link>
           </motion.div>
-
         </motion.div>
 
-        <CouncilShowcase />
+        <HeroCharacters />
       </div>
     </section>
   )
 }
 
-function Backdrop() {
-  const reduce = useReducedMotion() === true
+function HeroCouncilRow() {
+  const [year, setYear] = useState(fallbackAcademicYear)
+
+  useEffect(() => {
+    let cancelled = false
+    void getCouncilDisplaySettings('officers').then((result) => {
+      if (cancelled || !result.ok) return
+      const next = result.data.publicYear?.trim()
+      if (next) setYear(next)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
-    <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden bg-white">
-      <div className="hero-wash absolute inset-0 bg-[linear-gradient(180deg,white_0%,var(--color-brand-50)_48%,#e4d4fb_100%)]" />
-      <motion.div
-        className="hero-glow absolute top-0 left-1/2 h-80 w-[36rem] rounded-full bg-white/80 blur-3xl"
-        initial={{ x: '-58%' }}
-        animate={{ x: reduce ? '-50%' : '-42%' }}
-        transition={
-          reduce
-            ? { duration: 0 }
-            : { duration: 9, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut' }
-        }
-      />
-      <div className="absolute bottom-[-12%] left-1/2 h-40 w-[min(68rem,120%)] -translate-x-1/2 rounded-[50%] bg-brand-950/8 blur-3xl sm:h-72 sm:bg-brand-950/20" />
-      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-brand-950/[0.04] to-transparent sm:h-28 sm:from-brand-950/12" />
-    </div>
+    <Link
+      to="/about/the-council"
+      className="flex items-center justify-center gap-3 text-left"
+    >
+      <span className="flex shrink-0">
+        {seals.map((seal, index) => (
+          <img
+            key={seal.src}
+            src={seal.src}
+            alt={seal.label}
+            width={36}
+            height={36}
+            className={`size-9 rounded-full border-2 border-brand-200 bg-white object-contain p-0.5 dark:border-zinc-700 ${index > 0 ? '-ml-2.5' : ''}`}
+          />
+        ))}
+      </span>
+      <span className="min-w-0 text-[13px] leading-snug">
+        <span className="block font-semibold text-zinc-800">A.Y. {year}</span>
+        <span className="mt-0.5 block text-[12px] text-zinc-500">
+          Meet the Council
+        </span>
+      </span>
+    </Link>
   )
 }
 
-function CouncilShowcase() {
+const sceneChips = [
+  { Icon: Scale, className: 'top-[10%] left-[0%] hidden sm:flex', tone: 'text-brand-600' },
+  { Icon: BookOpen, className: 'top-[2%] right-[4%] hidden sm:flex', tone: 'text-maroon-600' },
+  { Icon: GraduationCap, className: 'top-[20%] right-[-1%] hidden sm:flex', tone: 'text-brand-600' },
+  { Icon: Clock, className: 'top-[48%] left-[-1%] hidden sm:flex', tone: 'text-gold-600' },
+  { Icon: Lightbulb, className: 'top-[44%] right-[0%] hidden sm:flex', tone: 'text-gold-600' },
+  { Icon: Shield, className: 'top-[14%] left-[10%] hidden md:flex', tone: 'text-brand-500' },
+] as const
+
+function HeroCharacters() {
   const reduce = useReducedMotion() === true
 
-  return (
-    <div className="relative mt-6 w-full sm:mt-8 lg:mt-4">
-      <div
-        aria-hidden
-        className="absolute inset-x-[4%] top-[6%] bottom-[4%] rounded-[40%] bg-white/90 blur-2xl sm:hidden"
-      />
-      <div
-        aria-hidden
-        className="absolute bottom-[1%] left-1/2 h-10 w-[72%] -translate-x-1/2 rounded-[50%] bg-[rgba(30,5,65,0.14)] blur-xl sm:h-32 sm:w-[88%] sm:bg-[rgba(30,5,65,0.42)] sm:blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="absolute bottom-[8%] left-1/2 h-6 w-[46%] -translate-x-1/2 rounded-[50%] bg-[rgba(30,5,65,0.16)] blur-md sm:bottom-[5%] sm:h-14 sm:w-[62%] sm:bg-[rgba(30,5,65,0.55)] sm:blur-xl"
-      />
-      <motion.div
-        aria-hidden
-        className="hero-stage absolute inset-x-[18%] bottom-[14%] h-1/5 rounded-[50%] bg-brand-100/40 blur-2xl sm:inset-x-[24%] sm:bottom-[10%] sm:h-2/5 sm:bg-brand-200/50 sm:blur-3xl"
-        initial={{ opacity: 0.7 }}
-        animate={{ opacity: reduce ? 0.6 : 0.4 }}
-        transition={
-          reduce
-            ? { duration: 0 }
-            : { duration: 4, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut' }
-        }
-      />
-
-      <motion.div
-        initial={{ opacity: 0, y: 36 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.9, ease, delay: 0.45 }}
-        className="relative z-10 mx-auto w-full max-w-[46rem]"
-      >
-        <img
-          src={councilCutout}
-          alt="Officers of the PUP College of Law Student Council"
-          width={4096}
-          height={2404}
-          loading="eager"
-          className="relative block w-full drop-shadow-[0_8px_14px_rgba(30,5,65,0.1)] sm:drop-shadow-[0_18px_28px_rgba(30,5,65,0.22)]"
-        />
-      </motion.div>
-
-      {stats.map((stat) => (
-        <StatCard key={stat.label} {...stat} />
-      ))}
-    </div>
-  )
-}
-
-function StatCard({ image, value, label, className, delay }: Stat) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease, delay }}
-      className={cn('absolute z-20 hidden xl:block', className)}
+      transition={{ duration: 0.7, ease, delay: 0.28 }}
+      className="relative -mb-4 mt-6 w-full max-w-5xl sm:-mb-12 sm:mt-8"
     >
-      <motion.div
-        whileHover={{ y: -4 }}
-        transition={{ duration: 0.25, ease }}
-        className="flex w-52 items-center gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-2.5 shadow-[0_10px_24px_-18px_rgba(30,5,65,0.45)] dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/50"
-      >
-        <img src={image} alt="" width={256} height={256} loading="lazy" className="size-11 shrink-0" />
-        <div className="min-w-0 text-left">
-          <p className="font-display text-xl leading-none text-brand-950 dark:text-zinc-50">
-            <StatValue value={value} delay={delay} />
-          </p>
-          <p className="mt-1 text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">{label}</p>
-        </div>
-      </motion.div>
+      {sceneChips.map(({ Icon, className, tone }, index) => (
+        <motion.span
+          key={className}
+          aria-hidden
+          className={`absolute z-10 size-10 items-center justify-center rounded-2xl border border-zinc-100 bg-white shadow-[0_10px_24px_-14px_rgba(30,5,65,0.45)] sm:size-11 dark:border-zinc-800 dark:bg-zinc-900 ${className}`}
+          animate={reduce ? undefined : { y: [0, -8, 0] }}
+          transition={{
+            duration: 4.6 + index * 0.35,
+            repeat: Infinity,
+            ease: 'easeInOut',
+            delay: index * 0.28,
+          }}
+        >
+          <Icon className={`size-4 sm:size-[18px] ${tone}`} />
+        </motion.span>
+      ))}
+
+      <span
+        aria-hidden
+        className="absolute top-[22%] left-[8%] hidden size-2 rounded-full bg-brand-300 sm:left-[10%] sm:block"
+      />
+      <span
+        aria-hidden
+        className="absolute top-[6%] right-[22%] hidden size-1.5 rounded-full bg-gold-400 sm:block"
+      />
+      <span
+        aria-hidden
+        className="absolute top-[36%] right-[6%] hidden size-2 rounded-full bg-maroon-300 sm:block"
+      />
+
+      <div
+        aria-hidden
+        className="hero-neon-cast pointer-events-none absolute inset-x-[6%] bottom-[2%] h-[68%] rounded-full"
+      />
+
+      <img
+        src={heroLawStudents}
+        alt="Five illustrated law students with books, folders, and a notebook"
+        width={1280}
+        height={684}
+        className="hero-cast relative mx-auto w-full max-w-[52rem] select-none"
+      />
     </motion.div>
   )
 }
 
-function StatValue({ value, delay }: { value: string; delay: number }) {
-  const reduce = useReducedMotion() === true
-  const parsed = /^(\d+)(\+?)$/.exec(value)
-  const count = useMotionValue(0)
-  const text = useTransform(count, (latest) => (parsed ? `${Math.round(latest)}${parsed[2]}` : value))
-
-  useEffect(() => {
-    const match = /^(\d+)(\+?)$/.exec(value)
-    if (!match) return
-    if (reduce) {
-      count.set(Number(match[1]))
-      return
-    }
-    const controls = animate(count, Number(match[1]), { duration: 1.15, delay, ease: easeOut })
-    return () => controls.stop()
-  }, [count, delay, reduce, value])
-
-  if (!parsed) return value
-
-  return <motion.span>{text}</motion.span>
+function Backdrop() {
+  return (
+    <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden bg-white dark:bg-[#07070b]">
+      <div className="hero-wash absolute inset-0 bg-white" />
+      <div className="hero-neon">
+        <span className="hero-neon-orb hero-neon-orb--violet" />
+        <span className="hero-neon-orb hero-neon-orb--gold" />
+        <span className="hero-neon-orb hero-neon-orb--maroon" />
+        <span className="hero-neon-orb hero-neon-orb--peach" />
+      </div>
+    </div>
+  )
 }
