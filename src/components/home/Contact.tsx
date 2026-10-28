@@ -157,42 +157,6 @@ function HelpdeskCard({ contact }: { contact: SiteContact }) {
           />
         ) : null}
       </div>
-
-      <div>
-        <p className="text-[11px] font-semibold tracking-[0.14em] text-zinc-500 uppercase">Also on</p>
-        <ul className="mt-2 grid grid-cols-2 gap-2">
-          {contact.socials
-            .filter((item) => item.name !== 'Facebook')
-            .map((item) => (
-              <li key={item.name}>
-                <a
-                  href={item.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex h-full items-center gap-2.5 rounded-xl border border-zinc-200 px-3 py-2.5 transition-colors hover:border-brand-300 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-                >
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700">
-                    {item.name === 'Instagram' ? (
-                      <InstagramMark className="size-4" />
-                    ) : item.name === 'X' ? (
-                      <XMark className="size-3.5" />
-                    ) : (
-                      <ArrowUpRight className="size-4" aria-hidden />
-                    )}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[10px] font-semibold tracking-[0.14em] text-zinc-500 uppercase">
-                      {item.name}
-                    </span>
-                    <span className="mt-0.5 block truncate text-sm leading-5 font-semibold text-brand-950">
-                      {item.handle}
-                    </span>
-                  </span>
-                </a>
-              </li>
-            ))}
-        </ul>
-      </div>
     </div>
   )
 }
@@ -510,24 +474,6 @@ function Field({
         </p>
       ) : null}
     </div>
-  )
-}
-
-function InstagramMark({ className }: { className?: string }) {
-  return (
-    <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <rect x="3" y="3" width="18" height="18" rx="5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.5" cy="6.5" r="0.8" fill="currentColor" stroke="none" />
-    </svg>
-  )
-}
-
-function XMark({ className }: { className?: string }) {
-  return (
-    <svg aria-hidden viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="M14.7 10.3 22.4 1.5h-1.8l-6.7 7.6L8.4 1.5H1.6l8.1 11.5L1.5 22.5h1.8l7.1-8.1 5.7 8.1h6.8l-8.2-12.2Zm-2.5 2.9-.8-1.2-6.6-9.3h2.8l5.3 7.5.8 1.2 6.9 9.7h-2.8l-5.6-8Z" />
-    </svg>
   )
 }
 

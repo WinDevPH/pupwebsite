@@ -1,37 +1,20 @@
-import { useEffect, useState, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import { useLocation } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
-import {
-  ArrowUpRight,
-  Building2,
-  ClipboardCheck,
-  FileText,
-  Gavel,
-  HeartHandshake,
-  Landmark,
-  Mail,
-  Receipt,
-  ScrollText,
-  Wallet,
-} from 'lucide-react'
+import { ArrowUpRight, FileText, Loader2, Search } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
-import collegeOfLaw from '@/assets/logos/college-of-law.jpg'
-import lawStudentsSociety from '@/assets/logos/law-students-society.jpg'
-import studentCouncil from '@/assets/logos/student-council.png'
-import studentCouncilMark from '@/assets/logos/student-council-mark.jpg'
 import { siteName } from '@/components/layout/nav-data'
 import { Reveal } from '@/components/motion/Reveal'
 import { SectionKicker } from '@/components/ui/SectionKicker'
-import { useDocuments } from '@/hooks/useDocuments'
-import type { DocumentRecord } from '@/lib/documents-api'
+import { listDocuments, type DocumentRecord } from '@/lib/documents-api'
+import {
+  DEFAULT_TRANSPARENCY_CATEGORIES,
+  listTransparencyCategories,
+  resolveTransparencyTabSlug,
+  type TransparencyCategoryRecord,
+} from '@/lib/transparency-categories-api'
+import { transparencyIcon } from '@/lib/transparency-icons'
 import { cn } from '@/lib/utils'
-
-const seals = [
-  { src: collegeOfLaw, label: 'College of Law' },
-  { src: lawStudentsSociety, label: 'Law Students Society' },
-  { src: studentCouncil, label: 'Student Council' },
-  { src: studentCouncilMark, label: 'College of Law SC' },
-]
 
 const ease = [0.16, 1, 0.3, 1] as const
 
@@ -40,59 +23,77 @@ const rise = {
   show: { opacity: 1, y: 0, transition: { duration: 0.6, ease } },
 }
 
-const transparencyTabs = [
-  { id: 'board', label: 'Board', icon: Landmark },
-  { id: 'appointments', label: 'Appointments', icon: Gavel },
-  { id: 'memoranda', label: 'Memoranda', icon: Mail },
-  { id: 'reports', label: 'Reports', icon: ClipboardCheck },
-] as const
-
-type TransparencyTab = (typeof transparencyTabs)[number]['id']
+function matchesDocument(item: DocumentRecord, needle: string) {
+  if (!needle) return true
+  return `${item.title} ${item.number} ${item.seriesLabel}`.toLowerCase().includes(needle)
+}
 
 function onTabKeyDown(
   event: KeyboardEvent<HTMLDivElement>,
-  tab: TransparencyTab,
-  setTab: (id: TransparencyTab) => void,
+  tab: string,
+  tabs: TransparencyCategoryRecord[],
+  setTab: (id: string) => void,
 ) {
-  const index = transparencyTabs.findIndex((item) => item.id === tab)
+  const index = tabs.findIndex((item) => item.slug === tab)
   if (index < 0) return
   const next =
     event.key === 'ArrowRight' || event.key === 'ArrowDown'
-      ? transparencyTabs[(index + 1) % transparencyTabs.length]
+      ? tabs[(index + 1) % tabs.length]
       : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
-        ? transparencyTabs[(index - 1 + transparencyTabs.length) % transparencyTabs.length]
+        ? tabs[(index - 1 + tabs.length) % tabs.length]
         : event.key === 'Home'
-          ? transparencyTabs[0]
+          ? tabs[0]
           : event.key === 'End'
-            ? transparencyTabs[transparencyTabs.length - 1]
+            ? tabs[tabs.length - 1]
             : null
   if (!next) return
   event.preventDefault()
-  setTab(next.id)
-  document.getElementById(`transparency-tab-${next.id}`)?.focus()
-}
-
-function tabFromHash(hash: string): TransparencyTab | null {
-  const id = hash.replace('#', '')
-  return transparencyTabs.some((item) => item.id === id) ? (id as TransparencyTab) : null
+  setTab(next.slug)
+  document.getElementById(`transparency-tab-${next.slug}`)?.focus()
 }
 
 export default function Transparency() {
   const { hash } = useLocation()
-  const [tab, setTab] = useState<TransparencyTab>(() => tabFromHash(hash) ?? 'board')
-  const board = useDocuments('board_resolution')
-  const appointments = useDocuments('appointment_resolution')
-  const memoranda = useDocuments('memorandum')
-  const reports = useDocuments('report')
-  const tabCounts: Partial<Record<TransparencyTab, number>> = {
-    board: board.loading ? undefined : board.items.length,
-    appointments: appointments.loading ? undefined : appointments.items.length,
-  }
+  const [categories, setCategories] = useState<TransparencyCategoryRecord[]>([])
+  const [documents, setDocuments] = useState<DocumentRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [query, setQuery] = useState('')
+  const [tab, setTab] = useState('')
 
   useEffect(() => {
-    const next = tabFromHash(hash)
-    if (next) setTab(next)
-  }, [hash])
+    let cancelled = false
+    setLoading(true)
+    setError('')
+    void Promise.all([listTransparencyCategories(), listDocuments()]).then(([tabs, docs]) => {
+      if (cancelled) return
+      const nextTabs = tabs.ok ? tabs.data.items : DEFAULT_TRANSPARENCY_CATEGORIES
+      const nextDocs = docs.ok ? docs.data.items : []
+      if (!docs.ok) {
+        setError(docs.error)
+      } else if (!tabs.ok) {
+        setError('')
+      } else {
+        setError('')
+      }
+      setCategories(nextTabs)
+      setDocuments(nextDocs)
+      setLoading(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (categories.length === 0) return
+    const fromHash = resolveTransparencyTabSlug(hash, categories)
+    setTab((current) => {
+      if (fromHash) return fromHash
+      if (current && categories.some((item) => item.slug === current)) return current
+      return categories[0].slug
+    })
+  }, [categories, hash])
 
   useEffect(() => {
     const previous = document.title
@@ -101,6 +102,23 @@ export default function Transparency() {
       document.title = previous
     }
   }, [])
+
+  const needle = query.trim().toLowerCase()
+  const active = categories.find((item) => item.slug === tab) ?? categories[0] ?? null
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const category of categories) {
+      counts[category.slug] = documents.filter(
+        (item) => item.category === category.slug && matchesDocument(item, needle),
+      ).length
+    }
+    return counts
+  }, [categories, documents, needle])
+
+  const visibleDocs = useMemo(() => {
+    if (!active) return []
+    return documents.filter((item) => item.category === active.slug && matchesDocument(item, needle))
+  }, [active, documents, needle])
 
   return (
     <>
@@ -116,22 +134,6 @@ export default function Transparency() {
             }}
             className="flex w-full max-w-4xl flex-col items-center text-center"
           >
-            <motion.div
-              variants={rise}
-              className="mb-[clamp(0.75rem,0.4rem+1vw,1.25rem)] flex max-w-full flex-wrap items-center justify-center gap-[clamp(0.5rem,0.25rem+0.8vw,1rem)]"
-            >
-              {seals.map((seal) => (
-                <img
-                  key={seal.src}
-                  src={seal.src}
-                  alt={seal.label}
-                  width={64}
-                  height={64}
-                  className="size-[clamp(2.25rem,1.5rem+2.2vw,4rem)] rounded-full border border-zinc-200 bg-white object-contain p-0.5 shadow-[0_8px_16px_-12px_rgba(30,5,65,0.5)]"
-                />
-              ))}
-            </motion.div>
-
             <motion.h1
               id="transparency-page-title"
               variants={rise}
@@ -139,7 +141,7 @@ export default function Transparency() {
             >
               Governance and
               <br />
-              <span className="text-brand-600">Resolutions</span>
+              <span className="text-brand-600">Transparency</span>
             </motion.h1>
           </motion.div>
         </div>
@@ -148,198 +150,107 @@ export default function Transparency() {
       <main id="main-content" className="bg-white">
         <div className="bg-[#f6f5fb]">
           <div className="mx-auto flex max-w-7xl flex-col items-center px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-            <div
-              className="grid w-full max-w-3xl grid-cols-2 gap-2 sm:grid-cols-4"
-              role="tablist"
-              aria-label="Transparency"
-              onKeyDown={(event) => onTabKeyDown(event, tab, setTab)}
-            >
-              {transparencyTabs.map((item) => {
-                const selected = tab === item.id
-                const Icon = item.icon
-                const count = tabCounts[item.id]
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    role="tab"
-                    id={`transparency-tab-${item.id}`}
-                    aria-selected={selected}
-                    aria-controls="transparency-panel"
-                    tabIndex={selected ? 0 : -1}
-                    onClick={() => setTab(item.id)}
-                    className={cn(
-                      'inline-flex items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2.5 text-sm transition-colors',
-                      selected
-                        ? 'border-brand-700 bg-brand-700 font-semibold text-white shadow-[0_10px_18px_-14px_rgba(76,29,149,0.9)]'
-                        : 'border-zinc-200 bg-white font-medium text-zinc-600 hover:border-brand-200 hover:text-brand-800',
-                    )}
-                  >
-                    <Icon className="size-3.5 shrink-0" aria-hidden />
-                    <span className="truncate">{item.label}</span>
-                    {typeof count === 'number' ? (
-                      <span
+            {loading ? (
+              <p className="flex items-center gap-2 text-sm text-zinc-500">
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                Loading archives…
+              </p>
+            ) : categories.length === 0 ? (
+              <EmptyState
+                compact
+                title="No transparency tabs yet"
+                body="Published document categories will appear here."
+              />
+            ) : (
+              <>
+                <div
+                  className="grid w-full max-w-5xl grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
+                  role="tablist"
+                  aria-label="Transparency"
+                  onKeyDown={(event) => onTabKeyDown(event, tab, categories, setTab)}
+                >
+                  {categories.map((item) => {
+                    const selected = tab === item.slug
+                    const Icon = transparencyIcon(item.icon)
+                    const count = loading ? undefined : tabCounts[item.slug]
+                    return (
+                      <button
+                        key={item.slug}
+                        type="button"
+                        role="tab"
+                        id={`transparency-tab-${item.slug}`}
+                        aria-selected={selected}
+                        aria-controls="transparency-panel"
+                        tabIndex={selected ? 0 : -1}
+                        onClick={() => setTab(item.slug)}
                         className={cn(
-                          'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums',
-                          selected ? 'bg-white/20 text-white' : 'bg-brand-50 text-brand-700',
+                          'inline-flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-center text-[13px] leading-tight transition-colors sm:text-sm',
+                          selected
+                            ? 'border-brand-700 bg-brand-700 font-semibold text-white shadow-[0_10px_18px_-14px_rgba(76,29,149,0.9)]'
+                            : 'border-zinc-200 bg-white font-medium text-zinc-600 hover:border-brand-200 hover:text-brand-800',
                         )}
                       >
-                        {count}
-                      </span>
-                    ) : null}
-                  </button>
-                )
-              })}
-            </div>
+                        <Icon className="size-3.5 shrink-0" aria-hidden />
+                        <span className="min-w-0 text-pretty">{item.label}</span>
+                        {typeof count === 'number' ? (
+                          <span
+                            className={cn(
+                              'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums',
+                              selected ? 'bg-white/20 text-white' : 'bg-brand-50 text-brand-700',
+                            )}
+                          >
+                            {count}
+                          </span>
+                        ) : null}
+                      </button>
+                    )
+                  })}
+                </div>
+                <label className="relative mt-4 w-full max-w-5xl">
+                  <span className="sr-only">Search documents</span>
+                  <Search
+                    className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-zinc-400"
+                    aria-hidden
+                  />
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search documents"
+                    className="h-11 w-full rounded-xl border border-zinc-200 bg-white pr-4 pl-10 text-sm text-brand-950 outline-none placeholder:text-zinc-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+                  />
+                </label>
+              </>
+            )}
           </div>
         </div>
 
         <div
           id="transparency-panel"
           role="tabpanel"
-          aria-labelledby={`transparency-tab-${tab}`}
+          aria-labelledby={active ? `transparency-tab-${active.slug}` : undefined}
           className="mx-auto max-w-7xl px-4 py-[clamp(2.5rem,1.6rem+2.4vw,4rem)] sm:px-6 lg:px-8"
         >
-          {tab === 'board' ? (
+          {active ? (
             <Archive
-              id="board-resolutions"
-              icon={Landmark}
-              kicker="Secretariat"
-              title="Board Resolutions"
-              accent="and En Banc Issuances"
-               note="Organized archive of resolutions arranged by Series/Academic Year. Downloadable PDF links provided."
-              folder="01 Board Resolution & Memoranda"
-              seriesLabel="Board Resolution"
-              items={board.items}
-              loading={board.loading}
-              error={board.error}
+              id={active.slug}
+              icon={transparencyIcon(active.icon)}
+              kicker={active.kicker || 'Archive'}
+              title={active.title || active.label}
+              accent={active.accent}
+              note={active.note}
+              folder={active.folder}
+              seriesLabel={active.seriesLabel || active.label}
+              items={visibleDocs}
+              loading={loading}
+              error={error}
+              searching={needle !== ''}
             />
-          ) : null}
-          {tab === 'appointments' ? (
-            <Archive
-              id="appointments"
-              icon={Gavel}
-              kicker="Secretariat"
-              title="Commission on Appointments"
-              accent="Resolutions"
-              note="CA Reso No. 001, 002, 003, 004, Series of 2026."
-              seriesLabel="Resolution"
-              items={appointments.items}
-              loading={appointments.loading}
-              error={appointments.error}
+          ) : !loading ? (
+            <EmptyState
+              title="No archives published yet"
+              body="Transparency tabs and their documents will appear here once they are published."
             />
-          ) : null}
-          {tab === 'memoranda' && memoranda.items.length > 0 ? (
-            <Archive
-              id="memoranda"
-              icon={ScrollText}
-              kicker="Secretariat"
-              title="Memoranda and"
-              accent="Administrative Requests"
-              note="Copies of formal communications sent to the Dean’s Office."
-              seriesLabel="Memorandum"
-              items={memoranda.items}
-              loading={memoranda.loading}
-              error={memoranda.error}
-            />
-          ) : null}
-          {tab === 'memoranda' && memoranda.items.length === 0 ? (
-            <Reveal>
-              <section id="memoranda">
-                <SectionHeading
-                  icon={ScrollText}
-                  kicker="Secretariat"
-                  title="Memoranda and"
-                  accent="Administrative Requests"
-                />
-                <div className="mt-6 grid items-stretch gap-3 lg:grid-cols-2">
-                  <article className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-4 sm:gap-4 sm:p-5">
-                    <IconTile icon={Mail} />
-                    <p className="text-sm leading-6 text-zinc-600">
-                      Copies of formal communications sent to the Dean’s Office (e.g., Health and Wellness Break Request, Facility Recommendations).
-                    </p>
-                  </article>
-                  <ul className="grid gap-3">
-                    <li className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3.5">
-                      <IconTile icon={HeartHandshake} />
-                      <span className="min-w-0">
-                        <span className="block text-[11px] font-semibold tracking-[0.14em] text-brand-700 uppercase">
-                          Example
-                        </span>
-                        <span className="mt-1 block text-sm font-semibold text-brand-950">
-                          Health and Wellness Break Request
-                        </span>
-                      </span>
-                    </li>
-                    <li className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3.5">
-                      <IconTile icon={Building2} />
-                      <span className="min-w-0">
-                        <span className="block text-[11px] font-semibold tracking-[0.14em] text-brand-700 uppercase">
-                          Example
-                        </span>
-                        <span className="mt-1 block text-sm font-semibold text-brand-950">
-                          Facility Recommendations
-                        </span>
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-              </section>
-            </Reveal>
-          ) : null}
-          {tab === 'reports' && reports.items.length > 0 ? (
-            <Archive
-              id="reports"
-              icon={FileText}
-              kicker="Audit"
-              title="Financial and"
-              accent="Accomplishment Reports"
-              note="Open records of the Council’s finances and accomplishments."
-              seriesLabel="Report"
-              items={reports.items}
-              loading={reports.loading}
-              error={reports.error}
-            />
-          ) : null}
-          {tab === 'reports' && reports.items.length === 0 ? (
-            <Reveal>
-              <section id="reports" className="scroll-mt-28">
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                  <div className="min-w-0">
-                    <SectionKicker icon={FileText}>Audit</SectionKicker>
-                    <h2 className="mt-2 font-hero text-[clamp(1.75rem,1.15rem+1.6vw,2.75rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950">
-                      Financial and <span className="text-brand-600">Accomplishment Reports</span>
-                    </h2>
-                  </div>
-                  <p className="text-[11px] font-semibold tracking-[0.14em] text-brand-700 uppercase">In progress</p>
-                </div>
-
-                <div className="mt-6 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
-                  <ul className="grid divide-y divide-zinc-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-                    {(
-                      [
-                        { icon: Receipt, title: 'Quarterly liquidations' },
-                        { icon: Wallet, title: 'Budget allocations' },
-                        { icon: ClipboardCheck, title: 'Semester-end accomplishment reports' },
-                      ] as const
-                    ).map((item) => {
-                      const ItemIcon = item.icon
-                      return (
-                        <li key={item.title} className="flex min-w-0 items-center gap-3 px-4 py-4 sm:px-5">
-                          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-                            <ItemIcon className="size-4" aria-hidden />
-                          </span>
-                          <span className="min-w-0 text-sm font-semibold text-brand-950">{item.title}</span>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                  <p className="border-t border-zinc-200 px-4 py-5 text-sm leading-6 text-zinc-600 sm:px-6">
-                    Transparency and accountability are the bedrock of student governance in the PUP College of Law. True to our constitutional commitment to public trust and fiduciary responsibility, this section provides the student body with open, accessible access to the Council's financial records, monthly and semestral financial statements prepared by the Finance Officer, audit reports by the Auditor, and comprehensive annual accomplishment reports. Every student has the right to inspect official records and papers pertaining to the transactions, fund allocations, and financial disbursements of the Student Council.
-                  </p>
-                </div>
-              </section>
-            </Reveal>
           ) : null}
         </div>
       </main>
@@ -380,6 +291,7 @@ function Archive({
   items,
   loading = false,
   error = '',
+  searching = false,
 }: {
   id: string
   icon: LucideIcon
@@ -392,19 +304,32 @@ function Archive({
   items: DocumentRecord[]
   loading?: boolean
   error?: string
+  searching?: boolean
 }) {
   return (
     <Reveal>
       <section id={id} className="scroll-mt-28">
         <SectionHeading icon={icon} kicker={kicker} title={title} accent={accent} count={items.length} />
-        <p className="mt-4 max-w-3xl text-sm leading-6 text-zinc-500">{note}</p>
+        {note ? <p className="mt-4 max-w-3xl text-sm leading-6 text-zinc-500">{note}</p> : null}
         {folder ? (
           <p className="mt-3 text-[11px] font-semibold tracking-[0.16em] text-brand-700 uppercase">{folder}</p>
         ) : null}
-        {loading ? <p className="mt-5 text-sm text-zinc-500">Loading documents…</p> : null}
+        {loading ? (
+          <p className="mt-5 flex items-center gap-2 text-sm text-zinc-500">
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+            Loading documents…
+          </p>
+        ) : null}
         {!loading && error ? <p className="mt-5 text-sm text-zinc-500">{error}</p> : null}
         {!loading && !error && items.length === 0 ? (
-          <p className="mt-5 text-sm text-zinc-500">No documents published yet.</p>
+          <EmptyState
+            title={searching ? 'No matching documents' : 'No documents published yet'}
+            body={
+              searching
+                ? 'Try another word, or clear the search to see the full archive.'
+                : 'Official files for this tab will appear here once they are published.'
+            }
+          />
         ) : null}
         <ul className="mt-5 grid gap-3">
           {items.map((item) => (
@@ -443,11 +368,32 @@ function Archive({
   )
 }
 
-function IconTile({ icon: Icon }: { icon: LucideIcon }) {
+function EmptyState({
+  title,
+  body,
+  compact = false,
+}: {
+  title: string
+  body: string
+  compact?: boolean
+}) {
   return (
-    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-      <Icon className="size-4" aria-hidden />
-    </span>
+    <div
+      className={cn(
+        'flex w-full flex-col items-center text-center',
+        compact ? 'max-w-lg py-2' : 'mt-8 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/80 px-6 py-12',
+      )}
+    >
+      <FileText
+        className={cn('text-brand-600/40', compact ? 'size-8' : 'size-10')}
+        strokeWidth={1.35}
+        aria-hidden
+      />
+      <p className={cn('font-semibold text-brand-950', compact ? 'mt-2 text-sm' : 'mt-3 text-base')}>{title}</p>
+      <p className={cn('max-w-md text-zinc-500', compact ? 'mt-1 text-[13px] leading-5' : 'mt-2 text-sm leading-6')}>
+        {body}
+      </p>
+    </div>
   )
 }
 
@@ -457,14 +403,12 @@ function SectionHeading({
   title,
   accent,
   count,
-  status,
 }: {
   icon: LucideIcon
   kicker: string
   title: string
   accent: string
   count?: number
-  status?: string
 }) {
   return (
     <header>
@@ -475,14 +419,15 @@ function SectionHeading({
             {count}
           </span>
         ) : null}
-        {status ? (
-          <span className="rounded-md bg-gold-100 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-brand-950 uppercase">
-            {status}
-          </span>
-        ) : null}
       </div>
       <h2 className="mt-4 font-hero text-[clamp(1.85rem,0.9rem+2.4vw,3.25rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950">
-        {title} <span className="text-brand-600">{accent}</span>
+        {title}
+        {accent ? (
+          <>
+            {' '}
+            <span className="text-brand-600">{accent}</span>
+          </>
+        ) : null}
       </h2>
     </header>
   )

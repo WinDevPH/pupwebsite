@@ -6,6 +6,7 @@ import {
   CalendarDays,
   FileText,
   FolderKanban,
+  ImagePlay,
   Images,
   Inbox,
   Megaphone,
@@ -13,6 +14,7 @@ import {
   Settings2,
   Shirt,
   UserCog,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react'
 import { workspaceCatalogShellCls } from '@/components/portal/register-ui'
@@ -49,6 +51,7 @@ const ADMIN = '/admin'
 const QUICK_LINKS: { to: string; label: string; hint: string; Icon: LucideIcon }[] = [
   { to: `${ADMIN}/requests`, label: 'Requests', hint: 'Student inquiries', Icon: FileText },
   { to: `${ADMIN}/reservations`, label: 'Reservations', hint: 'Locker & merch', Icon: Bookmark },
+  { to: `${ADMIN}/income`, label: 'Income reports', hint: 'Fees & filters', Icon: Wallet },
   { to: `${ADMIN}/announcements`, label: 'Announcements', hint: 'Public posts', Icon: Megaphone },
   { to: `${ADMIN}/calendar`, label: 'Calendar', hint: 'Campus dates', Icon: CalendarDays },
   { to: `${ADMIN}/projects`, label: 'Projects', hint: 'Council work', Icon: FolderKanban },
@@ -676,7 +679,7 @@ export default function DashboardHome() {
           </div>
           <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-3 sm:gap-2 xl:grid-cols-2">
             {loading
-              ? Array.from({ length: 6 }).map((_, i) => <QuickLinkSkeleton key={i} />)
+              ? Array.from({ length: 7 }).map((_, i) => <QuickLinkSkeleton key={i} />)
               : QUICK_LINKS.map(({ to, label, hint, Icon }) => (
                   <Link
                     key={to}
@@ -711,7 +714,7 @@ export default function DashboardHome() {
             <p className="text-[11px] font-medium text-zinc-500 sm:text-xs dark:text-zinc-400">
               System
             </p>
-            <div className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap sm:gap-1.5">
+            <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-1.5">
               <Link
                 to={`${ADMIN}/users`}
                 className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2 text-[11px] font-medium text-zinc-700 transition hover:bg-zinc-50 sm:px-2.5 sm:text-[12px] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
@@ -725,6 +728,13 @@ export default function DashboardHome() {
               >
                 <Images className="size-3.5" aria-hidden />
                 Gallery
+              </Link>
+              <Link
+                to={`${ADMIN}/hero-slides`}
+                className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2 text-[11px] font-medium text-zinc-700 transition hover:bg-zinc-50 sm:px-2.5 sm:text-[12px] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+              >
+                <ImagePlay className="size-3.5" aria-hidden />
+                Hero
               </Link>
               <Link
                 to={`${ADMIN}/settings`}

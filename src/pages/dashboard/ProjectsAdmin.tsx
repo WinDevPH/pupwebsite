@@ -70,6 +70,11 @@ import {
   type ProjectIconKey,
   type ProjectRecord,
 } from '@/lib/projects-api'
+import {
+  PROJECT_CATEGORIES,
+  projectCategoryLabel,
+  type ProjectCategorySlug,
+} from '@/lib/project-categories'
 import { cn } from '@/lib/utils'
 import { ConfirmDeleteDialog } from '@/components/portal/ConfirmDeleteDialog'
 
@@ -77,7 +82,7 @@ const PAGE_SIZE_KEY = 'pup-admin-projects-page-size'
 const VIEW_KEY = 'pup-admin-projects-view'
 const REGISTER_HEADING_ID = 'projects-register-heading'
 
-type SortKey = 'title' | 'icon' | 'sortOrder' | 'status' | 'slug'
+type SortKey = 'title' | 'category' | 'icon' | 'sortOrder' | 'status' | 'slug'
 type SortDir = 'asc' | 'desc'
 
 function projectIconMeta(icon: ProjectIconKey) {
@@ -102,6 +107,7 @@ export default function ProjectsAdmin() {
   const [reloadBusy, setReloadBusy] = useState(false)
   const [needsLogin, setNeedsLogin] = useState(false)
   const [query, setQuery] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<ProjectCategorySlug | 'all'>('all')
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
     key: 'sortOrder',
     dir: 'asc',
@@ -168,18 +174,20 @@ export default function ProjectsAdmin() {
 
   useEffect(() => {
     setPage(1)
-  }, [query, sort, pageSize])
+  }, [query, sort, pageSize, categoryFilter])
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return items.filter((item) => {
+      if (categoryFilter !== 'all' && item.category !== categoryFilter) return false
       if (!needle) return true
       const { label } = projectIconMeta(item.icon)
+      const category = projectCategoryLabel(item.category)
       const haystack =
-        `${item.title} ${stripHtml(item.summary)} ${stripHtml(item.body ?? '')} ${item.slug} ${label}`.toLowerCase()
+        `${item.title} ${stripHtml(item.summary)} ${stripHtml(item.body ?? '')} ${item.slug} ${label} ${category}`.toLowerCase()
       return haystack.includes(needle)
     })
-  }, [items, query])
+  }, [items, query, categoryFilter])
 
   const sorted = useMemo(() => {
     const rows = [...filtered]
@@ -189,6 +197,9 @@ export default function ProjectsAdmin() {
       switch (sort.key) {
         case 'title':
           cmp = a.title.localeCompare(b.title)
+          break
+        case 'category':
+          cmp = projectCategoryLabel(a.category).localeCompare(projectCategoryLabel(b.category))
           break
         case 'icon':
           cmp = projectIconMeta(a.icon).label.localeCompare(projectIconMeta(b.icon).label)
@@ -275,7 +286,8 @@ export default function ProjectsAdmin() {
   }
 
   function goCreate() {
-    navigate('/admin/projects/new')
+    const suffix = categoryFilter === 'all' ? '' : `?category=${categoryFilter}`
+    navigate(`/admin/projects/new${suffix}`)
   }
 
   function goEdit(item: ProjectRecord) {
@@ -355,7 +367,8 @@ export default function ProjectsAdmin() {
             Projects
           </h1>
           <p className="max-w-xl text-[13px] leading-6 text-zinc-500 dark:text-zinc-400">
-            Manage campus projects and initiatives shown on the public homepage.
+            Assign each initiative to Internal Affairs, External Linkages, or Institutional
+            Sustainability. Published items appear on that program page.
           </p>
         </div>
         <button type="button" className={workspacePageAddBtnCls} onClick={goCreate}>
@@ -372,6 +385,37 @@ export default function ProjectsAdmin() {
                 aria-label="Projects catalog filters"
                 className="flex w-full min-w-0 flex-col gap-2.5 sm:gap-3"
               >
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setCategoryFilter('all')}
+                    className={cn(
+                      'rounded-full border px-2.5 py-1 text-[11px] font-semibold transition',
+                      categoryFilter === 'all'
+                        ? 'border-brand-600 bg-brand-50 text-brand-800'
+                        : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300',
+                    )}
+                  >
+                    All programs
+                  </button>
+                  {PROJECT_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.slug}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setCategoryFilter(cat.slug)}
+                      className={cn(
+                        'rounded-full border px-2.5 py-1 text-[11px] font-semibold transition',
+                        categoryFilter === cat.slug
+                          ? 'border-brand-600 bg-brand-50 text-brand-800'
+                          : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300',
+                      )}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
                 <div className={workspaceCatalogToolbarMainRowCls}>
                   <div className={workspaceCatalogToolbarSearchRowCls}>
                     <div className={workspaceCatalogToolbarSearchFieldCls}>
@@ -543,6 +587,14 @@ export default function ProjectsAdmin() {
                           className="w-[16rem] max-w-[16rem] sm:w-[20rem] sm:max-w-[20rem] lg:w-[24rem] lg:max-w-[24rem]"
                         />
                         <SortTh
+                          label="Category"
+                          column="category"
+                          activeKey={sort.key}
+                          activeDir={sort.dir}
+                          onSort={handleSortClick}
+                          className="w-[13rem]"
+                        />
+                        <SortTh
                           label="Icon"
                           column="icon"
                           activeKey={sort.key}
@@ -647,6 +699,14 @@ export default function ProjectsAdmin() {
                                 </div>
                               </div>
                             </td>
+                            <td className="max-w-[13rem] px-1.5 py-2 sm:px-2">
+                              <span
+                                className="block truncate text-[11px] font-semibold text-brand-800 dark:text-brand-300"
+                                title={projectCategoryLabel(item.category)}
+                              >
+                                {projectCategoryLabel(item.category)}
+                              </span>
+                            </td>
                             <td className="whitespace-nowrap px-1.5 py-2 sm:px-2">
                               <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-brand-800 dark:text-brand-300">
                                 <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
@@ -699,7 +759,7 @@ export default function ProjectsAdmin() {
                 />
                 <ul className="grid gap-3 bg-transparent px-0 py-2.5 sm:grid-cols-2 sm:gap-3 sm:bg-white sm:px-4 sm:py-4 xl:grid-cols-3 dark:sm:bg-zinc-950">
                   {pageMeta.rows.map((item) => {
-                    const { Icon, label } = projectIconMeta(item.icon)
+                    const { Icon } = projectIconMeta(item.icon)
                     const summaryPlain = stripHtml(item.summary)
                     const selectedRow = selectedIds.includes(item.id)
                     return (
@@ -776,7 +836,7 @@ export default function ProjectsAdmin() {
                           <div className="flex flex-1 flex-col gap-2.5 p-3.5 pt-3">
                             <span className="inline-flex w-fit items-center gap-1 rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[10px] font-semibold tracking-wide text-brand-800 uppercase dark:border-zinc-700 dark:bg-zinc-950 dark:text-brand-300">
                               <Icon className="h-3 w-3 opacity-90" aria-hidden />
-                              {label}
+                              {projectCategoryLabel(item.category)}
                             </span>
                             <div className="min-w-0">
                               <h3
@@ -926,7 +986,7 @@ function ProjectDetailsModal({
   onEdit: () => void
 }) {
   const titleId = useId()
-  const { Icon, label } = projectIconMeta(item.icon)
+  const { Icon } = projectIconMeta(item.icon)
   const summaryPlain = stripHtml(item.summary)
 
   useEffect(() => {
@@ -959,7 +1019,7 @@ function ProjectDetailsModal({
           <div className="min-w-0">
             <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.14em] text-zinc-400 uppercase dark:text-zinc-500">
               <Icon className="size-3.5 opacity-80" aria-hidden />
-              {label}
+              {projectCategoryLabel(item.category)}
             </p>
             <p className="mt-0.5 truncate text-[13px] font-medium text-zinc-500 dark:text-zinc-400">
               Project details

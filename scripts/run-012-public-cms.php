@@ -80,7 +80,6 @@ $pdo->exec(
       stock INT NOT NULL DEFAULT 0,
       image_url VARCHAR(500) NOT NULL DEFAULT '',
       alt_text VARCHAR(500) NOT NULL DEFAULT '',
-      size VARCHAR(32) NULL,
       number_label VARCHAR(32) NULL,
       availability VARCHAR(32) NULL,
       sort_order INT NOT NULL DEFAULT 0,
@@ -330,18 +329,18 @@ if ($settingsCount === 0) {
                 'handle' => '/pupcl.sc',
                 'href' => 'https://www.facebook.com/pupcl.sc',
             ],
-            ['name' => 'X', 'handle' => '@pupcol_sc', 'href' => 'https://x.com/pupcol_sc'],
+            ['name' => 'X', 'handle' => '@pupcolsc', 'href' => 'https://x.com/pupcolsc'],
             [
                 'name' => 'Instagram',
-                'handle' => '@pupcol_sc',
-                'href' => 'https://www.instagram.com/pupcol_sc',
+                'handle' => '@pupcolsc_official',
+                'href' => 'https://www.instagram.com/pupcolsc_official/',
             ],
         ],
         'footerSocials' => [
             [
                 'name' => 'Instagram',
                 'handle' => '@pupcolsc_official',
-                'href' => 'https://www.instagram.com/pupcolsc_official',
+                'href' => 'https://www.instagram.com/pupcolsc_official/',
             ],
             [
                 'name' => 'Facebook',
@@ -369,25 +368,20 @@ if ($settingsCount === 0) {
 $shopCount = (int) $pdo->query('SELECT COUNT(*) FROM shop_items')->fetchColumn();
 if ($shopCount === 0) {
     $items = [
-        ['locker', 'half-12', 'Half locker No. 12', 250.00, 'per semester', 1, '/shop/locker-bay.jpg', 'Sample photo of a violet school locker', 'half', '12', null, 10],
-        ['locker', 'half-18', 'Half locker No. 18', 250.00, 'per semester', 1, '/shop/locker-bay.jpg', 'Sample photo of a violet school locker', 'half', '18', null, 20],
-        ['locker', 'half-24', 'Half locker No. 24', 250.00, 'per semester', 1, '/shop/locker-bay.jpg', 'Sample photo of a violet school locker', 'half', '24', null, 30],
-        ['locker', 'full-07', 'Full locker No. 07', 400.00, 'per semester', 1, '/shop/locker-bay.jpg', 'Sample photo of a violet school locker', 'full', '07', null, 40],
-        ['locker', 'full-15', 'Full locker No. 15', 400.00, 'per semester', 1, '/shop/locker-bay.jpg', 'Sample photo of a violet school locker', 'full', '15', null, 50],
-        ['locker', 'full-21', 'Full locker No. 21', 400.00, 'per semester', 1, '/shop/locker-bay.jpg', 'Sample photo of a violet school locker', 'full', '21', null, 60],
-        ['merch', 'college-shirt', 'College shirt', 450.00, 'each', 18, '/shop/college-shirt.jpg', 'Sample photo of a violet college shirt', null, null, null, 70],
-        ['merch', 'college-polo', 'College polo', 550.00, 'each', 12, '/shop/college-polo.jpg', 'Sample photo of a white college polo', null, null, null, 80],
-        ['merch', 'lanyard', 'Lanyard', 150.00, 'each', 0, '/shop/lanyard.jpg', 'Sample photo of a violet lanyard', null, null, 'out', 90],
+        // Lockers are seeded as the A–E / 01–12 availability grid by run-021-locker-grid.php.
+        ['merch', 'college-shirt', 'College shirt', 450.00, 'each', 18, '/shop/college-shirt.jpg', 'Sample photo of a violet college shirt', null, null, 70],
+        ['merch', 'college-polo', 'College polo', 550.00, 'each', 12, '/shop/college-polo.jpg', 'Sample photo of a white college polo', null, null, 80],
+        ['merch', 'lanyard', 'Lanyard', 150.00, 'each', 0, '/shop/lanyard.jpg', 'Sample photo of a violet lanyard', 'out', 90],
     ];
 
     $insertShop = $pdo->prepare(
         'INSERT INTO shop_items
-          (shop, item_key, name, price, unit, stock, image_url, alt_text, size, number_label, availability, sort_order, is_published)
+          (shop, item_key, name, price, unit, stock, image_url, alt_text, number_label, availability, sort_order, is_published)
          VALUES
-          (:shop, :item_key, :name, :price, :unit, :stock, :image_url, :alt_text, :size, :number_label, :availability, :sort_order, 1)'
+          (:shop, :item_key, :name, :price, :unit, :stock, :image_url, :alt_text, :number_label, :availability, :sort_order, 1)'
     );
 
-    foreach ($items as [$shop, $key, $name, $price, $unit, $stock, $image, $alt, $size, $number, $availability, $sort]) {
+    foreach ($items as [$shop, $key, $name, $price, $unit, $stock, $image, $alt, $number, $availability, $sort]) {
         $insertShop->execute([
             'shop' => $shop,
             'item_key' => $key,
@@ -397,13 +391,35 @@ if ($shopCount === 0) {
             'stock' => $stock,
             'image_url' => $image,
             'alt_text' => $alt,
-            'size' => $size,
             'number_label' => $number,
             'availability' => $availability,
             'sort_order' => $sort,
         ]);
     }
-    echo 'shop_items seeded: ' . count($items) . "\n";
+    $assigned = ['A-03', 'B-08', 'C-01', 'C-02', 'C-04', 'C-06', 'C-08', 'D-04', 'D-06', 'E-02', 'E-08'];
+    $assignedLookup = array_fill_keys($assigned, true);
+    $lockerCount = 0;
+    foreach (['A', 'B', 'C', 'D', 'E'] as $rowIndex => $row) {
+        $lockerPrice = $row === 'D' ? 450.00 : ($row === 'E' ? 350.00 : 600.00);
+        for ($col = 1; $col <= 12; $col++) {
+            $code = sprintf('%s-%02d', $row, $col);
+            $insertShop->execute([
+                'shop' => 'locker',
+                'item_key' => strtolower($code),
+                'name' => 'Locker ' . $code,
+                'price' => $lockerPrice,
+                'unit' => 'per rental period',
+                'stock' => 1,
+                'image_url' => '/shop/locker-bay.jpg',
+                'alt_text' => 'Locker ' . $code,
+                'number_label' => $code,
+                'availability' => isset($assignedLookup[$code]) ? 'reserved' : null,
+                'sort_order' => ($rowIndex * 12) + $col,
+            ]);
+            $lockerCount++;
+        }
+    }
+    echo 'shop_items seeded: ' . (count($items) + $lockerCount) . "\n";
 } else {
     echo "shop_items already seeded ({$shopCount} rows)\n";
 }

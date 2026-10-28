@@ -48,7 +48,7 @@ const requestSteps: FlowStep[] = [
 const reservationSteps: FlowStep[] = [
   {
     title: 'Choose merch or a locker',
-    detail: 'Open Bookings for Locker or Selling of Merch and pick an item.',
+    detail: 'Open Merchandise Reservation or Locker Reservation and pick an item.',
     icon: Package,
     image: reserveChoose,
   },
@@ -156,10 +156,10 @@ export default function HowItWorks() {
           ) : (
             <>
               <Button asChild size="lg" className="h-12 w-full rounded-xl px-6 sm:w-auto">
-                <Link to="/portal#locker">Reserve a locker</Link>
+                <Link to="/lockers">Reserve a locker</Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="h-12 w-full rounded-xl px-6 sm:w-auto">
-                <Link to="/portal#merch">Reserve merch</Link>
+                <Link to="/merch">Reserve merch</Link>
               </Button>
             </>
           )}

@@ -135,6 +135,7 @@ type FormMediaDropzoneProps = {
   disabled?: boolean
   title?: string
   hint?: ReactNode
+  onClick?: () => void
   onDragEnter: (e: DragEvent) => void
   onDragOver: (e: DragEvent) => void
   onDragLeave: (e: DragEvent) => void
@@ -148,6 +149,7 @@ export function FormMediaDropzone({
   disabled = false,
   title = 'Upload image',
   hint,
+  onClick,
   onDragEnter,
   onDragOver,
   onDragLeave,
@@ -156,6 +158,7 @@ export function FormMediaDropzone({
   return (
     <label
       htmlFor={htmlFor}
+      onClick={onClick}
       onDragEnter={onDragEnter}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}

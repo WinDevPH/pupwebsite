@@ -1,13 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Ban, Bookmark, Heart, LockKeyhole, Package, Shirt } from 'lucide-react'
-import type { LockerSize, ShopId, ShopItem } from '@/components/portal/catalog'
+import type { ShopId, ShopItem } from '@/components/portal/catalog'
 import { cn } from '@/lib/utils'
-
-const lockerTabs: { id: LockerSize; label: string }[] = [
-  { id: 'half', label: 'Half' },
-  { id: 'full', label: 'Full' },
-]
 
 const FAVORITES_KEY = 'pup-col-sc-shop-favorites'
 const FAVORITES_EVENT = 'pup-shop-favorites'
@@ -55,57 +50,33 @@ export function ShopPanel({
   title,
   kicker,
   items,
+  showTitle = true,
 }: {
   shop: ShopId
   title: string
   kicker: string
   items: ShopItem[]
+  showTitle?: boolean
 }) {
   const favorites = useFavorites()
-  const [size, setSize] = useState<LockerSize>('half')
   const compact = shop === 'merch' || shop === 'locker'
-  const visible = shop === 'locker' ? items.filter((entry) => entry.size === size) : items
 
   return (
-    <div className="mx-auto mt-5 w-full max-w-7xl px-4 pb-6 sm:mt-8 sm:px-6 sm:pb-10 lg:px-8">
-      <div className="flex h-10 items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold tracking-tight text-zinc-900">{title}</h2>
-        {shop === 'locker' ? (
-          <div role="tablist" aria-label="Locker size" className="inline-flex rounded-full bg-white p-1">
-            {lockerTabs.map((tab) => {
-              const selected = size === tab.id
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  id={`locker-size-${tab.id}`}
-                  aria-selected={selected}
-                  aria-controls="locker-size-panel"
-                  onClick={() => setSize(tab.id)}
-                  className={cn(
-                    'h-8 rounded-full px-3.5 text-sm font-semibold transition-colors',
-                    selected ? 'bg-brand-700 text-white' : 'text-zinc-600 hover:text-zinc-900',
-                  )}
-                >
-                  {tab.label}
-                </button>
-              )
-            })}
-          </div>
-        ) : null}
-      </div>
+    <div className="mx-auto w-full max-w-7xl px-4 pb-6 sm:px-6 sm:pb-10 lg:px-8">
+      {showTitle ? (
+        <div className="flex h-10 items-center">
+          <h2 className="text-lg font-semibold tracking-tight text-zinc-900">{title}</h2>
+        </div>
+      ) : null}
 
       <ul
-        id={shop === 'locker' ? 'locker-size-panel' : undefined}
-        role={shop === 'locker' ? 'tabpanel' : undefined}
-        aria-labelledby={shop === 'locker' ? `locker-size-${size}` : undefined}
         className={cn(
-          'mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2',
+          'grid grid-cols-1 gap-3 sm:grid-cols-2',
+          showTitle && 'mt-4',
           compact && 'lg:grid-cols-3',
         )}
       >
-        {visible.map((entry) => {
+        {items.map((entry) => {
           const saved = favorites.ids.includes(entry.id)
           const closed = entry.availability === 'reserved' || entry.availability === 'out'
           const statusLabel =
@@ -162,9 +133,7 @@ export function ShopPanel({
                   <span className="min-w-0">
                     <span className="flex items-start justify-between gap-2">
                       <span className="min-w-0">
-                        <span className="block text-xs text-zinc-500">
-                          {entry.size === 'half' ? 'Half' : entry.size === 'full' ? 'Full' : kicker}
-                        </span>
+                        <span className="block text-xs text-zinc-500">{kicker}</span>
                         <span className="mt-0.5 block text-base leading-5 font-semibold text-zinc-950">
                           {entry.number ? `No. ${entry.number}` : entry.name}
                         </span>

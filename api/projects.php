@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/includes/project-categories.php';
 
 api_cors();
 
@@ -61,13 +62,18 @@ function projects_decode_links(mixed $raw): array
 
 function projects_row(array $row): array
 {
+    $images = project_images_decode($row['images_json'] ?? null, (string) ($row['image_url'] ?? ''));
+    $category = project_category_normalize($row['category'] ?? '') ?? 'internal-affairs';
+
     return [
         'id' => (int) $row['id'],
         'slug' => (string) $row['slug'],
+        'category' => $category,
         'title' => (string) $row['title'],
         'summary' => (string) $row['summary'],
         'body' => $row['body'] !== null && $row['body'] !== '' ? (string) $row['body'] : null,
-        'image' => (string) $row['image_url'],
+        'image' => $images[0] ?? (string) ($row['image_url'] ?? ''),
+        'images' => $images,
         'icon' => (string) $row['icon'],
         'links' => projects_decode_links($row['links_json'] ?? []),
         'sortOrder' => (int) $row['sort_order'],
@@ -80,9 +86,11 @@ function projects_row(array $row): array
 function projects_get(): never
 {
     $pdo = api_pdo();
+    project_categories_ensure($pdo);
     $slug = trim((string) ($_GET['slug'] ?? ''));
     $id = (int) ($_GET['id'] ?? 0);
     $includeAll = (string) ($_GET['all'] ?? '') === '1';
+    $category = project_category_normalize($_GET['category'] ?? '');
 
     if ($slug !== '' || $id > 0) {
         if ($id > 0) {
@@ -106,17 +114,29 @@ function projects_get(): never
         api_json(['ok' => true, 'item' => projects_row($row)]);
     }
 
+    $sql = 'SELECT * FROM projects';
+    $where = [];
+    $params = [];
+
     if ($includeAll) {
         api_require_manager();
-        $stmt = $pdo->query(
-            'SELECT * FROM projects ORDER BY sort_order ASC, id ASC'
-        );
     } else {
-        $stmt = $pdo->query(
-            'SELECT * FROM projects
-             WHERE is_published = 1
-             ORDER BY sort_order ASC, id ASC'
-        );
+        $where[] = 'is_published = 1';
+    }
+    if ($category !== null) {
+        $where[] = 'category = :category';
+        $params['category'] = $category;
+    }
+    if ($where !== []) {
+        $sql .= ' WHERE ' . implode(' AND ', $where);
+    }
+    $sql .= ' ORDER BY sort_order ASC, id ASC';
+
+    $stmt = $params === []
+        ? $pdo->query($sql)
+        : $pdo->prepare($sql);
+    if ($params !== []) {
+        $stmt->execute($params);
     }
 
     $items = [];
@@ -134,7 +154,9 @@ function projects_payload(): array
     $summary = trim((string) ($body['summary'] ?? ''));
     $content = trim((string) ($body['body'] ?? ''));
     $slug = trim((string) ($body['slug'] ?? ''));
+    $category = project_category_normalize($body['category'] ?? '');
     $image = trim((string) ($body['image'] ?? $body['imageUrl'] ?? ''));
+    $imagesRaw = $body['images'] ?? [];
     $icon = strtolower(trim((string) ($body['icon'] ?? 'folder-kanban')));
     $sortOrder = (int) ($body['sortOrder'] ?? $body['sort_order'] ?? 0);
     $published = array_key_exists('published', $body)
@@ -156,11 +178,29 @@ function projects_payload(): array
         api_json(['ok' => false, 'error' => 'Title is required.'], 422);
     }
     if ($summary === '') {
-        api_json(['ok' => false, 'error' => 'Summary is required.'], 422);
+        api_json(['ok' => false, 'error' => 'Description is required.'], 422);
     }
-    if ($image === '') {
-        api_json(['ok' => false, 'error' => 'Image is required.'], 422);
+    if ($category === null) {
+        api_json(['ok' => false, 'error' => 'Choose a project category.'], 422);
     }
+
+    $images = [];
+    if (is_array($imagesRaw)) {
+        foreach ($imagesRaw as $item) {
+            $url = trim((string) $item);
+            if ($url !== '' && !in_array($url, $images, true)) {
+                $images[] = $url;
+            }
+        }
+    }
+    if ($image !== '' && !in_array($image, $images, true)) {
+        array_unshift($images, $image);
+    }
+    if ($images === []) {
+        api_json(['ok' => false, 'error' => 'At least one image is required.'], 422);
+    }
+    $image = $images[0];
+
     if (!in_array($icon, $allowedIcons, true)) {
         api_json(['ok' => false, 'error' => 'Choose a valid project icon.'], 422);
     }
@@ -169,6 +209,10 @@ function projects_payload(): array
         $slug = api_slugify($title);
     } else {
         $slug = api_slugify($slug);
+    }
+
+    if (in_array($slug, PROJECT_CATEGORY_SLUGS, true)) {
+        api_json(['ok' => false, 'error' => 'That slug is reserved for a project category page.'], 422);
     }
 
     $links = [];
@@ -199,10 +243,12 @@ function projects_payload(): array
 
     return [
         'slug' => $slug,
+        'category' => $category,
         'title' => $title,
         'summary' => $summary,
         'body' => $content !== '' ? $content : null,
         'image_url' => $image,
+        'images_json' => json_encode($images, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
         'icon' => $icon,
         'links_json' => json_encode($links, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
         'sort_order' => $sortOrder,
@@ -215,13 +261,14 @@ function projects_create(): never
     api_require_manager();
     $data = projects_payload();
     $pdo = api_pdo();
+    project_categories_ensure($pdo);
 
     try {
         $stmt = $pdo->prepare(
             'INSERT INTO projects
-              (slug, title, summary, body, image_url, icon, links_json, sort_order, is_published)
+              (slug, category, title, summary, body, image_url, images_json, icon, links_json, sort_order, is_published)
              VALUES
-              (:slug, :title, :summary, :body, :image_url, :icon, :links_json, :sort_order, :is_published)'
+              (:slug, :category, :title, :summary, :body, :image_url, :images_json, :icon, :links_json, :sort_order, :is_published)'
         );
         $stmt->execute($data);
     } catch (PDOException $error) {
@@ -241,6 +288,7 @@ function projects_update(): never
 {
     api_require_manager();
     $pdo = api_pdo();
+    project_categories_ensure($pdo);
     $body = api_read_json();
     $id = (int) ($body['id'] ?? $_GET['id'] ?? 0);
     if ($id <= 0) {
@@ -260,10 +308,12 @@ function projects_update(): never
         $stmt = $pdo->prepare(
             'UPDATE projects
              SET slug = :slug,
+                 category = :category,
                  title = :title,
                  summary = :summary,
                  body = :body,
                  image_url = :image_url,
+                 images_json = :images_json,
                  icon = :icon,
                  links_json = :links_json,
                  sort_order = :sort_order,

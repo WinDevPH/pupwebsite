@@ -5,7 +5,6 @@ import { motion, useReducedMotion } from 'motion/react'
 import {
   BadgeCheck,
   BookMarked,
-  BookOpen,
   CalendarCheck,
   ChevronLeft,
   ChevronRight,
@@ -15,6 +14,8 @@ import {
   Flag,
   Gavel,
   GraduationCap,
+  Handshake,
+  HeartHandshake,
   Images,
   Landmark,
   LifeBuoy,
@@ -24,16 +25,13 @@ import {
   MapPin,
   Megaphone,
   Network,
-  Printer,
   Scale,
   ShieldCheck,
   Target,
   Users,
-  Wifi,
   X,
   type LucideIcon,
 } from 'lucide-react'
-import collegeOfLaw from '@/assets/logos/college-of-law.jpg'
 import lawStudentsSociety from '@/assets/logos/law-students-society.jpg'
 import studentCouncil from '@/assets/logos/student-council.png'
 import studentCouncilMark from '@/assets/logos/student-council-mark.jpg'
@@ -62,7 +60,6 @@ import { fadeUp, stagger } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
 const seals = [
-  { src: collegeOfLaw, label: 'College of Law' },
   { src: studentCouncilMark, label: 'Previous Student Council' },
   { src: lawStudentsSociety, label: 'Law Students Society' },
   { src: studentCouncil, label: 'Student Council' },
@@ -285,12 +282,9 @@ type CouncilProjectLink = { label: string; to: string; icon: LucideIcon }
 
 /** Shown until the projects API responds (or if it is unreachable). */
 const councilProjectsFallback: CouncilProjectLink[] = [
-  { label: 'Board Meetings', to: '/projects/board-meetings', icon: CalendarCheck },
-  { label: 'Lex in Motion', to: '/projects/lex-in-motion', icon: Megaphone },
-  { label: 'Free Printing Service', to: '/projects/free-printing', icon: Printer },
-  { label: 'WiFi Library', to: '/projects/wifi-library', icon: Wifi },
-  { label: 'Online Study Hub', to: '/projects/online-study-hub', icon: BookOpen },
-  { label: 'JD Buddies', to: '/projects/jd-buddies', icon: Users },
+  { label: 'Internal Affairs and Student Welfare', to: '/projects/internal-affairs', icon: HeartHandshake },
+  { label: 'External Linkages, Advocacies, Community and Partnerships', to: '/projects/external-linkages', icon: Handshake },
+  { label: 'Institutional Sustainability', to: '/projects/institutional-sustainability', icon: Landmark },
 ]
 
 const directory: { label: string; to: string; icon: LucideIcon }[] = [
@@ -395,7 +389,7 @@ function OverviewPanel() {
             Evolution of the <span className="text-brand-600">COLSC</span> seals
           </h2>
         </header>
-        <ul aria-labelledby="seals-title" className="mx-auto mt-6 grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-4">
+        <ul aria-labelledby="seals-title" className="mx-auto mt-6 grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3">
           {seals.map((seal, index) => (
             <li
               key={seal.label}
@@ -977,14 +971,7 @@ function HistoryPanel({ items }: { items: AboutHistoryItem[] }) {
         ))}
       </ol>
       <p className="mt-4 w-full text-xs leading-5 text-zinc-400">
-        College dates are from the{' '}
-        <a
-          href="https://www.pup.edu.ph/cl/history"
-          className="font-medium text-brand-700 underline decoration-brand-200 underline-offset-2"
-        >
-          PUP College of Law history
-        </a>
-        . The 2008 oath is from the account of that oath-taking.
+        The 2008 oath is from the account of that oath-taking.
       </p>
     </div>
   )

@@ -94,7 +94,6 @@ type FormState = {
   stock: string
   image: string
   alt: string
-  size: '' | 'half' | 'full'
   number: string
   availability: '' | ShopAvailability
   sortOrder: string
@@ -119,11 +118,6 @@ const AVAILABILITY_OPTIONS_LOCKER = [
   { value: 'out', label: 'Unavailable' },
 ]
 
-const SIZE_OPTIONS = [
-  { value: 'half', label: 'Half locker' },
-  { value: 'full', label: 'Full locker' },
-]
-
 function emptyForm(shop: ShopId = 'merch'): FormState {
   const locker = shop === 'locker'
   return {
@@ -131,11 +125,10 @@ function emptyForm(shop: ShopId = 'merch'): FormState {
     itemKey: '',
     name: '',
     price: '0',
-    unit: locker ? 'per semester' : 'each',
+    unit: locker ? 'per rental period' : 'each',
     stock: locker ? '1' : '0',
     image: '',
     alt: '',
-    size: locker ? 'half' : '',
     number: '',
     availability: '',
     sortOrder: '0',
@@ -153,7 +146,6 @@ function recordToForm(record: ShopItemRecord): FormState {
     stock: String(record.stock),
     image: record.image,
     alt: record.alt,
-    size: record.size ?? '',
     number: record.number ?? '',
     availability: record.availability ?? '',
     sortOrder: String(record.sortOrder),
@@ -171,7 +163,6 @@ function formToInput(form: FormState): ShopItemInput {
     stock: form.shop === 'locker' ? 1 : Math.max(0, Number.parseInt(form.stock, 10) || 0),
     image: form.image.trim(),
     alt: form.alt.trim(),
-    size: form.shop === 'locker' && form.size ? form.size : null,
     number: form.shop === 'locker' && form.number.trim() ? form.number.trim() : null,
     availability: form.availability || null,
     sortOrder: Number.parseInt(form.sortOrder, 10) || 0,
@@ -278,7 +269,6 @@ export default function MerchFormPage() {
           shop: next,
           unit,
           stock: prev.stock === '0' || !prev.stock.trim() ? '1' : prev.stock,
-          size: prev.size || 'half',
         }
       }
       const unit =
@@ -478,7 +468,7 @@ export default function MerchFormPage() {
                       title="Content"
                       body={
                         isLocker
-                          ? 'Name, price, unit, size, and locker number shown in the portal.'
+                          ? 'Name, price, unit, and locker number shown on the locker page.'
                           : 'Name, price, unit, and stock shown in the portal shop.'
                       }
                     />
@@ -550,27 +540,16 @@ export default function MerchFormPage() {
                         ) : null}
                       </Field>
                       {isLocker ? (
-                        <>
-                          <Field label="Size" custom>
-                            <CatalogSelect
-                              aria-label="Locker size"
-                              disabled={disabled}
-                              value={form.size || 'half'}
-                              options={SIZE_OPTIONS}
-                              onChange={(value) => set('size', value as FormState['size'])}
-                            />
-                          </Field>
-                          <Field label="Locker no." optional>
-                            <input
-                              type="text"
-                              value={form.number}
-                              onChange={(e) => set('number', e.target.value)}
-                              placeholder="A-12"
-                              className={catalogInput}
-                              disabled={disabled}
-                            />
-                          </Field>
-                        </>
+                        <Field label="Locker no." optional>
+                          <input
+                            type="text"
+                            value={form.number}
+                            onChange={(e) => set('number', e.target.value)}
+                            placeholder="A-12"
+                            className={catalogInput}
+                            disabled={disabled}
+                          />
+                        </Field>
                       ) : (
                         <Field label="Stock">
                           <input

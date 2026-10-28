@@ -47,7 +47,6 @@ function shop_ensure_tables(PDO $pdo): void
           stock INT NOT NULL DEFAULT 0,
           image_url VARCHAR(500) NOT NULL DEFAULT '',
           alt_text VARCHAR(500) NOT NULL DEFAULT '',
-          size VARCHAR(32) NULL,
           number_label VARCHAR(32) NULL,
           availability VARCHAR(32) NULL,
           sort_order INT NOT NULL DEFAULT 0,
@@ -59,12 +58,15 @@ function shop_ensure_tables(PDO $pdo): void
           KEY idx_shop_items_published (shop, is_published, sort_order, id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
+    $hasSize = $pdo->query("SHOW COLUMNS FROM shop_items LIKE 'size'")->fetch();
+    if ($hasSize) {
+        $pdo->exec('ALTER TABLE shop_items DROP COLUMN size');
+    }
     $ready = true;
 }
 
 function shop_row(array $row): array
 {
-    $size = $row['size'] !== null && $row['size'] !== '' ? (string) $row['size'] : null;
     $number = $row['number_label'] !== null && $row['number_label'] !== ''
         ? (string) $row['number_label']
         : null;
@@ -85,7 +87,6 @@ function shop_row(array $row): array
         'imageUrl' => (string) ($row['image_url'] ?? ''),
         'alt' => (string) ($row['alt_text'] ?? ''),
         'altText' => (string) ($row['alt_text'] ?? ''),
-        'size' => $size,
         'number' => $number,
         'numberLabel' => $number,
         'availability' => $availability,
@@ -107,8 +108,6 @@ function shop_payload(?array $body = null): array
     $stock = $shop === 'locker' ? 1 : (int) ($body['stock'] ?? 0);
     $image = trim((string) ($body['image'] ?? $body['imageUrl'] ?? $body['image_url'] ?? ''));
     $alt = trim((string) ($body['alt'] ?? $body['altText'] ?? $body['alt_text'] ?? ''));
-    $sizeRaw = $body['size'] ?? null;
-    $size = $sizeRaw === null || $sizeRaw === '' ? null : strtolower(trim((string) $sizeRaw));
     $numberRaw = $body['number'] ?? $body['numberLabel'] ?? $body['number_label'] ?? null;
     $number = $numberRaw === null || $numberRaw === '' ? null : trim((string) $numberRaw);
     $availabilityRaw = $body['availability'] ?? null;
@@ -137,9 +136,6 @@ function shop_payload(?array $body = null): array
     if ($image === '' || !preg_match('#^(/|https?://)#i', $image)) {
         api_json(['ok' => false, 'error' => 'Image path or URL is required.'], 422);
     }
-    if ($size !== null && !in_array($size, ['half', 'full'], true)) {
-        api_json(['ok' => false, 'error' => 'Size must be half or full.'], 422);
-    }
     if ($availability !== null && !in_array($availability, ['reserved', 'out'], true)) {
         api_json(['ok' => false, 'error' => 'Availability must be reserved or out.'], 422);
     }
@@ -156,7 +152,6 @@ function shop_payload(?array $body = null): array
         'stock' => max(0, $stock),
         'image_url' => mb_substr($image, 0, 500),
         'alt_text' => mb_substr($alt, 0, 500),
-        'size' => $size,
         'number_label' => $number !== null ? mb_substr($number, 0, 32) : null,
         'availability' => $availability,
         'sort_order' => $sortOrder,
@@ -259,9 +254,9 @@ function shop_create(): never
     try {
         $stmt = $pdo->prepare(
             'INSERT INTO shop_items
-              (shop, item_key, name, price, unit, stock, image_url, alt_text, size, number_label, availability, sort_order, is_published)
+              (shop, item_key, name, price, unit, stock, image_url, alt_text, number_label, availability, sort_order, is_published)
              VALUES
-              (:shop, :item_key, :name, :price, :unit, :stock, :image_url, :alt_text, :size, :number_label, :availability, :sort_order, :is_published)'
+              (:shop, :item_key, :name, :price, :unit, :stock, :image_url, :alt_text, :number_label, :availability, :sort_order, :is_published)'
         );
         $stmt->execute($data);
     } catch (PDOException $error) {
@@ -308,7 +303,6 @@ function shop_update(): never
                  stock = :stock,
                  image_url = :image_url,
                  alt_text = :alt_text,
-                 size = :size,
                  number_label = :number_label,
                  availability = :availability,
                  sort_order = :sort_order,

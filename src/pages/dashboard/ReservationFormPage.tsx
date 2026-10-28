@@ -384,7 +384,7 @@ export default function ReservationFormPage() {
     const rows = [...catalog].sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
     if (!q) return rows
     return rows.filter((item) => {
-      const hay = [item.name, item.itemKey, item.number, item.size, item.unit]
+      const hay = [item.name, item.itemKey, item.number, item.unit]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
@@ -725,12 +725,7 @@ export default function ReservationFormPage() {
                                         </span>
                                       </p>
                                       <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
-                                        {item.size ? (
-                                          <MetaChip>
-                                            {item.size}
-                                            {item.number ? ` · #${item.number}` : ''}
-                                          </MetaChip>
-                                        ) : null}
+                                        {item.number ? <MetaChip>#{item.number}</MetaChip> : null}
                                         <MetaChip tone={available ? 'ok' : 'warn'}>
                                           {availabilityLabel(item)}
                                         </MetaChip>

@@ -41,11 +41,10 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
+import { Navigate, useLocation } from 'react-router'
 import { Announcements } from '@/components/home/Announcements'
 import { FaqList } from '@/components/home/Faq'
 import { EventsCalendar } from '@/components/home/EventsCalendar'
-import { ShopPanel } from '@/components/portal/Shop'
-import { loadShopCatalog, shops, type ShopCatalog } from '@/components/portal/catalog'
 import {
   findReservation,
   reservationFromApi,
@@ -81,9 +80,7 @@ type Errors = Partial<Record<'name' | 'email' | 'subject' | 'body' | 'file', str
 
 const portalTabs = [
   { id: 'request', label: 'Request', icon: Send },
-  { id: 'tracking', label: 'Tracking', icon: Hash },
-  { id: 'locker', label: 'Locker', icon: LockKeyhole },
-  { id: 'merch', label: 'Merch', icon: Shirt },
+  { id: 'tracking', label: 'Track your request', icon: Hash },
   { id: 'announcements', label: 'Announcements', icon: Megaphone },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
   { id: 'faq', label: 'FAQ', icon: CircleHelp },
@@ -91,8 +88,8 @@ const portalTabs = [
 
 type PortalTab = (typeof portalTabs)[number]['id']
 
-function tabFromHash(): PortalTab {
-  const id = window.location.hash.replace('#', '')
+function tabFromHash(hash: string): PortalTab {
+  const id = hash.replace('#', '')
   return portalTabs.some((item) => item.id === id) ? (id as PortalTab) : 'request'
 }
 
@@ -118,7 +115,7 @@ const processSteps = [
 const reservationSteps = [
   {
     title: 'Choose merch or a locker',
-    detail: 'Open Bookings for Locker or Selling of Merch and pick an item.',
+    detail: 'Open Merchandise Reservation or Locker Reservation and pick an item.',
   },
   {
     title: 'Enter your details',
@@ -171,6 +168,7 @@ function fileAllowed(file: File) {
 }
 
 export default function Portal() {
+  const { hash } = useLocation()
   const formId = useId()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -182,7 +180,7 @@ export default function Portal() {
   const [errors, setErrors] = useState<Errors>({})
   const [submitted, setSubmitted] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
-  const [tab, setTab] = useState<PortalTab>(tabFromHash)
+  const [tab, setTab] = useState<PortalTab>(() => tabFromHash(hash))
   const [focusId, setFocusId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [snack, setSnack] = useState<{ id: number; message: string; variant: SnackVariant } | null>(
@@ -190,17 +188,6 @@ export default function Portal() {
   )
   const snackTimer = useRef<number | null>(null)
   const snackId = useRef(0)
-  const [shopCatalog, setShopCatalog] = useState<ShopCatalog>(shops)
-
-  useEffect(() => {
-    let cancelled = false
-    void loadShopCatalog().then((catalog) => {
-      if (!cancelled) setShopCatalog(catalog)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   function dismissSnack() {
     if (snackTimer.current) window.clearTimeout(snackTimer.current)
@@ -230,10 +217,8 @@ export default function Portal() {
   }, [])
 
   useEffect(() => {
-    const sync = () => setTab(tabFromHash())
-    window.addEventListener('hashchange', sync)
-    return () => window.removeEventListener('hashchange', sync)
-  }, [])
+    setTab(tabFromHash(hash))
+  }, [hash])
 
   useEffect(() => {
     if (!focusId) return
@@ -332,6 +317,9 @@ export default function Portal() {
 
   const ready = Boolean(name.trim() && email.trim() && subject && body.trim() && file)
 
+  if (hash === '#locker') return <Navigate to="/lockers" replace />
+  if (hash === '#merch') return <Navigate to="/merch" replace />
+
   return (
     <main id="main-content" className="bg-[#f4f5f7] text-zinc-900">
       <div className="mx-auto w-full max-w-7xl px-4 pt-4 sm:px-6 sm:pt-8 lg:px-8">
@@ -370,12 +358,6 @@ export default function Portal() {
                 </span>
               </p>
             ) : null}
-            {tab === 'locker' ? (
-              <p className="mt-1 text-sm text-zinc-500">Reserve a locker. No checkout.</p>
-            ) : null}
-            {tab === 'merch' ? (
-              <p className="mt-1 text-sm text-zinc-500">Reserve merchandise. No checkout.</p>
-            ) : null}
             {tab === 'faq' ? (
               <p className="mt-1 text-sm text-zinc-500">
                 Contact, services, reservations, and privacy.
@@ -404,7 +386,6 @@ export default function Portal() {
                 onClick={() => setTab(item.id)}
                 className={cn(
                   '-mb-px inline-flex items-center justify-center gap-1.5 border-b-2 px-1 pt-1 pb-3 text-sm whitespace-nowrap transition-colors',
-                  item.id === 'locker' || item.id === 'merch' ? 'w-20' : '',
                   selected
                     ? 'border-brand-600 font-semibold text-zinc-900'
                     : 'border-transparent font-medium text-zinc-500 hover:text-zinc-800',
@@ -433,32 +414,6 @@ export default function Portal() {
         hidden={tab !== 'calendar'}
       >
         <EventsCalendar />
-      </div>
-      <div
-        id="portal-panel-locker"
-        role="tabpanel"
-        aria-labelledby="portal-tab-locker"
-        hidden={tab !== 'locker'}
-      >
-        <ShopPanel
-          shop="locker"
-          title={shopCatalog.locker.title}
-          kicker={shopCatalog.locker.kicker}
-          items={shopCatalog.locker.items}
-        />
-      </div>
-      <div
-        id="portal-panel-merch"
-        role="tabpanel"
-        aria-labelledby="portal-tab-merch"
-        hidden={tab !== 'merch'}
-      >
-        <ShopPanel
-          shop="merch"
-          title={shopCatalog.merch.title}
-          kicker={shopCatalog.merch.kicker}
-          items={shopCatalog.merch.items}
-        />
       </div>
       <div
         id="portal-panel-faq"

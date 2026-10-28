@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { FileText, Loader2, Megaphone, Tags } from 'lucide-react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { RequireLoginRedirect } from '@/components/portal/RequireLoginRedirect'
 import {
   catalogInput,
@@ -28,10 +28,8 @@ import {
   workspaceTenantMainStackCls,
 } from '@/components/portal/register-ui'
 import { Button } from '@/components/ui/button'
-import { CatalogSelect } from '@/components/ui/CatalogSelect'
 import { Snackbar, type SnackToast } from '@/components/ui/Snackbar'
 import {
-  DOCUMENT_CATEGORIES,
   createDocument,
   getDocumentById,
   updateDocument,
@@ -39,6 +37,7 @@ import {
   type DocumentInput,
   type DocumentRecord,
 } from '@/lib/documents-api'
+import type { TransparencyArchive } from '@/lib/transparency-admin'
 
 type EditorTab = 'content' | 'details' | 'publish'
 
@@ -53,11 +52,12 @@ const EDITOR_TABS: {
   { id: 'publish', label: 'Publish', short: 'Live', icon: Megaphone },
 ]
 
-const SERIES_HINT: Record<DocumentCategory, string> = {
+const SERIES_HINT: Record<string, string> = {
   board_resolution: 'Board Resolution',
   appointment_resolution: 'Resolution',
   memorandum: 'Memorandum',
   report: 'Report',
+  financial: 'Financial Report',
 }
 
 type FormState = {
@@ -68,11 +68,6 @@ type FormState = {
   seriesLabel: string
   sortOrder: string
   published: boolean
-}
-
-function parseCategory(raw: string | null): DocumentCategory | null {
-  if (!raw) return null
-  return DOCUMENT_CATEGORIES.some((item) => item.value === raw) ? (raw as DocumentCategory) : null
 }
 
 function emptyForm(category: DocumentCategory = 'board_resolution', withHint = false): FormState {
@@ -111,17 +106,14 @@ function formToInput(form: FormState): DocumentInput {
   }
 }
 
-export default function DocumentFormPage() {
+export default function DocumentFormPage({ archive }: { archive: TransparencyArchive }) {
   const navigate = useNavigate()
   const { id: idParam } = useParams()
-  const [searchParams] = useSearchParams()
   const editId = idParam ? Number(idParam) : NaN
   const mode: 'create' | 'edit' = Number.isFinite(editId) && editId > 0 ? 'edit' : 'create'
-  const queryCategory = parseCategory(searchParams.get('category'))
+  const seriesHint = SERIES_HINT[archive.slug] || archive.label
 
-  const [form, setForm] = useState<FormState>(() =>
-    emptyForm(queryCategory ?? 'board_resolution', queryCategory !== null),
-  )
+  const [form, setForm] = useState<FormState>(() => emptyForm(archive.slug, true))
   const [tab, setTab] = useState<EditorTab>('content')
   const [loading, setLoading] = useState(mode === 'edit')
   const [loadError, setLoadError] = useState('')
@@ -142,7 +134,7 @@ export default function DocumentFormPage() {
   useEffect(() => {
     setTab('content')
     if (mode !== 'edit') {
-      setForm(emptyForm(queryCategory ?? 'board_resolution', queryCategory !== null))
+      setForm(emptyForm(archive.slug, true))
       setLoading(false)
       setLoadError('')
       setNeedsLogin(false)
@@ -172,23 +164,10 @@ export default function DocumentFormPage() {
     return () => {
       cancelled = true
     }
-  }, [mode, editId, queryCategory])
+  }, [archive.slug, mode, editId])
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
-  }
-
-  function changeCategory(next: DocumentCategory) {
-    setForm((prev) => {
-      if (prev.category === next) return prev
-      // Keep the series label in sync only while it still holds the previous hint (or is blank).
-      const followsHint = !prev.seriesLabel.trim() || prev.seriesLabel === SERIES_HINT[prev.category]
-      return {
-        ...prev,
-        category: next,
-        seriesLabel: followsHint ? SERIES_HINT[next] : prev.seriesLabel,
-      }
-    })
   }
 
   const contentIncomplete = !form.title.trim() || !form.url.trim()
@@ -213,7 +192,7 @@ export default function DocumentFormPage() {
     }
 
     setSaving(true)
-    const payload = formToInput(form)
+    const payload = formToInput({ ...form, category: archive.slug })
     const result =
       mode === 'edit'
         ? await updateDocument({ ...payload, id: editId })
@@ -229,7 +208,7 @@ export default function DocumentFormPage() {
       return
     }
 
-    navigate('/admin/documents', {
+    navigate(archive.path, {
       state: {
         toast: {
           message: mode === 'edit' ? 'Document updated.' : 'Document created.',
@@ -259,7 +238,7 @@ export default function DocumentFormPage() {
           <p className="text-sm font-medium text-zinc-900">{loadError}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button asChild size="lg" variant="outline">
-              <Link to="/admin/documents">Back to documents</Link>
+              <Link to={archive.path}>Back to {archive.label}</Link>
             </Button>
           </div>
         </div>
@@ -268,17 +247,14 @@ export default function DocumentFormPage() {
   }
 
   const disabled = saving
-  const categoryLabel =
-    DOCUMENT_CATEGORIES.find((item) => item.value === form.category)?.label ?? 'Document'
-
   return (
     <div className={workspaceTenantMainStackCls}>
-      <FormWorkspaceBackLink to="/admin/documents" label="documents" />
+      <FormWorkspaceBackLink to={archive.path} label={archive.label} />
 
       <section aria-label="Document form" className="w-full max-w-none">
         <form onSubmit={(event) => void onSubmit(event)} className={formWorkspaceCardCls}>
           <div className={formWorkspaceCardEyebrowCls}>
-            <p className={formWorkspaceCardEyebrowTextCls}>Documents · {categoryLabel}</p>
+            <p className={formWorkspaceCardEyebrowTextCls}>{archive.label}</p>
           </div>
 
           <div className={formWorkspaceCardBodyCls}>
@@ -380,7 +356,7 @@ export default function DocumentFormPage() {
                           type="text"
                           value={form.seriesLabel}
                           onChange={(e) => set('seriesLabel', e.target.value)}
-                          placeholder={SERIES_HINT[form.category]}
+                          placeholder={seriesHint}
                           className={catalogInput}
                           disabled={disabled}
                         />
@@ -394,22 +370,9 @@ export default function DocumentFormPage() {
                     <SectionIntro
                       icon={<Tags className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />}
                       title="Details"
-                      body="Category and display order for the public document lists."
+                      body="Display order for this file in the public archive."
                     />
-                    <div className={`${formControlWellCls} grid gap-3 sm:grid-cols-2 sm:gap-4`}>
-                      <Field label="Category" required>
-                        <CatalogSelect
-                          aria-label="Document category"
-                          required
-                          disabled={disabled}
-                          value={form.category}
-                          options={DOCUMENT_CATEGORIES.map((item) => ({
-                            value: item.value,
-                            label: item.label,
-                          }))}
-                          onChange={(value) => changeCategory(value as DocumentCategory)}
-                        />
-                      </Field>
+                    <div className={formControlWellCls}>
                       <Field label="Sort order">
                         <input
                           type="number"

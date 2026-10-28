@@ -195,16 +195,18 @@ export default function SettingsAdmin() {
       </form>
 
       <Link
-        to="/admin/documents"
+        to="/admin/board-resolutions"
         className="group flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 transition hover:border-brand-300 dark:border-zinc-800 dark:bg-zinc-950"
       >
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
           <FileText className="size-4" aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-zinc-900 dark:text-zinc-100">Documents</span>
+          <span className="block text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            Transparency archives
+          </span>
           <span className="block text-[12px] text-zinc-500">
-            Board and appointment resolutions, memoranda, and reports.
+            Upload files for each public transparency tab.
           </span>
         </span>
         <ArrowUpRight className="size-4 text-zinc-400 group-hover:text-brand-700" aria-hidden />

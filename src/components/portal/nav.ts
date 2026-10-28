@@ -7,9 +7,12 @@ import {
   Compass,
   FileText,
   FolderKanban,
+  FolderOpen,
   Gavel,
+  ImagePlay,
   Images,
   Landmark,
+  Library,
   LayoutDashboard,
   Megaphone,
   Scale,
@@ -19,7 +22,10 @@ import {
   UserCog,
   Users,
   UserRoundCog,
+  Wallet,
 } from 'lucide-react'
+import { TRANSPARENCY_ARCHIVES } from '@/lib/transparency-admin'
+import { transparencyIcon } from '@/lib/transparency-icons'
 
 export type PortalNavItem = {
   id: string
@@ -109,6 +115,12 @@ export const portalNavGroups: PortalNavGroup[] = [
         Icon: Images,
         to: `${adminBase}/gallery`,
       },
+      {
+        id: 'hero-slides',
+        label: 'Hero carousel',
+        Icon: ImagePlay,
+        to: `${adminBase}/hero-slides`,
+      },
     ],
   },
   {
@@ -164,18 +176,40 @@ export const portalNavGroups: PortalNavGroup[] = [
         to: `${adminBase}/reservations`,
       },
       {
+        id: 'income',
+        label: 'Income reports',
+        Icon: Wallet,
+        to: `${adminBase}/income`,
+      },
+      {
         id: 'faq',
         label: 'FAQ',
         Icon: CircleHelp,
         to: `${adminBase}/faq`,
       },
       {
-        id: 'documents',
-        label: 'Documents',
-        Icon: FileText,
-        to: `${adminBase}/documents`,
+        id: 'forms',
+        label: 'Forms',
+        Icon: FolderOpen,
+        to: `${adminBase}/forms`,
+      },
+      {
+        id: 'resource-links',
+        label: 'Resource library',
+        Icon: Library,
+        to: `${adminBase}/resource-links`,
       },
     ],
+  },
+  {
+    id: 'transparency',
+    heading: 'Transparency',
+    items: TRANSPARENCY_ARCHIVES.map((item) => ({
+      id: item.id,
+      label: item.label,
+      Icon: transparencyIcon(item.icon),
+      to: item.path,
+    })),
   },
   {
     id: 'system',
@@ -212,6 +246,19 @@ export function breadcrumbsFor(pathname: string): { label: string; to: string }[
     return crumbs
   }
 
+  for (const archive of TRANSPARENCY_ARCHIVES) {
+    if (pathname === `${archive.path}/new`) {
+      crumbs.push({ label: archive.label, to: archive.path })
+      crumbs.push({ label: 'New', to: pathname })
+      return crumbs
+    }
+    if (pathname.startsWith(`${archive.path}/`) && pathname.endsWith('/edit')) {
+      crumbs.push({ label: archive.label, to: archive.path })
+      crumbs.push({ label: 'Edit', to: pathname })
+      return crumbs
+    }
+  }
+
   const announcementsBase = `${adminBase}/announcements`
   if (pathname === `${announcementsBase}/new`) {
     crumbs.push({ label: 'Announcements', to: announcementsBase })
@@ -233,6 +280,61 @@ export function breadcrumbsFor(pathname: string): { label: string; to: string }[
   if (pathname.startsWith(`${calendarBase}/`) && pathname.endsWith('/edit')) {
     crumbs.push({ label: 'Calendar', to: calendarBase })
     crumbs.push({ label: 'Edit', to: pathname })
+    return crumbs
+  }
+
+  const formsBase = `${adminBase}/forms`
+  if (pathname === `${formsBase}/new`) {
+    crumbs.push({ label: 'Forms', to: formsBase })
+    crumbs.push({ label: 'New group', to: pathname })
+    return crumbs
+  }
+  if (/^\/admin\/forms\/\d+\/edit$/.test(pathname)) {
+    crumbs.push({ label: 'Forms', to: formsBase })
+    crumbs.push({ label: 'Edit group', to: pathname })
+    return crumbs
+  }
+  if (/^\/admin\/forms\/\d+\/files\/new$/.test(pathname)) {
+    const groupId = pathname.split('/')[3]
+    crumbs.push({ label: 'Forms', to: formsBase })
+    crumbs.push({ label: 'Files', to: `${formsBase}/${groupId}` })
+    crumbs.push({ label: 'New file', to: pathname })
+    return crumbs
+  }
+  if (/^\/admin\/forms\/\d+\/files\/\d+\/edit$/.test(pathname)) {
+    const groupId = pathname.split('/')[3]
+    crumbs.push({ label: 'Forms', to: formsBase })
+    crumbs.push({ label: 'Files', to: `${formsBase}/${groupId}` })
+    crumbs.push({ label: 'Edit file', to: pathname })
+    return crumbs
+  }
+  if (/^\/admin\/forms\/\d+$/.test(pathname)) {
+    crumbs.push({ label: 'Forms', to: formsBase })
+    crumbs.push({ label: 'Files', to: pathname })
+    return crumbs
+  }
+
+  const heroSlidesBase = `${adminBase}/hero-slides`
+  if (pathname === `${heroSlidesBase}/new`) {
+    crumbs.push({ label: 'Hero carousel', to: heroSlidesBase })
+    crumbs.push({ label: 'New slide', to: pathname })
+    return crumbs
+  }
+  if (pathname.startsWith(`${heroSlidesBase}/`) && pathname.endsWith('/edit')) {
+    crumbs.push({ label: 'Hero carousel', to: heroSlidesBase })
+    crumbs.push({ label: 'Edit slide', to: pathname })
+    return crumbs
+  }
+
+  const resourceLinksBase = `${adminBase}/resource-links`
+  if (pathname === `${resourceLinksBase}/new`) {
+    crumbs.push({ label: 'Resource library', to: resourceLinksBase })
+    crumbs.push({ label: 'New link', to: pathname })
+    return crumbs
+  }
+  if (pathname.startsWith(`${resourceLinksBase}/`) && pathname.endsWith('/edit')) {
+    crumbs.push({ label: 'Resource library', to: resourceLinksBase })
+    crumbs.push({ label: 'Edit link', to: pathname })
     return crumbs
   }
 

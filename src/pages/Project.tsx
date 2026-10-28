@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowUpRight, ChevronLeft, Flag, Loader2, X } from 'lucide-react'
-import { contact, siteName } from '@/components/layout/nav-data'
+import { ChevronLeft, Flag, Loader2, X } from 'lucide-react'
+import { contact, projectCategoryFromSlug, siteName } from '@/components/layout/nav-data'
 import { mapProjectRecord, type Project as ProjectItem } from '@/components/home/project-data'
 import { Reveal } from '@/components/motion/Reveal'
 import { SectionKicker } from '@/components/ui/SectionKicker'
@@ -11,12 +11,6 @@ import { RichTextContent } from '@/components/ui/RichTextEditor'
 import { setPageScrollLocked } from '@/hooks/useLenis'
 import { getProjectBySlug, listProjects } from '@/lib/projects-api'
 import { cn } from '@/lib/utils'
-
-const councilReports = [
-  'Quarterly liquidations',
-  'Budget allocations',
-  'Semester-end accomplishment reports',
-] as const
 
 export default function Project() {
   const { slug = '' } = useParams()
@@ -43,7 +37,7 @@ export default function Project() {
         setOthers(
           list.data.items
             .map(mapProjectRecord)
-            .filter((item) => item.slug !== mapped.slug),
+            .filter((item) => item.slug !== mapped.slug && item.category === mapped.category),
         )
       } else {
         setOthers([])
@@ -93,31 +87,23 @@ export default function Project() {
   }
 
   const Icon = project.icon
-  const facebook = contact.socials.find((item) => item.name === 'Facebook')
-  const links = facebook
-    ? [...project.links, { label: `Facebook ${facebook.handle}`, href: facebook.href }]
-    : project.links
 
   return (
     <main id="main-content" className="bg-surface">
       <div className="mx-auto max-w-7xl px-4 py-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         <div className="flex items-center justify-between gap-3">
-          <BackLink />
+          <BackLink category={project.category} />
           <ReportButton project={project} />
         </div>
 
         <Reveal>
           <article className="mt-3 overflow-hidden rounded-2xl border border-zinc-200 bg-white sm:mt-5">
             <div className="lg:grid lg:grid-cols-[minmax(18rem,26rem)_minmax(0,1fr)] lg:items-stretch">
-              <img
-                src={project.image}
-                alt=""
-                width={768}
-                height={1024}
-                className="h-[clamp(11rem,18vw,17.5rem)] w-full bg-zinc-100 object-cover lg:h-full lg:min-h-[22rem]"
-              />
+              <ProjectGallery images={project.images.length ? project.images : [project.image]} />
               <div className="px-4 py-5 sm:px-8 sm:py-8 lg:flex lg:flex-col lg:justify-center">
-                <SectionKicker icon={Icon}>Project</SectionKicker>
+                <SectionKicker icon={Icon}>
+                  {projectCategoryFromSlug(project.category)?.label ?? 'Project'}
+                </SectionKicker>
                 <h1 className="mt-2 font-hero text-[clamp(1.75rem,1.2rem+1.6vw,2.75rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950">
                   {project.label}
                 </h1>
@@ -129,48 +115,6 @@ export default function Project() {
                     <RichTextContent html={project.body} className="text-sm leading-6 text-zinc-600 sm:text-[15px]" />
                   </div>
                 ) : null}
-              </div>
-            </div>
-
-            <div className="px-4 pb-5 sm:px-8 sm:pb-8">
-              <div className="grid gap-6 border-t border-zinc-200 pt-6 sm:gap-8 sm:pt-8 md:grid-cols-2">
-                <section aria-labelledby="project-links" className="min-w-0">
-                  <h2 id="project-links" className="text-[11px] font-semibold tracking-[0.16em] text-zinc-500 uppercase">
-                    Links
-                  </h2>
-                  <ul className="mt-1 divide-y divide-zinc-200">
-                    {links.map((link) => (
-                      <li key={link.label}>
-                        <DetailLink link={link} />
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-
-                <section aria-labelledby="project-reports" className="min-w-0">
-                  <div className="flex items-center justify-between gap-3">
-                    <h2 id="project-reports" className="text-[11px] font-semibold tracking-[0.16em] text-zinc-500 uppercase">
-                      Reports
-                    </h2>
-                    <span className="text-[11px] font-semibold tracking-[0.14em] text-brand-700 uppercase">In progress</span>
-                  </div>
-                  <ul className="mt-1 divide-y divide-zinc-200">
-                    {councilReports.map((title) => (
-                      <li key={title} className="py-3 text-sm font-semibold text-brand-950">
-                        {title}
-                      </li>
-                    ))}
-                    <li>
-                      <Link
-                        to="/transparency#reports"
-                        className="group flex min-h-12 items-center justify-between gap-3 py-3 text-sm font-semibold text-brand-800 transition-colors hover:text-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-                      >
-                        <span className="min-w-0">Open the reports archive</span>
-                        <ArrowUpRight className="size-4 shrink-0 text-zinc-400 group-hover:text-brand-700" aria-hidden />
-                      </Link>
-                    </li>
-                  </ul>
-                </section>
               </div>
             </div>
           </article>
@@ -207,38 +151,49 @@ export default function Project() {
   )
 }
 
-function BackLink() {
+function BackLink({ category }: { category?: string }) {
+  const program = projectCategoryFromSlug(category)
   return (
     <Link
-      to="/#projects"
+      to={program?.to ?? '/projects'}
       className="-ml-2 inline-flex min-h-11 items-center gap-0.5 rounded-lg px-2 text-sm font-semibold text-brand-800 transition-colors hover:text-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
     >
       <ChevronLeft className="size-4" aria-hidden />
-      Back to projects
+      {program ? `Back to ${program.label}` : 'Back to projects'}
     </Link>
   )
 }
 
-function DetailLink({ link }: { link: { label: string; to?: string; href?: string } }) {
-  const className =
-    'group flex min-h-12 items-center justify-between gap-3 py-3 text-sm font-semibold text-brand-950 transition-colors hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500'
-  const inner = (
-    <>
-      <span className="min-w-0">{link.label}</span>
-      <ArrowUpRight className="size-4 shrink-0 text-zinc-400 group-hover:text-brand-700" aria-hidden />
-    </>
-  )
-  if (link.href) {
+function ProjectGallery({ images }: { images: string[] }) {
+  const pics = images.filter(Boolean)
+  if (pics.length === 0) {
+    return <div className="h-[clamp(11rem,18vw,17.5rem)] w-full bg-zinc-100 lg:h-full lg:min-h-[22rem]" />
+  }
+  if (pics.length === 1) {
     return (
-      <a href={link.href} target="_blank" rel="noreferrer" className={className}>
-        {inner}
-      </a>
+      <img
+        src={pics[0]}
+        alt=""
+        width={768}
+        height={1024}
+        className="h-[clamp(11rem,18vw,17.5rem)] w-full bg-zinc-100 object-cover lg:h-full lg:min-h-[22rem]"
+      />
     )
   }
   return (
-    <Link to={link.to ?? '/'} className={className}>
-      {inner}
-    </Link>
+    <div className="grid grid-cols-2 gap-1 bg-zinc-100 lg:min-h-[22rem]">
+      {pics.map((src, index) => (
+        <img
+          key={`${src}-${index}`}
+          src={src}
+          alt=""
+          className={cn(
+            'h-[clamp(8rem,14vw,12rem)] w-full object-cover lg:h-full lg:min-h-[11rem]',
+            pics.length === 3 && index === 0 && 'col-span-2',
+          )}
+        />
+      ))}
+    </div>
   )
 }
 

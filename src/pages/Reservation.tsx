@@ -22,7 +22,13 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
-import { findShopItemAsync, type ShopLookup } from '@/components/portal/catalog'
+import {
+  findShopItemAsync,
+  lockerCodeFromItem,
+  lockerRenewalPrice,
+  shopCatalogPath,
+  type ShopLookup,
+} from '@/components/portal/catalog'
 import { reservationFromApi, saveReservation } from '@/components/portal/reservations'
 import { siteName } from '@/components/layout/nav-data'
 import { createReservation } from '@/lib/reservations-api'
@@ -405,7 +411,7 @@ export default function Reservation() {
     <main id="main-content" className="bg-[#f4f5f7]">
       <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
         <Link
-          to={`/portal#${found.shop}`}
+          to={shopCatalogPath(found.shop)}
           className="inline-flex items-center gap-1 text-sm font-semibold text-brand-800"
         >
           <ChevronLeft className="size-4" aria-hidden />
@@ -442,14 +448,22 @@ export default function Reservation() {
             </div>
             <div className="px-4 py-4">
               <p className="text-xs text-zinc-500">
-                {found.shop === 'locker' ? (item.size === 'half' ? 'Half' : 'Full') : listing.kicker}
+                {listing.kicker}
               </p>
               <h1 className="mt-1 text-lg font-semibold text-zinc-950">
                 {item.number ? `No. ${item.number}` : item.name}
               </h1>
               <p className="mt-2 text-base font-semibold text-zinc-950">
-                {pesos(item.price)} <span className="text-sm font-normal text-zinc-400">{item.unit}</span>
+                {pesos(item.price)}{' '}
+                <span className="text-sm font-normal text-zinc-400">
+                  {found.shop === 'locker' ? `new rental · ${item.unit}` : item.unit}
+                </span>
               </p>
+              {found.shop === 'locker' ? (
+                <p className="mt-1 text-xs text-zinc-500">
+                  Renewal: {pesos(lockerRenewalPrice(lockerCodeFromItem(item).charAt(0) || 'A'))} {item.unit}
+                </p>
+              ) : null}
               <dl className="mt-4 divide-y divide-zinc-100 border-t border-zinc-100 text-sm">
                 <div className="flex items-center justify-between gap-3 py-2.5">
                   <dt className="inline-flex items-center gap-2 text-zinc-500">

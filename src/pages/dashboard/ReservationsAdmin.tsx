@@ -10,8 +10,9 @@ import {
   Search,
   ShoppingBag,
   Table2,
+  Wallet,
 } from 'lucide-react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { RequireLoginRedirect } from '@/components/portal/RequireLoginRedirect'
 import { HorizontalDragScrollTableWrap } from '@/components/portal/HorizontalDragScrollTableWrap'
 import { RegisterRowActions } from '@/components/portal/RegisterRowActions'
@@ -292,10 +293,19 @@ export default function ReservationsAdmin() {
             Locker and merch reservations from the portal.
           </p>
         </div>
-        <button type="button" className={workspacePageAddBtnCls} onClick={goCreate}>
-          <Plus className="h-4 w-4" aria-hidden />
-          New reservation
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            to="/admin/income"
+            className="inline-flex size-10 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white text-zinc-700 transition hover:border-brand-200 hover:text-brand-800 sm:h-10 sm:w-auto sm:px-3 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+          >
+            <Wallet className="h-4 w-4" aria-hidden />
+            <span className="sr-only sm:not-sr-only text-[13px] font-semibold">Income reports</span>
+          </Link>
+          <button type="button" className={workspacePageAddBtnCls} onClick={goCreate}>
+            <Plus className="h-4 w-4" aria-hidden />
+            New reservation
+          </button>
+        </div>
       </div>
 
       <section aria-label="Catalog" className="w-full max-w-none">

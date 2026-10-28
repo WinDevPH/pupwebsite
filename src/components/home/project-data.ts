@@ -9,12 +9,18 @@ import {
   Wifi,
 } from 'lucide-react'
 import type { ProjectIconKey, ProjectLink, ProjectRecord } from '@/lib/projects-api'
+import {
+  isProjectCategorySlug,
+  type ProjectCategorySlug,
+} from '@/lib/project-categories'
 
 export type Project = {
   id?: number
   slug: string
+  category: ProjectCategorySlug
   label: string
   image: string
+  images: string[]
   icon: LucideIcon
   iconKey: ProjectIconKey
   summary: string
@@ -46,11 +52,19 @@ export const projectIconOptions: { id: ProjectIconKey; label: string }[] = [
 
 export function mapProjectRecord(item: ProjectRecord): Project {
   const iconKey = (item.icon in projectIconMap ? item.icon : 'folder-kanban') as ProjectIconKey
+  const images =
+    item.images?.length > 0
+      ? item.images.filter(Boolean)
+      : item.image
+        ? [item.image]
+        : []
   return {
     id: item.id,
     slug: item.slug,
+    category: isProjectCategorySlug(item.category) ? item.category : 'internal-affairs',
     label: item.title,
-    image: item.image,
+    image: images[0] ?? item.image ?? '',
+    images,
     icon: projectIconMap[iconKey],
     iconKey,
     summary: item.summary,

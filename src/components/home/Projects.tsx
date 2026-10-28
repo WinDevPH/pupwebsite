@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { FolderKanban } from 'lucide-react'
 import { useReducedMotion } from 'motion/react'
 import { ProjectArt } from '@/components/home/ProjectArt'
 import { mapProjectRecord, type Project } from '@/components/home/project-data'
-import { Reveal } from '@/components/motion/Reveal'
-import { SectionKicker } from '@/components/ui/SectionKicker'
 import { useHashScroll } from '@/hooks/useHashScroll'
 import { listProjects } from '@/lib/projects-api'
 import { cn } from '@/lib/utils'
@@ -133,30 +130,14 @@ export function Projects() {
   return (
     <section
       id="projects"
-      aria-labelledby="projects-title"
+      aria-label="Student Council projects"
       className="scroll-mt-28 overflow-hidden bg-white dark:bg-zinc-950"
     >
-      <div className="mx-auto max-w-7xl px-4 pt-[clamp(2.5rem,1.6rem+3vw,5rem)] sm:px-6 lg:px-8">
-        <Reveal>
-          <header className="mx-auto max-w-3xl text-center">
-            <SectionKicker icon={FolderKanban}>Projects & Initiatives</SectionKicker>
-            <h2
-              id="projects-title"
-              className="mt-[clamp(0.85rem,0.5rem+1vw,1.25rem)] font-hero text-[clamp(1.85rem,0.9rem+3vw,3.75rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950"
-            >
-              Student Council <span className="text-brand-600">In Action</span>
-            </h2>
-            <p className="mx-auto mt-[clamp(0.75rem,0.4rem+1vw,1.15rem)] max-w-lg text-[clamp(0.875rem,0.82rem+0.2vw,0.95rem)] leading-relaxed text-zinc-500">
-              Current initiatives for law students.
-            </p>
-            {loading ? (
-              <p className="mt-3 text-sm text-zinc-500" aria-live="polite">
-                Loading projects…
-              </p>
-            ) : null}
-          </header>
-        </Reveal>
-      </div>
+      {loading ? (
+        <p className="sr-only" aria-live="polite">
+          Loading projects…
+        </p>
+      ) : null}
 
       {!loading && count === 0 ? (
         <p className="mx-auto mt-8 max-w-md px-6 text-center text-sm text-zinc-500">
@@ -166,7 +147,7 @@ export function Projects() {
 
       {count > 0 && project ? (
         <div
-          className="relative mt-6 overflow-hidden py-2 sm:mt-8 sm:py-3"
+          className="relative overflow-hidden pt-[clamp(2.5rem,1.6rem+3vw,5rem)] pb-2 sm:pb-3"
           role="region"
           aria-roledescription="carousel"
           aria-label="Student Council projects"
@@ -241,6 +222,12 @@ export function Projects() {
                 {project.summary}
               </p>
             ) : null}
+            <Link
+              to="/projects"
+              className="mt-4 inline-flex text-sm font-semibold text-brand-700 underline decoration-brand-200 underline-offset-2 hover:text-brand-600"
+            >
+              View all projects
+            </Link>
           </div>
         </div>
       ) : null}

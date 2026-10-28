@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/includes/bootstrap.php';
+require_once __DIR__ . '/includes/transparency-categories.php';
 
 api_cors();
 
@@ -25,9 +26,21 @@ try {
 }
 
 /** @return list<string> */
-function documents_categories(): array
+function documents_fallback_categories(): array
 {
-    return ['board_resolution', 'appointment_resolution', 'memorandum', 'report'];
+    return ['board_resolution', 'appointment_resolution', 'memorandum', 'report', 'financial'];
+}
+
+/** @return list<string> */
+function documents_categories(?PDO $pdo = null): array
+{
+    $pdo ??= api_pdo();
+    transparency_categories_ensure($pdo);
+    $slugs = transparency_categories_slugs($pdo);
+    if ($slugs === []) {
+        return documents_fallback_categories();
+    }
+    return $slugs;
 }
 
 function documents_ensure_tables(PDO $pdo): void
@@ -90,7 +103,7 @@ function documents_payload(?array $body = null): array
     if (!in_array($category, documents_categories(), true)) {
         api_json([
             'ok' => false,
-            'error' => 'Category must be board_resolution, appointment_resolution, memorandum, or report.',
+            'error' => 'Choose a published transparency tab as the document category.',
         ], 422);
     }
     if ($title === '') {
@@ -121,6 +134,7 @@ function documents_get(): never
 {
     $pdo = api_pdo();
     documents_ensure_tables($pdo);
+    transparency_categories_ensure($pdo);
 
     $id = (int) ($_GET['id'] ?? 0);
     $category = strtolower(trim((string) ($_GET['category'] ?? '')));
@@ -181,7 +195,7 @@ function documents_get(): never
         'ok' => true,
         'items' => $items,
         'category' => $category !== '' ? $category : null,
-        'categories' => documents_categories(),
+        'categories' => transparency_categories_options($pdo),
     ]);
 }
 

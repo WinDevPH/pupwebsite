@@ -37,6 +37,13 @@ const headingOpts: Intl.DateTimeFormatOptions = {
   year: 'numeric',
 }
 
+const longDateOpts: Intl.DateTimeFormatOptions = {
+  timeZone: PH_TIMEZONE,
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+}
+
 export function parseApiDate(value: string | null | undefined): Date | null {
   if (!value) return null
   const raw = value.trim()
@@ -84,6 +91,12 @@ export function formatPhTime(value: string | Date | null | undefined): string {
   const date = value instanceof Date ? value : parseApiDate(value ?? null)
   if (!date) return '—'
   return new Intl.DateTimeFormat('en-PH', timeOpts).format(date)
+}
+
+export function formatPhLongDate(value: string | Date | null | undefined = new Date()): string {
+  const date = value instanceof Date ? value : parseApiDate(value ?? null)
+  if (!date) return '—'
+  return new Intl.DateTimeFormat('en-US', longDateOpts).format(date)
 }
 
 export function formatPhDayHeading(value: string | Date | null | undefined = new Date()): string {

@@ -1,14 +1,13 @@
-export type DocumentCategory =
-  | 'board_resolution'
-  | 'appointment_resolution'
-  | 'memorandum'
-  | 'report'
+export type DocumentCategory = string
 
-export const DOCUMENT_CATEGORIES: { value: DocumentCategory; label: string }[] = [
-  { value: 'board_resolution', label: 'Board resolutions' },
-  { value: 'appointment_resolution', label: 'Appointment resolutions' },
-  { value: 'memorandum', label: 'Memoranda' },
-  { value: 'report', label: 'Reports' },
+export type DocumentCategoryOption = { value: DocumentCategory; label: string }
+
+export const DOCUMENT_CATEGORIES: DocumentCategoryOption[] = [
+  { value: 'board_resolution', label: 'Board Resolutions' },
+  { value: 'appointment_resolution', label: 'Commission Resolutions' },
+  { value: 'memorandum', label: 'Memoranda & Requests' },
+  { value: 'report', label: 'Accomplishment Reports' },
+  { value: 'financial', label: 'Financial Reports' },
 ]
 
 export type DocumentRecord = {
@@ -78,7 +77,9 @@ export async function listDocuments(options?: { category?: DocumentCategory; all
   if (options?.category) params.set('category', options.category)
   if (options?.all) params.set('all', '1')
   const query = params.toString()
-  return request<{ items: DocumentRecord[] }>(`/api/documents.php${query ? `?${query}` : ''}`)
+  return request<{ items: DocumentRecord[]; categories?: DocumentCategoryOption[] }>(
+    `/api/documents.php${query ? `?${query}` : ''}`,
+  )
 }
 
 export async function getDocumentById(id: number) {

@@ -76,6 +76,7 @@ export const councilRoleOptions: Record<CouncilSection, string[]> = {
     'Presidential Affairs',
     'Internal Affairs',
     'Secretariat',
+    'Academic Affairs',
     'External Affairs',
     'Social Media Management',
   ],

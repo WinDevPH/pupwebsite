@@ -6,7 +6,85 @@ import { buildShops, listShopItems } from '@/lib/shop-api'
 
 export type ShopId = 'locker' | 'merch'
 
-export type LockerSize = 'half' | 'full'
+export function shopCatalogPath(shop: ShopId) {
+  return shop === 'locker' ? '/lockers' : '/merch'
+}
+
+export const LOCKER_ROWS = ['A', 'B', 'C', 'D', 'E'] as const
+export const LOCKER_COLS = 12
+
+/** Sample assigned lockers from the council availability chart. */
+export const LOCKER_ASSIGNED_SEED = [
+  'A-03',
+  'B-08',
+  'C-01',
+  'C-02',
+  'C-04',
+  'C-06',
+  'C-08',
+  'D-04',
+  'D-06',
+  'E-02',
+  'E-08',
+] as const
+
+export function lockerCode(row: string, col: number) {
+  return `${row}-${String(col).padStart(2, '0')}`
+}
+
+export const LOCKER_UNIT = 'per rental period'
+
+/** New-rental fees from the official locker schedule. */
+export function lockerNewRentalPrice(row: string) {
+  if (row === 'D') return 450
+  if (row === 'E') return 350
+  return 600
+}
+
+/** Renewal fees from the official locker schedule. */
+export function lockerRenewalPrice(row: string) {
+  if (row === 'D') return 450
+  if (row === 'E') return 350
+  return 500
+}
+
+export const LOCKER_RATES = [
+  { transaction: 'New rental', location: 'Rows A, B and C (top rows)', fee: 600 },
+  { transaction: 'New rental', location: 'Row D (bottom row)', fee: 450 },
+  { transaction: 'New rental', location: 'Row E (bottom row)', fee: 350 },
+  { transaction: 'Renewal', location: 'Rows A, B and C', fee: 500 },
+  { transaction: 'Renewal', location: 'Row D', fee: 450 },
+  { transaction: 'Renewal', location: 'Row E', fee: 350 },
+] as const
+
+export function lockerCodeFromItem(item: Pick<ShopItem, 'id' | 'name' | 'number'>) {
+  const raw = (item.number || item.id || item.name).toUpperCase().replace(/\s+/g, '')
+  const match = raw.match(/([A-E])-?(\d{1,2})/)
+  if (!match) return ''
+  return lockerCode(match[1], Number(match[2]))
+}
+
+export function buildLockerGridItems(): ShopItem[] {
+  const assigned = new Set<string>(LOCKER_ASSIGNED_SEED)
+  const items: ShopItem[] = []
+  for (const row of LOCKER_ROWS) {
+    for (let col = 1; col <= LOCKER_COLS; col += 1) {
+      const code = lockerCode(row, col)
+      items.push({
+        id: code.toLowerCase(),
+        name: `Locker ${code}`,
+        number: code,
+        price: lockerNewRentalPrice(row),
+        unit: LOCKER_UNIT,
+        stock: 1,
+        image: lockerBay,
+        alt: `Locker ${code}`,
+        availability: assigned.has(code) ? 'reserved' : undefined,
+      })
+    }
+  }
+  return items
+}
 
 export type ShopItem = {
   id: string
@@ -16,7 +94,6 @@ export type ShopItem = {
   stock: number
   image: string
   alt: string
-  size?: LockerSize
   number?: string
   availability?: 'reserved' | 'out'
 }
@@ -26,16 +103,9 @@ export type ShopCatalog = Record<ShopId, { title: string; kicker: string; items:
 /** Bundled fallback used when the shop API is unreachable. Live data comes from `loadShopCatalog`. */
 export const shops: ShopCatalog = {
   locker: {
-    title: 'Bookings for Locker',
+    title: 'Locker Availability',
     kicker: 'Locker',
-    items: [
-      { id: 'half-12', name: 'Half locker No. 12', number: '12', size: 'half', price: 250, unit: 'per semester', stock: 1, image: lockerBay, alt: 'Sample photo of a violet school locker' },
-      { id: 'half-18', name: 'Half locker No. 18', number: '18', size: 'half', price: 250, unit: 'per semester', stock: 1, image: lockerBay, alt: 'Sample photo of a violet school locker' },
-      { id: 'half-24', name: 'Half locker No. 24', number: '24', size: 'half', price: 250, unit: 'per semester', stock: 1, image: lockerBay, alt: 'Sample photo of a violet school locker' },
-      { id: 'full-07', name: 'Full locker No. 07', number: '07', size: 'full', price: 400, unit: 'per semester', stock: 1, image: lockerBay, alt: 'Sample photo of a violet school locker' },
-      { id: 'full-15', name: 'Full locker No. 15', number: '15', size: 'full', price: 400, unit: 'per semester', stock: 1, image: lockerBay, alt: 'Sample photo of a violet school locker' },
-      { id: 'full-21', name: 'Full locker No. 21', number: '21', size: 'full', price: 400, unit: 'per semester', stock: 1, image: lockerBay, alt: 'Sample photo of a violet school locker' },
-    ],
+    items: buildLockerGridItems(),
   },
   merch: {
     title: 'Selling of Merch',

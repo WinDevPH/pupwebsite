@@ -50,8 +50,11 @@ $seed = [
     ['2026–2027', 'officers', 'associates', 'Presidential Affairs', 'Jessica Mae T. Asuncion', null, 0, 210],
     ['2026–2027', 'officers', 'associates', 'Internal Affairs', 'Aldrich R. Sanchez', '/council/people/sanchez.jpg', 0, 220],
     ['2026–2027', 'officers', 'associates', 'Secretariat', 'Cherie An M. Sarabia', '/council/people/sarabia.jpg', 0, 230],
+    ['2026–2027', 'officers', 'associates', 'Academic Affairs', 'Cassandra Kristine DL. Francisco', '/org-logos/student-council.png', 0, 235],
     ['2026–2027', 'officers', 'associates', 'External Affairs', 'Gleanna Marie B. Cuyugan', '/council/people/cuyugan.jpg', 0, 240],
+    ['2026–2027', 'officers', 'associates', 'External Affairs', 'Anna Katrina C. Tena', '/org-logos/student-council.png', 0, 245],
     ['2026–2027', 'officers', 'associates', 'Social Media Management', 'Jenina Denisse R. Cabrera', null, 0, 250],
+    ['2026–2027', 'officers', 'associates', 'Social Media Management', 'Irish B. Peneira', '/org-logos/student-council.png', 0, 255],
     // Commissioners
     ['2026–2027', 'commissioners', 'commission', 'Chairperson', 'Russel Angelo O. Toribio', '/council/people/toribio.jpg', 0, 10],
     ['2026–2027', 'commissioners', 'commission', 'Commissioner', 'Kristoffer Red S. De Leon', '/council/people/de-leon.jpg', 0, 20],

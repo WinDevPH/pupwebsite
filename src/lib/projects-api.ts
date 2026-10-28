@@ -16,10 +16,12 @@ export type ProjectLink = {
 export type ProjectRecord = {
   id: number
   slug: string
+  category: string
   title: string
   summary: string
   body: string | null
   image: string
+  images: string[]
   icon: ProjectIconKey
   links: ProjectLink[]
   sortOrder: number
@@ -65,8 +67,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<ApiOk<T> | 
   }
 }
 
-export async function listProjects(options?: { all?: boolean }) {
-  const query = options?.all ? '?all=1' : ''
+export async function listProjects(options?: { all?: boolean; category?: string }) {
+  const params = new URLSearchParams()
+  if (options?.all) params.set('all', '1')
+  if (options?.category) params.set('category', options.category)
+  const query = params.toString() ? `?${params.toString()}` : ''
   return request<{ items: ProjectRecord[] }>(`/api/projects.php${query}`)
 }
 
@@ -85,10 +90,12 @@ export async function getProjectById(id: number) {
 export type ProjectInput = {
   id?: number
   slug?: string
+  category: string
   title: string
   summary: string
   body?: string | null
   image: string
+  images?: string[]
   icon: ProjectIconKey
   links?: ProjectLink[]
   sortOrder?: number

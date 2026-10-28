@@ -187,8 +187,8 @@ export function Announcements() {
             Latest <span className="text-brand-600 dark:text-brand-400">Announcements</span>
           </h2>
           <p className="mx-auto mt-[clamp(0.75rem,0.4rem+1vw,1.15rem)] max-w-lg text-[clamp(0.875rem,0.82rem+0.2vw,0.95rem)] leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Official issuances, event posters, and updates from the council's
-            channels.
+            Official council advisories, institutional issuances, and community
+            updates.
           </p>
         </header>
         </Reveal>

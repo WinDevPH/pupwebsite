@@ -696,16 +696,19 @@ html.dark .portal-sidebar .dark\:hover\:border-brand-500\/35:hover {
 }
 
 /* On the hero, the bar uses the same wash as the section below it. */
-html.dark header.header-blend {
+header.header-blend {
   background-color: transparent;
   border-color: transparent;
   box-shadow: none;
 }
 
+.hero-blend {
+  margin-top: -5rem;
+  padding-top: 5rem;
+}
+
 html.dark .hero-blend {
   background-color: #07070b;
-  margin-top: -4.5rem;
-  padding-top: 4.5rem;
 }
 
 html.dark .hero-glow {

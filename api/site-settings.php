@@ -53,18 +53,18 @@ function site_settings_contact_defaults(): array
                 'handle' => '/pupcl.sc',
                 'href' => 'https://www.facebook.com/pupcl.sc',
             ],
-            ['name' => 'X', 'handle' => '@pupcol_sc', 'href' => 'https://x.com/pupcol_sc'],
+            ['name' => 'X', 'handle' => '@pupcolsc', 'href' => 'https://x.com/pupcolsc'],
             [
                 'name' => 'Instagram',
-                'handle' => '@pupcol_sc',
-                'href' => 'https://www.instagram.com/pupcol_sc',
+                'handle' => '@pupcolsc_official',
+                'href' => 'https://www.instagram.com/pupcolsc_official/',
             ],
         ],
         'footerSocials' => [
             [
                 'name' => 'Instagram',
                 'handle' => '@pupcolsc_official',
-                'href' => 'https://www.instagram.com/pupcolsc_official',
+                'href' => 'https://www.instagram.com/pupcolsc_official/',
             ],
             [
                 'name' => 'Facebook',

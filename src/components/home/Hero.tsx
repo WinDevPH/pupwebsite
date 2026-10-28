@@ -1,16 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
-import {
-  BookOpen,
-  Clock,
-  GraduationCap,
-  Lightbulb,
-  Play,
-  Scale,
-  Shield,
-} from 'lucide-react'
-import heroLawStudents from '@/assets/hero-law-students.png'
+import { Play } from 'lucide-react'
+import heroCouncil40 from '@/assets/hero/hero-council-4.0.jpg'
+import heroCouncil41 from '@/assets/hero/hero-council-4.1.jpg'
+import heroCouncil42 from '@/assets/hero/hero-council-4.2.jpg'
+import heroCouncil43 from '@/assets/hero/hero-council-4.3.jpg'
+import { listHeroSlides } from '@/lib/hero-slides-api'
 import studentCouncil from '@/assets/logos/student-council.png'
 import studentCouncilMark from '@/assets/logos/student-council-mark.jpg'
 import lawStudentsSociety from '@/assets/logos/law-students-society.jpg'
@@ -45,7 +41,7 @@ export function Hero() {
     >
       <Backdrop />
 
-      <div className="relative mx-auto flex max-w-7xl flex-col items-center px-4 pt-[clamp(2.25rem,1.4rem+3vw,5rem)] pb-0 sm:px-6 lg:px-8">
+      <div className="relative mx-auto flex max-w-7xl flex-col items-center px-4 pt-[clamp(2.25rem,1.4rem+3vw,5rem)] pb-[clamp(2rem,1.2rem+2.5vw,4rem)] sm:px-6 lg:px-8">
         <motion.div
           initial="hidden"
           animate="show"
@@ -74,15 +70,31 @@ export function Hero() {
 
           <motion.p
             variants={fadeUp}
-            className="mt-[clamp(1rem,0.6rem+1vw,1.25rem)] max-w-2xl text-[clamp(0.9rem,0.82rem+0.25vw,1.125rem)] leading-relaxed text-zinc-500"
+            className="mt-[clamp(1rem,0.6rem+1vw,1.25rem)] max-w-2xl text-[clamp(0.9rem,0.82rem+0.25vw,1.125rem)] leading-relaxed text-zinc-500 sm:hidden"
           >
             The{' '}
             <strong className="font-semibold text-zinc-700">
-              official website of the PUP College of Law Student Council
-            </strong>
-            , built to share information and support the student body. Academic
-            resources, governance, student services, and recognized
-            organizations — in one place.
+              PUP College of Law Student Council Website
+            </strong>{' '}
+            is the official website of the Student Council, designed to
+            streamline information and empower the student body with academic
+            resources, governance, and student services.
+          </motion.p>
+          <motion.p
+            variants={fadeUp}
+            className="mt-[clamp(1rem,0.6rem+1vw,1.25rem)] hidden max-w-2xl text-[clamp(0.9rem,0.82rem+0.25vw,1.125rem)] leading-relaxed text-zinc-500 sm:block"
+          >
+            The{' '}
+            <strong className="font-semibold text-zinc-700">
+              PUP College of Law Student Council Website
+            </strong>{' '}
+            is the official website of the PUP College of Law Student Council
+            designed to streamline information dissemination and empower the
+            student body. The website centralizes essential academic resources,
+            governance transparency, and student services, while integrating
+            profiles of recognized law student organizations to create a
+            unified platform dedicated to student welfare, support, and
+            community engagement.
           </motion.p>
 
           <motion.div
@@ -111,7 +123,7 @@ export function Hero() {
           </motion.div>
         </motion.div>
 
-        <HeroCharacters />
+        <HeroCarousel />
       </div>
     </section>
   )
@@ -159,67 +171,160 @@ function HeroCouncilRow() {
   )
 }
 
-const sceneChips = [
-  { Icon: Scale, className: 'top-[10%] left-[0%] hidden sm:flex', tone: 'text-brand-600' },
-  { Icon: BookOpen, className: 'top-[2%] right-[4%] hidden sm:flex', tone: 'text-maroon-600' },
-  { Icon: GraduationCap, className: 'top-[20%] right-[-1%] hidden sm:flex', tone: 'text-brand-600' },
-  { Icon: Clock, className: 'top-[48%] left-[-1%] hidden sm:flex', tone: 'text-gold-600' },
-  { Icon: Lightbulb, className: 'top-[44%] right-[0%] hidden sm:flex', tone: 'text-gold-600' },
-  { Icon: Shield, className: 'top-[14%] left-[10%] hidden md:flex', tone: 'text-brand-500' },
-] as const
+type HeroSlide = { src: string; alt: string }
 
-function HeroCharacters() {
+const fallbackHeroSlides: HeroSlide[] = [
+  {
+    src: heroCouncil40,
+    alt: 'PUP College of Law students at TAGUYOD Together Toward the Bar, with a Lady Justice banner and purple balloons',
+  },
+  {
+    src: heroCouncil41,
+    alt: 'The Solicitor covering a night gathering of PUP College of Law students',
+  },
+  {
+    src: heroCouncil42,
+    alt: 'Student Council members at Law in Motion, a legal forum on current national and international issues',
+  },
+  {
+    src: heroCouncil43,
+    alt: 'Law in Motion session with speaker Armando Virgil D. Ligutan via Zoom',
+  },
+]
+
+function HeroCarousel() {
   const reduce = useReducedMotion() === true
+  const [slides, setSlides] = useState<HeroSlide[]>(fallbackHeroSlides)
+  const [active, setActive] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const activeRef = useRef(0)
+  const count = slides.length
+  activeRef.current = active
+
+  useEffect(() => {
+    let cancelled = false
+    void listHeroSlides().then((result) => {
+      if (cancelled || !result.ok || result.data.items.length === 0) return
+      setSlides(
+        result.data.items.map((item) => ({
+          src: item.image,
+          alt: item.alt,
+        })),
+      )
+      setActive(0)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (reduce || paused) return
+    const id = window.setInterval(() => {
+      setActive((index) => (index + 1) % count)
+    }, 5500)
+    return () => window.clearInterval(id)
+  }, [count, paused, reduce])
+
+  function go(next: number) {
+    setActive(((next % count) + count) % count)
+  }
+
+  function onPointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return
+    const startX = event.clientX
+    const startIndex = activeRef.current
+    let lastStep = 0
+
+    const move = (ev: globalThis.PointerEvent) => {
+      const step = Math.trunc((ev.clientX - startX) / 80)
+      if (step === lastStep) return
+      lastStep = step
+      setActive((((startIndex - step) % count) + count) % count)
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      go(active + 1)
+    }
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      go(active - 1)
+    }
+  }
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, ease, delay: 0.28 }}
-      className="relative -mb-4 mt-6 w-full max-w-5xl sm:-mb-12 sm:mt-8"
+      className="relative mt-6 w-full max-w-5xl sm:mt-8"
     >
-      {sceneChips.map(({ Icon, className, tone }, index) => (
-        <motion.span
-          key={className}
-          aria-hidden
-          className={`absolute z-10 size-10 items-center justify-center rounded-2xl border border-zinc-100 bg-white shadow-[0_10px_24px_-14px_rgba(30,5,65,0.45)] sm:size-11 dark:border-zinc-800 dark:bg-zinc-900 ${className}`}
-          animate={reduce ? undefined : { y: [0, -8, 0] }}
-          transition={{
-            duration: 4.6 + index * 0.35,
-            repeat: Infinity,
-            ease: 'easeInOut',
-            delay: index * 0.28,
-          }}
-        >
-          <Icon className={`size-4 sm:size-[18px] ${tone}`} />
-        </motion.span>
-      ))}
-
-      <span
+      <div
         aria-hidden
-        className="absolute top-[22%] left-[8%] hidden size-2 rounded-full bg-brand-300 sm:left-[10%] sm:block"
-      />
-      <span
-        aria-hidden
-        className="absolute top-[6%] right-[22%] hidden size-1.5 rounded-full bg-gold-400 sm:block"
-      />
-      <span
-        aria-hidden
-        className="absolute top-[36%] right-[6%] hidden size-2 rounded-full bg-maroon-300 sm:block"
+        className="hero-neon-cast pointer-events-none absolute inset-x-[8%] bottom-[6%] h-[58%] rounded-full"
       />
 
       <div
-        aria-hidden
-        className="hero-neon-cast pointer-events-none absolute inset-x-[6%] bottom-[2%] h-[68%] rounded-full"
-      />
+        role="region"
+        aria-roledescription="carousel"
+        aria-label="Student Council highlights"
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+        onPointerDown={onPointerDown}
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+        onFocus={() => setPaused(true)}
+        onBlur={() => setPaused(false)}
+        className="hero-cast relative overflow-hidden rounded-[1.35rem] bg-zinc-100 shadow-[0_28px_50px_-28px_rgba(30,5,65,0.48)] select-none sm:rounded-[1.75rem] dark:bg-zinc-900"
+      >
+        <div className="relative aspect-[16/9] touch-pan-y">
+          {slides.map((slide, index) => (
+            <img
+              key={`${slide.src}-${index}`}
+              src={slide.src}
+              alt={index === active ? slide.alt : ''}
+              width={1600}
+              height={900}
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-out motion-reduce:transition-none ${
+                index === active ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+          ))}
 
-      <img
-        src={heroLawStudents}
-        alt="Five illustrated law students with books, folders, and a notebook"
-        width={1280}
-        height={684}
-        className="hero-cast relative mx-auto w-full max-w-[52rem] select-none"
-      />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent"
+          />
+        </div>
+
+        <p className="sr-only" aria-live="polite">
+          Slide {active + 1} of {count}
+        </p>
+
+        <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center gap-2 sm:bottom-4">
+          {slides.map((slide, index) => (
+            <button
+              key={`${slide.src}-${index}`}
+              type="button"
+              aria-label={`Show highlight ${index + 1}`}
+              aria-current={index === active || undefined}
+              onClick={() => go(index)}
+              className={`h-2 rounded-full transition-[width,background-color] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+                index === active ? 'w-6 bg-white' : 'w-2 bg-white/55 hover:bg-white/80'
+              }`}
+            />
+          ))}
+        </div>
+      </div>
     </motion.div>
   )
 }

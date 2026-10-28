@@ -3,10 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import { ArrowUpRight, Gavel, Loader2, Scale, type LucideIcon } from 'lucide-react'
 import { SectionKicker } from '@/components/ui/SectionKicker'
-import collegeOfLaw from '@/assets/logos/college-of-law.jpg'
-import lawStudentsSociety from '@/assets/logos/law-students-society.jpg'
 import studentCouncil from '@/assets/logos/student-council.png'
-import studentCouncilMark from '@/assets/logos/student-council-mark.jpg'
 import { siteName } from '@/components/layout/nav-data'
 import { Reveal } from '@/components/motion/Reveal'
 import {
@@ -16,13 +13,6 @@ import {
 } from '@/hooks/useCouncilBoard'
 import { useDocuments } from '@/hooks/useDocuments'
 import { cn } from '@/lib/utils'
-
-const seals = [
-  { src: collegeOfLaw, label: 'College of Law' },
-  { src: studentCouncilMark, label: 'Previous Student Council' },
-  { src: lawStudentsSociety, label: 'Law Students Society' },
-  { src: studentCouncil, label: 'Student Council' },
-]
 
 const ease = [0.16, 1, 0.3, 1] as const
 
@@ -303,18 +293,6 @@ function GovernanceHero({
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } } }}
           className="flex w-full max-w-3xl flex-col items-center text-center"
         >
-          <motion.div variants={rise} className="mb-5 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-            {seals.map((seal) => (
-              <img
-                key={seal.label}
-                src={seal.src}
-                alt={seal.label}
-                width={64}
-                height={64}
-                className="size-[clamp(2.25rem,1.5rem+2.2vw,3.5rem)] rounded-full border border-zinc-200 bg-[#ffffff] object-contain p-0.5"
-              />
-            ))}
-          </motion.div>
           <motion.div variants={rise}>
             <SectionKicker icon={Icon}>{kicker}</SectionKicker>
           </motion.div>

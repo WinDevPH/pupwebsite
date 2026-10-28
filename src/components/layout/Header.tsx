@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react'
+import { useEffect, useState, type ComponentProps, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { NavigationMenu } from 'radix-ui'
 import { AnimatePresence, motion } from 'motion/react'
@@ -8,16 +8,15 @@ import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { useScrollContainer } from '@/context/ScrollContext'
 import { useTheme } from '@/context/ThemeContext'
-import { mapProjectRecord } from '@/components/home/project-data'
 import { scrollPageTo, setPageScrollLocked } from '@/hooks/useLenis'
+import { useNavItems } from '@/hooks/useResourceLibrary'
 import { useSiteContact } from '@/hooks/useSiteContact'
-import { listProjects } from '@/lib/projects-api'
 import type { SiteContact } from '@/lib/site-settings-api'
 import { cn } from '@/lib/utils'
 import {
   isExternalNavTo,
-  navItems,
   primaryCta,
+  projectPillars,
   siteName,
   type NavFeature,
   type NavGroup,
@@ -27,39 +26,8 @@ import {
 
 type MenuItem = Extract<NavItem, { groups: NavGroup[] }>
 
-/** Nav items with the Projects mega-menu swapped for published projects once loaded. */
-function useNavItems(): NavItem[] {
-  const [projectLinks, setProjectLinks] = useState<NavLinkItem[] | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    void listProjects().then((result) => {
-      if (cancelled || !result.ok || result.data.items.length === 0) return
-      setProjectLinks(
-        result.data.items.map((item) => {
-          const project = mapProjectRecord(item)
-          return { label: project.label, to: `/projects/${project.slug}`, icon: project.icon }
-        }),
-      )
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  return useMemo(() => {
-    if (!projectLinks) return navItems
-    return navItems.map((item) => {
-      if (item.label !== 'Projects' || !item.groups) return item
-      const [first, ...rest] = item.groups
-      if (!first) return item
-      return { ...item, groups: [{ ...first, links: projectLinks }, ...rest] }
-    })
-  }, [projectLinks])
-}
-
 const navLinkClass =
-  'inline-flex h-10 items-center gap-1 rounded-lg px-3 text-[14px] font-medium whitespace-nowrap text-zinc-700 transition-colors hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500'
+  'inline-flex h-11 items-center gap-1 rounded-lg px-3 text-[15px] font-medium whitespace-nowrap text-zinc-700 transition-colors hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500'
 
 const GROUP_COL = 340
 const WIDE_GROUP_COL = 580
@@ -98,7 +66,15 @@ export function Header() {
     return () => el.removeEventListener('scroll', onScroll)
   }, [scroller, pathname])
 
-  const onHero = pathname === '/' || pathname === '/about/the-council' || pathname === '/transparency'
+  const onHero =
+    pathname === '/' ||
+    pathname === '/about/the-council' ||
+    pathname === '/transparency' ||
+    pathname === '/forms' ||
+    pathname === '/lockers' ||
+    pathname === '/merch' ||
+    pathname === '/projects' ||
+    projectPillars.some((item) => item.to === pathname)
 
   return (
     <>
@@ -109,10 +85,10 @@ export function Header() {
           'border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300',
           scrolled || mobileOpen || !onHero
             ? 'border-brand-100/80 bg-white/95 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/95'
-            : 'header-blend border-transparent bg-white dark:bg-transparent',
+            : 'header-blend border-transparent bg-transparent',
         )}
       >
-        <div className="mx-auto flex h-18 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Brand onNavigate={() => setOpenedAt(null)} />
 
           <DesktopNav items={items} />
@@ -120,7 +96,7 @@ export function Header() {
           <div className="flex shrink-0 items-center gap-2">
             <ThemeToggle className="hidden xl:inline-flex" />
             <div className="hidden xl:block">
-              <Button asChild>
+              <Button asChild className="h-11">
                 <Link to={primaryCta.to} aria-label={primaryCta.label}>
                   {primaryCta.label}
                   <ChevronsRight className="size-4" />
@@ -224,15 +200,15 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
       <img
         src={logo}
         alt=""
-        width={44}
-        height={44}
-        className="size-11 rounded-full ring-2 ring-gold-400"
+        width={48}
+        height={48}
+        className="size-12 rounded-full ring-2 ring-gold-400"
       />
       <span className="flex flex-col leading-tight">
-        <span className="text-[15px] font-bold tracking-tight text-brand-950">
+        <span className="text-base font-bold tracking-tight text-brand-950">
           {siteName.short}
         </span>
-        <span className="text-[11px] font-semibold tracking-[0.18em] text-brand-600 uppercase">
+        <span className="text-[12px] font-semibold tracking-[0.18em] text-brand-600 uppercase">
           {siteName.unit}
         </span>
       </span>
@@ -454,8 +430,8 @@ function MobileNav({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.22, ease: menuEase }}
           className={cn(
-            'fixed inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden bg-white top-18 xl:hidden dark:bg-zinc-950',
-            barVisible && 'md:top-[6.75rem]',
+            'fixed inset-x-0 bottom-0 z-40 flex flex-col overflow-hidden bg-white top-20 xl:hidden dark:bg-zinc-950',
+            barVisible && 'md:top-[7.25rem]',
           )}
         >
           <motion.div

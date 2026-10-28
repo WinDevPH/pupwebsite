@@ -14,7 +14,7 @@ import {
   Tags,
   Trash2,
 } from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { FormMediaDropzone, FormMediaPreview } from '@/components/portal/FormMediaPreview'
 import { RequireLoginRedirect } from '@/components/portal/RequireLoginRedirect'
 import {
@@ -59,6 +59,11 @@ import {
   type ProjectLink,
   type ProjectRecord,
 } from '@/lib/projects-api'
+import {
+  PROJECT_CATEGORIES,
+  isProjectCategorySlug,
+  type ProjectCategorySlug,
+} from '@/lib/project-categories'
 import { isEmptyRichText, sanitizeRichHtml } from '@/lib/rich-text'
 import { cn } from '@/lib/utils'
 
@@ -81,33 +86,42 @@ type FormState = {
   summary: string
   body: string
   slug: string
+  category: ProjectCategorySlug
   icon: ProjectIconKey
-  image: string
+  images: string[]
   sortOrder: string
   published: boolean
   links: ProjectLink[]
 }
 
-const emptyForm = (): FormState => ({
+const emptyForm = (category?: ProjectCategorySlug): FormState => ({
   title: '',
   summary: '',
   body: '',
   slug: '',
+  category: category ?? 'internal-affairs',
   icon: 'folder-kanban',
-  image: '',
+  images: [],
   sortOrder: '0',
   published: true,
   links: [{ label: '', to: '', href: '' }],
 })
 
 function recordToForm(item: ProjectRecord): FormState {
+  const images =
+    item.images?.length > 0
+      ? item.images.filter(Boolean)
+      : item.image
+        ? [item.image]
+        : []
   return {
     title: item.title,
     summary: item.summary,
     body: item.body ?? '',
     slug: item.slug,
+    category: isProjectCategorySlug(item.category) ? item.category : 'internal-affairs',
     icon: item.icon,
-    image: item.image,
+    images,
     sortOrder: String(item.sortOrder ?? 0),
     published: item.published,
     links:
@@ -130,6 +144,7 @@ function formToInput(form: FormState, id?: number): ProjectInput & { id?: number
     }))
     .filter((link) => link.label && (link.to || link.href))
 
+  const images = form.images.map((src) => src.trim()).filter(Boolean)
   const bodyHtml = sanitizeRichHtml(form.body)
   return {
     id,
@@ -137,8 +152,10 @@ function formToInput(form: FormState, id?: number): ProjectInput & { id?: number
     summary: form.summary.trim(),
     body: isEmptyRichText(bodyHtml) ? null : bodyHtml,
     slug: form.slug.trim() || undefined,
+    category: form.category,
     icon: form.icon,
-    image: form.image.trim(),
+    image: images[0] ?? '',
+    images,
     sortOrder: Number.parseInt(form.sortOrder, 10) || 0,
     published: form.published,
     links,
@@ -148,11 +165,15 @@ function formToInput(form: FormState, id?: number): ProjectInput & { id?: number
 export default function ProjectFormPage() {
   const navigate = useNavigate()
   const { id: idParam } = useParams()
+  const [searchParams] = useSearchParams()
   const editId = idParam ? Number(idParam) : NaN
   const mode: 'create' | 'edit' = Number.isFinite(editId) && editId > 0 ? 'edit' : 'create'
+  const presetCategory = isProjectCategorySlug(searchParams.get('category') ?? '')
+    ? (searchParams.get('category') as ProjectCategorySlug)
+    : undefined
 
   const fileInputId = useId()
-  const [form, setForm] = useState<FormState>(emptyForm)
+  const [form, setForm] = useState<FormState>(() => emptyForm(presetCategory))
   const [tab, setTab] = useState<EditorTab>('content')
   const [loading, setLoading] = useState(mode === 'edit')
   const [loadError, setLoadError] = useState('')
@@ -160,6 +181,7 @@ export default function ProjectFormPage() {
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [replaceIndex, setReplaceIndex] = useState<number | null>(null)
   const [toast, setToast] = useState<SnackToast | null>(null)
   const { cropSession, openCrop, closeCrop } = useImageCropUpload()
 
@@ -175,7 +197,7 @@ export default function ProjectFormPage() {
 
   useEffect(() => {
     if (mode !== 'edit') {
-      setForm(emptyForm())
+      setForm(emptyForm(presetCategory))
       setLoading(false)
       setLoadError('')
       setNeedsLogin(false)
@@ -205,7 +227,7 @@ export default function ProjectFormPage() {
     return () => {
       cancelled = true
     }
-  }, [mode, editId])
+  }, [mode, editId, presetCategory])
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -221,7 +243,7 @@ export default function ProjectFormPage() {
   const tabAlert = {
     content: !form.title.trim() || !form.summary.trim(),
     details: false,
-    media: !form.image.trim(),
+    media: form.images.length === 0,
     publish: false,
   } as const
 
@@ -241,7 +263,16 @@ export default function ProjectFormPage() {
       return
     }
     closeCrop()
-    set('image', result.data.url)
+    setForm((prev) => {
+      const next = [...prev.images]
+      if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < next.length) {
+        next[replaceIndex] = result.data.url
+      } else {
+        next.push(result.data.url)
+      }
+      return { ...prev, images: next }
+    })
+    setReplaceIndex(null)
     showToast('Image uploaded.', 'success')
   }
 
@@ -252,9 +283,9 @@ export default function ProjectFormPage() {
       showToast('Title and summary are required.', 'error')
       return
     }
-    if (!form.image.trim()) {
+    if (form.images.length === 0) {
       setTab('media')
-      showToast('Upload an image to continue.', 'error')
+      showToast('Upload at least one image to continue.', 'error')
       return
     }
 
@@ -287,7 +318,7 @@ export default function ProjectFormPage() {
     !loading &&
     form.title.trim() !== '' &&
     form.summary.trim() !== '' &&
-    form.image.trim() !== ''
+    form.images.length > 0
 
   if (loading) {
     return (
@@ -339,7 +370,8 @@ export default function ProjectFormPage() {
                       {mode === 'edit' ? 'Edit project' : 'New project'}
                     </h4>
                     <p className={formSectionIntroCls}>
-                      Projects appear in the homepage carousel when published.
+                      Each project belongs to one Student Council in Action program
+                      and appears on that public page.
                     </p>
                   </div>
                 </div>
@@ -389,7 +421,7 @@ export default function ProjectFormPage() {
                     </div>
                     <div className={workspaceFormFieldGroupCls}>
                       <label className={workspaceFormLabelCls} htmlFor="proj-summary">
-                        Summary <span className={workspaceFormRequiredMarkCls}>*</span>
+                        Description <span className={workspaceFormRequiredMarkCls}>*</span>
                       </label>
                       <textarea
                         id="proj-summary"
@@ -397,7 +429,7 @@ export default function ProjectFormPage() {
                         rows={3}
                         value={form.summary}
                         onChange={(e) => set('summary', e.target.value)}
-                        placeholder="Short summary shown on the project page."
+                        placeholder="Short description shown on the program page."
                         disabled={saving || uploading}
                         required
                       />
@@ -419,6 +451,40 @@ export default function ProjectFormPage() {
 
                 {tab === 'details' ? (
                   <div className="space-y-4">
+                    <div className={workspaceFormFieldGroupCls}>
+                      <p className={workspaceFormLabelCls}>
+                        Category <span className={workspaceFormRequiredMarkCls}>*</span>
+                      </p>
+                      <div className="grid gap-2">
+                        {PROJECT_CATEGORIES.map((option) => {
+                          const Icon = option.icon
+                          const active = form.category === option.slug
+                          return (
+                            <button
+                              key={option.slug}
+                              type="button"
+                              disabled={saving || uploading}
+                              onClick={() => set('category', option.slug)}
+                              className={cn(
+                                'inline-flex items-start gap-2 rounded-xl border px-3 py-2.5 text-left transition',
+                                active
+                                  ? 'border-brand-600 bg-brand-50 text-brand-900 dark:border-brand-400 dark:bg-brand-500/15 dark:text-brand-100'
+                                  : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200',
+                              )}
+                            >
+                              <Icon className="mt-0.5 h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                              <span className="min-w-0">
+                                <span className="block text-[13px] font-semibold">{option.label}</span>
+                                <span className="mt-0.5 block text-[12px] leading-5 text-zinc-500 dark:text-zinc-400">
+                                  {option.description}
+                                </span>
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className={workspaceFormFieldGroupCls}>
                         <label className={workspaceFormLabelCls} htmlFor="proj-slug">
@@ -477,7 +543,9 @@ export default function ProjectFormPage() {
 
                     <div className={workspaceFormFieldGroupCls}>
                       <div className="flex items-center justify-between gap-2">
-                        <p className={workspaceFormLabelCls}>Links</p>
+                        <p className={workspaceFormLabelCls}>
+                          Link <span className={workspaceFormOptionalBadgeCls}>Optional</span>
+                        </p>
                         <button
                           type="button"
                           disabled={saving || uploading}
@@ -553,48 +621,58 @@ export default function ProjectFormPage() {
                         e.target.value = ''
                       }}
                     />
-                    {form.image ? (
+                    {form.images.map((src, index) => (
                       <FormMediaPreview
-                        src={form.image}
-                        frame="portrait"
-                        uploading={uploading}
+                        key={`${src}-${index}`}
+                        src={src}
+                        frame="landscape"
+                        uploading={uploading && replaceIndex === index}
                         disabled={saving || uploading}
-                        label="Image ready"
+                        label={index === 0 ? 'Cover image' : `Image ${index + 1}`}
                         primaryAction={{
                           label: 'Replace',
-                          onClick: () => document.getElementById(fileInputId)?.click(),
+                          onClick: () => {
+                            setReplaceIndex(index)
+                            document.getElementById(fileInputId)?.click()
+                          },
                         }}
                         secondaryAction={{
                           label: 'Remove',
                           tone: 'danger',
-                          onClick: () => set('image', ''),
+                          onClick: () =>
+                            set(
+                              'images',
+                              form.images.filter((_, i) => i !== index),
+                            ),
                         }}
                       />
-                    ) : (
-                      <FormMediaDropzone
-                        htmlFor={fileInputId}
-                        dragOver={dragOver}
-                        uploading={uploading}
-                        disabled={saving || uploading}
-                        onDragEnter={(e) => {
-                          e.preventDefault()
-                          if (!saving && !uploading) setDragOver(true)
-                        }}
-                        onDragOver={(e) => {
-                          e.preventDefault()
-                          if (!saving && !uploading) setDragOver(true)
-                        }}
-                        onDragLeave={(e) => {
-                          e.preventDefault()
-                          setDragOver(false)
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault()
-                          setDragOver(false)
-                          void handleImageFile(e.dataTransfer.files?.[0])
-                        }}
-                      />
-                    )}
+                    ))}
+                    <FormMediaDropzone
+                      htmlFor={fileInputId}
+                      title={form.images.length > 0 ? 'Add another image' : 'Upload image'}
+                      dragOver={dragOver}
+                      uploading={uploading && replaceIndex === null}
+                      disabled={saving || uploading}
+                      onClick={() => setReplaceIndex(null)}
+                      onDragEnter={(e) => {
+                        e.preventDefault()
+                        if (!saving && !uploading) setDragOver(true)
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault()
+                        if (!saving && !uploading) setDragOver(true)
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault()
+                        setDragOver(false)
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault()
+                        setDragOver(false)
+                        setReplaceIndex(null)
+                        void handleImageFile(e.dataTransfer.files?.[0])
+                      }}
+                    />
                   </div>
                 ) : null}
 
@@ -639,7 +717,10 @@ export default function ProjectFormPage() {
           title="Crop project image"
           aspect={3 / 4}
           presets={portraitAspectPresets}
-          onCancel={closeCrop}
+          onCancel={() => {
+            setReplaceIndex(null)
+            closeCrop()
+          }}
           onConfirm={handleCroppedUpload}
         />
       ) : null}

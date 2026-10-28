@@ -1,9 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Link } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import {
-  BookMarked,
   BookOpen,
   CalendarDays,
   CalendarRange,
@@ -13,7 +11,6 @@ import {
   GraduationCap,
   LayoutGrid,
   ListFilter,
-  ScrollText,
   Sun,
   type LucideIcon,
 } from 'lucide-react'
@@ -24,7 +21,6 @@ import { easeOut } from '@/lib/motion'
 import { Reveal } from '@/components/motion/Reveal'
 import { useHashScroll } from '@/hooks/useHashScroll'
 import emptyCalendar from '@/assets/calendar/empty.jpg'
-import { studentHandbookUrl } from '@/components/layout/nav-data'
 import { listCalendarEvents, type CalendarKind } from '@/lib/calendar-api'
 import {
   currentAcademicYearStart,
@@ -646,74 +642,6 @@ export function EventsCalendar() {
             </motion.div>
           </aside>
           </div>
-        </Reveal>
-
-        <Reveal delay={0.05}>
-          <nav
-            aria-label="Quick links"
-            className="mx-auto mt-[clamp(1.5rem,1rem+1.5vw,2.25rem)] max-w-3xl"
-          >
-            <p className="text-center text-[11px] font-semibold tracking-[0.16em] text-brand-700 uppercase dark:text-brand-300">
-              Quick links
-            </p>
-            <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-              {[
-                {
-                  label: 'Student Handbook',
-                  href: studentHandbookUrl,
-                  description: 'Policies and guidelines for PUP law students.',
-                  icon: BookMarked,
-                },
-                {
-                  label: 'Transparency',
-                  to: '/transparency',
-                  description: 'Governance records and Council resolutions.',
-                  icon: ScrollText,
-                },
-              ].map((item) => {
-                const className =
-                  'group flex h-full items-center gap-3 rounded-xl border border-zinc-200 bg-white px-3.5 py-3 transition-colors hover:border-brand-200 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-brand-500/40'
-                const body = (
-                  <>
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-brand-100 text-brand-700 dark:border-brand-500/30 dark:text-brand-300">
-                      <item.icon className="size-4" aria-hidden />
-                    </span>
-                    <span className="min-w-0 flex-1 text-left">
-                      <span className="block text-sm font-semibold text-zinc-950 dark:text-zinc-50">
-                        {item.label}
-                      </span>
-                      <span className="mt-0.5 block text-[13px] leading-5 text-zinc-500 dark:text-zinc-400">
-                        {item.description}
-                      </span>
-                    </span>
-                    <ChevronRight
-                      className="size-4 shrink-0 text-zinc-400 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-brand-700"
-                      aria-hidden
-                    />
-                  </>
-                )
-
-                return (
-                  <li key={'href' in item ? item.href : item.to}>
-                    {'href' in item ? (
-                      <a
-                        href={item.href}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={className}
-                      >
-                        {body}
-                      </a>
-                    ) : (
-                      <Link to={item.to} className={className}>
-                        {body}
-                      </Link>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          </nav>
         </Reveal>
       </div>
     </section>

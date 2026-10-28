@@ -1,4 +1,4 @@
-import type { LockerSize, ShopId, ShopItem } from '@/components/portal/catalog'
+import type { ShopId, ShopItem } from '@/components/portal/catalog'
 
 export type ShopAvailability = 'reserved' | 'out'
 
@@ -13,7 +13,6 @@ export type ShopItemRecord = {
   stock: number
   image: string
   alt: string
-  size: LockerSize | null
   number: string | null
   availability: ShopAvailability | null
   sortOrder: number
@@ -32,7 +31,6 @@ export type ShopItemInput = {
   stock?: number
   image: string
   alt?: string
-  size?: LockerSize | null
   number?: string | null
   availability?: ShopAvailability | null
   sortOrder?: number
@@ -45,7 +43,7 @@ export type ShopsRecord = Record<ShopId, ShopListing>
 export const SHOP_IDS: ShopId[] = ['locker', 'merch']
 
 export const SHOP_META: Record<ShopId, { title: string; kicker: string }> = {
-  locker: { title: 'Bookings for Locker', kicker: 'Locker' },
+  locker: { title: 'Locker Availability', kicker: 'Locker' },
   merch: { title: 'Selling of Merch', kicker: 'Income · General' },
 }
 
@@ -138,7 +136,6 @@ export function toShopItem(record: ShopItemRecord): ShopItem {
     image: record.image,
     alt: record.alt || record.name,
   }
-  if (record.size === 'half' || record.size === 'full') item.size = record.size
   if (record.number) item.number = record.number
   if (record.availability === 'reserved' || record.availability === 'out') {
     item.availability = record.availability

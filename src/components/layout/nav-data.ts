@@ -5,23 +5,27 @@ import {
   CalendarCheck,
   CircleHelp,
   ClipboardList,
-  FilePenLine,
   FileText,
   FolderKanban,
   FolderOpen,
-  Gavel,
   Handshake,
   House,
   Landmark,
   Library,
+  LockKeyhole,
   Mail,
   Megaphone,
-  Printer,
   Scale,
   ScrollText,
-  Users,
-  Wifi,
+  Shirt,
 } from 'lucide-react'
+import {
+  PROJECT_CATEGORIES,
+  projectCategoryFromSlug,
+  type ProjectCategory,
+} from '@/lib/project-categories'
+
+export { projectCategoryFromSlug }
 
 /** Absolute http(s) URLs open in a new tab; everything else is an in-app route. */
 export function isExternalNavTo(to: string) {
@@ -31,9 +35,24 @@ export function isExternalNavTo(to: string) {
 export const studentHandbookUrl =
   'https://drive.google.com/file/d/1neq3kippfsVWgFeWYepQWOx04X4TaUlE/view?usp=sharing'
 
+export const enrollmentGuidelinesUrl =
+  'https://drive.google.com/drive/folders/133QcxmFnf5taCTjdLKPDUO4fAD8HGR-J?usp=sharing'
+export const jdCurriculumUrl =
+  'https://drive.google.com/drive/folders/1wX2DUTuWIhfmhpQC9J0kwX22oMz59iqf?usp=sharing'
+export const miscellaneousResourcesUrl =
+  'https://drive.google.com/drive/folders/1y2apA30VR-cbCyZc01yPxJNVy7KeDa0f?usp=sharing'
+export const merchGuidelinesUrl =
+  'https://drive.google.com/drive/folders/1VPzGaGuRS82JZf1x4Gp_nOaIdiktLdBH?usp=sharing'
+export const lockerGuidelinesUrl =
+  'https://drive.google.com/file/d/1-Htb0iYsk0TTFAd2pGiziwfIUqwkpVg9/view?usp=sharing'
+
+export const formsPageDescription =
+  'A centralized digital library of essential student documents, featuring official academic forms, enrollment guidelines, the Juris Doctor curriculum, and regulatory resources for easy reference.'
+
 export type NavLinkItem = {
   label: string
   to: string
+  slug?: string
   description?: string
   icon?: LucideIcon
 }
@@ -95,11 +114,11 @@ export const contact = {
       handle: '/pupcl.sc',
       href: 'https://www.facebook.com/pupcl.sc',
     },
-    { name: 'X', handle: '@pupcol_sc', href: 'https://x.com/pupcol_sc' },
+    { name: 'X', handle: '@pupcolsc', href: 'https://x.com/pupcolsc' },
     {
       name: 'Instagram',
-      handle: '@pupcol_sc',
-      href: 'https://www.instagram.com/pupcol_sc',
+      handle: '@pupcolsc_official',
+      href: 'https://www.instagram.com/pupcolsc_official/',
     },
   ],
 }
@@ -108,7 +127,7 @@ export const footerSocials = [
   {
     name: 'Instagram',
     handle: '@pupcolsc_official',
-    href: 'https://www.instagram.com/pupcolsc_official',
+    href: 'https://www.instagram.com/pupcolsc_official/',
   },
   {
     name: 'Facebook',
@@ -132,8 +151,7 @@ export const footerColumns = [
     title: 'Student Services',
     links: [
       { label: 'Student Grievance', to: '/services/grievance' },
-      { label: 'Communication', to: '/services/communication' },
-      { label: 'Projects', to: '/projects/board-meetings' },
+      { label: 'Projects', to: '/projects' },
       { label: 'Services Portal', to: '/portal' },
     ],
   },
@@ -141,20 +159,28 @@ export const footerColumns = [
     title: 'Resources',
     links: [
       { label: 'Student Handbook', to: studentHandbookUrl },
-      { label: 'Governance & resolutions', to: '/transparency' },
-      { label: 'Announcements', to: '/announcements' },
+      { label: 'Forms', to: '/forms' },
+      { label: 'Announcements', to: '/#bulletin' },
     ],
   },
 ] as const
 
 export const primaryCta: NavLinkItem = {
-  label: 'Login to Portal',
+  label: 'Admin Panel',
   to: '/login',
 }
 
 export const portalCta: NavLinkItem = {
   label: 'Student Services Portal',
   to: '/portal',
+}
+
+export const projectPillars = PROJECT_CATEGORIES
+
+export type ProjectPillar = ProjectCategory
+
+export function projectPillarFromSlug(slug: string | undefined) {
+  return projectCategoryFromSlug(slug)
 }
 
 export const navItems: NavItem[] = [
@@ -217,28 +243,9 @@ export const navItems: NavItem[] = [
     },
   },
   {
-    label: 'Governance',
-    title: 'Governance: Legislative & Executive',
+    label: 'Governance & Transparency',
+    to: '/transparency',
     icon: Scale,
-    groups: [
-      {
-        title: 'Structure',
-        links: [
-          {
-            label: 'Legislative',
-            to: '/governance/legislative',
-            icon: Scale,
-            description: 'Board resolutions, Series of 2026.',
-          },
-          {
-            label: 'Executive',
-            to: '/governance/executive',
-            icon: Gavel,
-            description: 'Officers for the public academic year.',
-          },
-        ],
-      },
-    ],
   },
   {
     label: 'Projects',
@@ -247,31 +254,43 @@ export const navItems: NavItem[] = [
     groups: [
       {
         title: 'Student Council in Action',
-        wide: true,
-        links: [
-          { label: 'Board Meetings', to: '/projects/board-meetings', icon: CalendarCheck },
-          { label: 'Lex in Motion', to: '/projects/lex-in-motion', icon: Megaphone },
-          { label: 'Free Printing Service', to: '/projects/free-printing', icon: Printer },
-          { label: 'WiFi Library', to: '/projects/wifi-library', icon: Wifi },
-          { label: 'Online Study Hub', to: '/projects/online-study-hub', icon: BookOpen },
-          { label: 'JD Buddies', to: '/projects/jd-buddies', icon: Users },
-        ],
+        links: projectPillars.map((item) => ({
+          label: item.label,
+          to: item.to,
+          icon: item.icon,
+        })),
       },
     ],
   },
   {
-    label: 'Transparency',
-    title: 'Transparency & Documents',
-    icon: ScrollText,
+    label: 'Services & Store',
+    title: 'Services & Store',
+    icon: Shirt,
     groups: [
       {
-        title: 'Quick Links',
+        title: 'Reservations',
         links: [
           {
-            label: 'Governance & resolutions',
-            to: '/transparency',
-            icon: Scale,
-            description: 'Board and Commission on Appointments resolutions, Series of 2026.',
+            label: 'Merchandise Reservation',
+            to: '/merch',
+            icon: Shirt,
+            description: 'Reserve official Student Council merchandise.',
+          },
+          {
+            label: 'Locker Reservation',
+            to: '/lockers',
+            icon: LockKeyhole,
+            description: 'Reserve a locker for the semester.',
+          },
+          {
+            label: 'Merch Guidelines',
+            to: merchGuidelinesUrl,
+            icon: BookOpen,
+          },
+          {
+            label: 'Locker Guidelines',
+            to: lockerGuidelinesUrl,
+            icon: BookOpen,
           },
         ],
       },
@@ -283,80 +302,36 @@ export const navItems: NavItem[] = [
     icon: Library,
     groups: [
       {
-        title: 'Forms',
-        wide: true,
-        note: 'Official academic forms and templates for College of Law students.',
+        title: 'Documents',
         links: [
           {
-            label: 'Accreditation Form',
-            to: 'https://drive.google.com/file/d/1QVsG7qF_f3GN1MVR19y6SuknU-ZJlsCQ/view?usp=sharing',
-            icon: FileText,
-          },
-          {
-            label: 'Affidavit of Change of Grade Format',
-            to: 'https://docs.google.com/document/d/1t0JLxFS4ysLVFJpt5VmoxdQrN_m496xu/edit?usp=sharing&ouid=117853699207286348297&rtpof=true&sd=true',
-            icon: FilePenLine,
-          },
-          {
-            label: 'PUP ACE Form — Adding of Subject',
-            to: 'https://drive.google.com/file/d/1WFKLhj3TWoDFALvFvXzmJO8bSMMcwai-/view?usp=sharing',
-            icon: ClipboardList,
-          },
-          {
-            label: 'PUP ACE Form — Change of Schedule/Subject',
-            to: 'https://drive.google.com/file/d/1JdAriJUHTK-GnW0rYyfxu_hKSjYfB8Ko/view?usp=sharing',
-            icon: ClipboardList,
-          },
-          {
-            label: 'PUP ACE Form — Withdrawal',
-            to: 'https://drive.google.com/file/d/1lv4m80iNljzCpPJzol_7ojq-5jXBAnMF/view?usp=sharing',
-            icon: ClipboardList,
-          },
-          {
-            label: 'Application for Re-Admission',
-            to: 'https://drive.google.com/file/d/1iwkS1l2xkktuL3XIhK1FQWPqvlc2t0Nl/view?usp=sharing',
-            icon: FileText,
-          },
-          {
-            label: 'PUP Completion Form R-1',
-            to: 'https://drive.google.com/file/d/1-U4Ah7EjhzV3Qp2zkIqx_8PUvKGkj8lH/view?usp=sharing',
-            icon: FileText,
-          },
-          {
-            label: 'R0-Form Enrollment Form for Override',
-            to: 'https://docs.google.com/document/d/17wC0eEKKh9JIPH3-fsHSzNpU_3spSsYk/edit?usp=sharing&ouid=117853699207286348297&rtpof=true&sd=true',
-            icon: FilePenLine,
-          },
-          {
-            label: 'Sample Letter of Appeal — Quality Point Average System',
-            to: 'https://docs.google.com/document/d/1YGstMT4iQKyT-iRLYKEwPQPSAJ9EcrP5/edit?usp=sharing&ouid=117853699207286348297&rtpof=true&sd=true',
-            icon: ScrollText,
-          },
-          {
-            label: 'Sample Letter of Appeal — Scholastic Delinquency',
-            to: 'https://docs.google.com/document/d/1btguPxZR6UWCuaP6VD8tTUPc9AKXhxNg/edit?usp=sharing&ouid=117853699207286348297&rtpof=true&sd=true',
-            icon: ScrollText,
-          },
-          {
-            label: 'Sample Letter of Appeal — Two-Strike Rule',
-            to: 'https://docs.google.com/document/d/1vcPmHVQ5GpXkSbcokBTZYBq0RqzQT-DO/edit?usp=sharing&ouid=117853699207286348297&rtpof=true&sd=true',
-            icon: ScrollText,
-          },
-          {
-            label: 'Promissory Notes',
-            to: 'https://drive.google.com/drive/folders/1ySxUEjMevUF2eqfMQz1caG2xJ4j1NCXW?usp=sharing',
-            icon: FolderOpen,
-          },
-        ],
-      },
-      {
-        title: 'Student Handbook',
-        links: [
-          {
+            slug: 'student-handbook',
             label: 'Student Handbook',
             to: studentHandbookUrl,
             icon: BookMarked,
-            description: 'Policies and guidelines for PUP law students.',
+          },
+          {
+            label: 'Forms',
+            to: '/forms',
+            icon: FolderOpen,
+          },
+          {
+            slug: 'enrollment-guidelines',
+            label: 'Enrollment Guidelines',
+            to: enrollmentGuidelinesUrl,
+            icon: ClipboardList,
+          },
+          {
+            slug: 'jd-curriculum',
+            label: 'Juris Doctor Curriculum',
+            to: jdCurriculumUrl,
+            icon: ScrollText,
+          },
+          {
+            slug: 'miscellaneous',
+            label: 'Miscellaneous',
+            to: miscellaneousResourcesUrl,
+            icon: FileText,
           },
         ],
       },
