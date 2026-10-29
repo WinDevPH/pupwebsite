@@ -17,11 +17,7 @@ try {
         default => api_json(['ok' => false, 'error' => 'Method not allowed.'], 405),
     };
 } catch (Throwable $error) {
-    api_json([
-        'ok' => false,
-        'error' => 'Database unavailable. Run scripts/run-012-public-cms.php and start MySQL.',
-        'detail' => $error->getMessage(),
-    ], 503);
+    api_json_db_error($error);
 }
 
 /** @return list<string> */
@@ -63,6 +59,56 @@ function shop_ensure_tables(PDO $pdo): void
         $pdo->exec('ALTER TABLE shop_items DROP COLUMN size');
     }
     $ready = true;
+}
+
+/** Lockers with an active reservation occupy the bay (public + admin grids). */
+function shop_occupied_lockers(PDO $pdo): array
+{
+    $ids = [];
+    $keys = [];
+    try {
+        $table = $pdo->query("SHOW TABLES LIKE 'shop_reservations'")->fetch();
+        if ($table) {
+            $stmt = $pdo->query(
+                "SELECT shop_item_id, item_key
+                 FROM shop_reservations
+                 WHERE shop = 'locker'
+                   AND LOWER(status) <> 'cancelled'"
+            );
+            if ($stmt) {
+                foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                    $id = (int) ($row['shop_item_id'] ?? 0);
+                    if ($id > 0) {
+                        $ids[$id] = true;
+                    }
+                    $key = strtolower(trim((string) ($row['item_key'] ?? '')));
+                    if ($key !== '') {
+                        $keys[$key] = true;
+                    }
+                }
+            }
+        }
+    } catch (Throwable) {
+        // Shop listing still works if reservations are unavailable.
+    }
+
+    return ['ids' => $ids, 'keys' => $keys];
+}
+
+function shop_apply_occupancy(array $item, array $occupied): array
+{
+    if (($item['shop'] ?? '') !== 'locker') {
+        return $item;
+    }
+    if (($item['availability'] ?? '') === 'out') {
+        return $item;
+    }
+    $id = (int) ($item['id'] ?? 0);
+    $key = strtolower(trim((string) ($item['itemKey'] ?? $item['key'] ?? '')));
+    $taken = ($id > 0 && isset($occupied['ids'][$id]))
+        || ($key !== '' && isset($occupied['keys'][$key]));
+    $item['availability'] = $taken ? 'reserved' : null;
+    return $item;
 }
 
 function shop_row(array $row): array
@@ -168,6 +214,7 @@ function shop_get(): never
     $shop = strtolower(trim((string) ($_GET['shop'] ?? '')));
     $itemKey = trim((string) ($_GET['itemKey'] ?? $_GET['key'] ?? ''));
     $includeAll = (string) ($_GET['all'] ?? '') === '1';
+    $occupied = shop_occupied_lockers($pdo);
 
     if ($id > 0) {
         $stmt = $pdo->prepare('SELECT * FROM shop_items WHERE id = :id LIMIT 1');
@@ -179,7 +226,7 @@ function shop_get(): never
         if ((int) $row['is_published'] !== 1) {
             api_require_manager();
         }
-        api_json(['ok' => true, 'item' => shop_row($row)]);
+        api_json(['ok' => true, 'item' => shop_apply_occupancy(shop_row($row), $occupied)]);
     }
 
     if ($shop !== '' && $itemKey !== '') {
@@ -197,7 +244,7 @@ function shop_get(): never
         if ((int) $row['is_published'] !== 1) {
             api_require_manager();
         }
-        api_json(['ok' => true, 'item' => shop_row($row)]);
+        api_json(['ok' => true, 'item' => shop_apply_occupancy(shop_row($row), $occupied)]);
     }
 
     if ($shop !== '' && !in_array($shop, shop_ids(), true)) {
@@ -232,7 +279,7 @@ function shop_get(): never
     $items = [];
     if ($stmt) {
         foreach ($stmt->fetchAll() as $row) {
-            $items[] = shop_row($row);
+            $items[] = shop_apply_occupancy(shop_row($row), $occupied);
         }
     }
 

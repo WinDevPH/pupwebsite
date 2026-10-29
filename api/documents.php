@@ -18,11 +18,7 @@ try {
         default => api_json(['ok' => false, 'error' => 'Method not allowed.'], 405),
     };
 } catch (Throwable $error) {
-    api_json([
-        'ok' => false,
-        'error' => 'Database unavailable. Run scripts/run-012-public-cms.php and start MySQL.',
-        'detail' => $error->getMessage(),
-    ], 503);
+    api_json_db_error($error);
 }
 
 /** @return list<string> */
@@ -66,6 +62,24 @@ function documents_ensure_tables(PDO $pdo): void
           KEY idx_documents_published (is_published, sort_order, id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
+
+    $subcategory = $pdo->query("SHOW COLUMNS FROM documents LIKE 'subcategory'")->fetch();
+    if (!$subcategory) {
+        try {
+            $pdo->exec(
+                "ALTER TABLE documents
+                 ADD COLUMN subcategory VARCHAR(64) NOT NULL DEFAULT '' AFTER category"
+            );
+            $pdo->exec(
+                'ALTER TABLE documents ADD KEY idx_documents_subcategory (category, subcategory, is_published, sort_order, id)'
+            );
+        } catch (PDOException $error) {
+            if (!str_contains(strtolower($error->getMessage()), 'duplicate')) {
+                throw $error;
+            }
+        }
+    }
+
     $ready = true;
 }
 
@@ -74,6 +88,7 @@ function documents_row(array $row): array
     return [
         'id' => (int) $row['id'],
         'category' => (string) $row['category'],
+        'subcategory' => (string) ($row['subcategory'] ?? ''),
         'number' => (string) ($row['doc_number'] ?? ''),
         'docNumber' => (string) ($row['doc_number'] ?? ''),
         'title' => (string) $row['title'],
@@ -92,6 +107,7 @@ function documents_payload(?array $body = null): array
     $body ??= api_read_json();
     $category = strtolower(trim((string) ($body['category'] ?? '')));
     $number = trim((string) ($body['number'] ?? $body['docNumber'] ?? $body['doc_number'] ?? ''));
+    $subcategory = api_slugify(trim((string) ($body['subcategory'] ?? $body['subCategory'] ?? '')));
     $title = trim((string) ($body['title'] ?? ''));
     $url = trim((string) ($body['url'] ?? $body['href'] ?? ''));
     $series = trim((string) ($body['seriesLabel'] ?? $body['series_label'] ?? ''));
@@ -105,6 +121,19 @@ function documents_payload(?array $body = null): array
             'ok' => false,
             'error' => 'Choose a published transparency tab as the document category.',
         ], 422);
+    }
+
+    $tabs = transparency_category_tabs(api_pdo(), $category);
+    $tabSlugs = array_map(static fn (array $tab): string => $tab['slug'], $tabs);
+    if ($tabSlugs !== []) {
+        if ($subcategory === '') {
+            $subcategory = $tabSlugs[0];
+        }
+        if (!in_array($subcategory, $tabSlugs, true)) {
+            api_json(['ok' => false, 'error' => 'Choose one of this archive’s category tabs.'], 422);
+        }
+    } else {
+        $subcategory = '';
     }
     if ($title === '') {
         api_json(['ok' => false, 'error' => 'Title is required.'], 422);
@@ -121,6 +150,7 @@ function documents_payload(?array $body = null): array
 
     return [
         'category' => $category,
+        'subcategory' => mb_substr($subcategory, 0, 64),
         'doc_number' => mb_substr($number, 0, 64),
         'title' => $title,
         'url' => $url,
@@ -196,6 +226,7 @@ function documents_get(): never
         'items' => $items,
         'category' => $category !== '' ? $category : null,
         'categories' => transparency_categories_options($pdo),
+        'tabs' => $category !== '' ? transparency_category_tabs($pdo, $category) : [],
     ]);
 }
 
@@ -208,9 +239,9 @@ function documents_create(): never
 
     $stmt = $pdo->prepare(
         'INSERT INTO documents
-          (category, doc_number, title, url, series_label, sort_order, is_published)
+          (category, subcategory, doc_number, title, url, series_label, sort_order, is_published)
          VALUES
-          (:category, :doc_number, :title, :url, :series_label, :sort_order, :is_published)'
+          (:category, :subcategory, :doc_number, :title, :url, :series_label, :sort_order, :is_published)'
     );
     $stmt->execute($data);
 
@@ -244,6 +275,7 @@ function documents_update(): never
         'UPDATE documents
          SET category = :category,
              doc_number = :doc_number,
+             subcategory = :subcategory,
              title = :title,
              url = :url,
              series_label = :series_label,

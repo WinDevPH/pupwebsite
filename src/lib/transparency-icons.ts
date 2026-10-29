@@ -1,11 +1,14 @@
 import {
   Building2,
+  CalendarClock,
   ClipboardCheck,
+  FileBarChart,
   FileText,
   Gavel,
   HeartHandshake,
   Landmark,
   Mail,
+  PieChart,
   Receipt,
   Scale,
   ScrollText,
@@ -44,4 +47,15 @@ const ICONS: Record<string, LucideIcon> = {
 export function transparencyIcon(name: string | undefined | null): LucideIcon {
   if (!name) return FileText
   return ICONS[name] ?? FileText
+}
+
+const INNER_TAB_ICONS: Record<string, LucideIcon> = {
+  'quarterly-liquidations': CalendarClock,
+  'budget-allocations': PieChart,
+  'financial-statements': FileBarChart,
+}
+
+export function transparencyInnerTabIcon(slug: string | undefined | null): LucideIcon {
+  if (!slug) return FileText
+  return INNER_TAB_ICONS[slug] ?? FileText
 }

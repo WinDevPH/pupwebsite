@@ -56,7 +56,7 @@ $pdo->exec(
      ON DUPLICATE KEY UPDATE id = id'
 );
 
-$seedDir = $root . '/public/gallery/seed';
+$seedDir = $root . '/public/uploads/gallery';
 if (!is_dir($seedDir) && !mkdir($seedDir, 0755, true) && !is_dir($seedDir)) {
     fwrite(STDERR, "Could not create {$seedDir}\n");
     exit(1);
@@ -94,12 +94,12 @@ $pdo->prepare(
 $batchId = (int) $pdo->lastInsertId();
 
 $images = [
-    ['/gallery/seed/council-formal.jpg', 'The Student Council', 'Formal portrait', 'Members of the PUP College of Law Student Council', 10],
-    ['/gallery/seed/council-candid.jpg', 'The Student Council', 'Together', 'PUP College of Law Student Council in formal attire', 20],
-    ['/gallery/seed/officers-formal.jpg', 'Officers', 'Formal portrait', 'Officers of the PUP College of Law Student Council', 30],
-    ['/gallery/seed/council-polo.jpg', 'The Student Council', 'College shirts', 'PUP College of Law Student Council in college shirts', 40],
-    ['/gallery/seed/officers-polo.jpg', 'Officers', 'College shirts', 'Officers of the PUP College of Law Student Council in college shirts', 50],
-    ['/gallery/seed/council-polo-circle.jpg', 'The Student Council', 'Circle', 'PUP College of Law Student Council gathered together', 60],
+    ['/uploads/gallery/council-formal.jpg', 'The Student Council', 'Formal portrait', 'Members of the PUP College of Law Student Council', 10],
+    ['/uploads/gallery/council-candid.jpg', 'The Student Council', 'Together', 'PUP College of Law Student Council in formal attire', 20],
+    ['/uploads/gallery/officers-formal.jpg', 'Officers', 'Formal portrait', 'Officers of the PUP College of Law Student Council', 30],
+    ['/uploads/gallery/council-polo.jpg', 'The Student Council', 'College shirts', 'PUP College of Law Student Council in college shirts', 40],
+    ['/uploads/gallery/officers-polo.jpg', 'Officers', 'College shirts', 'Officers of the PUP College of Law Student Council in college shirts', 50],
+    ['/uploads/gallery/council-polo-circle.jpg', 'The Student Council', 'Circle', 'PUP College of Law Student Council gathered together', 60],
 ];
 
 $insert = $pdo->prepare(

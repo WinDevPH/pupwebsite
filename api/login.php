@@ -30,11 +30,8 @@ if (strlen($password) > 128) {
 
 try {
     $rate = api_login_rate_status($ip, $email);
-} catch (Throwable) {
-    api_json([
-        'ok' => false,
-        'error' => 'Database unavailable. Import database/schema.sql and start MySQL in XAMPP.',
-    ], 503);
+} catch (Throwable $error) {
+    api_json_db_error($error);
 }
 
 if ($rate['blocked']) {
@@ -59,11 +56,8 @@ try {
     );
     $stmt->execute(['email' => $email]);
     $user = $stmt->fetch();
-} catch (Throwable) {
-    api_json([
-        'ok' => false,
-        'error' => 'Database unavailable. Import database/schema.sql and start MySQL in XAMPP.',
-    ], 503);
+} catch (Throwable $error) {
+    api_json_db_error($error);
 }
 
 // Constant-time style check even when the account is missing.

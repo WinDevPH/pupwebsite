@@ -1,3 +1,4 @@
+import { unreachableServerMessage } from '@/lib/unreachable-server'
 export type PortalRequestStatus =
   | 'Submitted'
   | 'Received'
@@ -75,7 +76,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<ApiOk<T> | 
   } catch {
     return {
       ok: false,
-      error: 'Cannot reach the server. Start Apache and MySQL in XAMPP.',
+      error: unreachableServerMessage(),
       status: 0,
     }
   }
@@ -86,14 +87,14 @@ export async function submitPortalRequest(input: {
   email: string
   subject: string
   body: string
-  file: File
+  file?: File
 }) {
   const body = new FormData()
   body.append('name', input.name)
   body.append('email', input.email)
   body.append('subject', input.subject)
   body.append('body', input.body)
-  body.append('file', input.file)
+  if (input.file) body.append('file', input.file)
 
   return request<{
     item: PortalRequestRecord

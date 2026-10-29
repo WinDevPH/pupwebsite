@@ -23,6 +23,7 @@ import AboutContentFormPage from '@/pages/dashboard/AboutContentFormPage'
 import DocumentFormPage from '@/pages/dashboard/DocumentFormPage'
 import DocumentsAdmin from '@/pages/dashboard/DocumentsAdmin'
 import { TRANSPARENCY_ARCHIVES } from '@/lib/transparency-admin'
+import { isAppleTouch } from '@/lib/device'
 import FaqAdmin from '@/pages/dashboard/FaqAdmin'
 import FaqFormPage from '@/pages/dashboard/FaqFormPage'
 import MerchAdmin from '@/pages/dashboard/MerchAdmin'
@@ -40,6 +41,7 @@ import GalleryBatchFormPage from '@/pages/dashboard/GalleryBatchFormPage'
 import HeroSlideFormPage from '@/pages/dashboard/HeroSlideFormPage'
 import HeroSlidesAdmin from '@/pages/dashboard/HeroSlidesAdmin'
 import RequestDetailPage from '@/pages/dashboard/RequestDetailPage'
+import ChatAdmin from '@/pages/dashboard/ChatAdmin'
 import RequestsAdmin from '@/pages/dashboard/RequestsAdmin'
 import PortalPlaceholder from '@/pages/dashboard/PortalPlaceholder'
 import ForgotPassword from '@/pages/ForgotPassword'
@@ -52,7 +54,6 @@ import ProjectsPage, { ProjectsRoute } from '@/pages/Projects'
 import Privacy from '@/pages/Privacy'
 import Reservation from '@/pages/Reservation'
 import TheCouncil from '@/pages/TheCouncil'
-import { ExecutivePage, LegislativePage } from '@/pages/Governance'
 import FormFileFormPage from '@/pages/dashboard/FormFileFormPage'
 import FormFilesAdmin from '@/pages/dashboard/FormFilesAdmin'
 import FormGroupFormPage from '@/pages/dashboard/FormGroupFormPage'
@@ -86,6 +87,7 @@ export default function App() {
                 <Route index element={<DashboardHome />} />
                 <Route path="requests" element={<RequestsAdmin />} />
                 <Route path="requests/:id" element={<RequestDetailPage />} />
+                <Route path="chat" element={<ChatAdmin />} />
                 <Route path="announcements" element={<AnnouncementsAdmin />} />
                 <Route path="announcements/new" element={<AnnouncementFormPage />} />
                 <Route path="announcements/:id/edit" element={<AnnouncementFormPage />} />
@@ -266,10 +268,30 @@ export default function App() {
 function AnimatedRoutes() {
   const location = useLocation()
   const reduce = useReducedMotion() === true
+  const prevPathRef = useRef('')
+  const prevHashRootRef = useRef('')
 
   useLayoutEffect(() => {
-    const id = location.hash.replace('#', '')
-    const target = id ? document.getElementById(id) : null
+    const raw = decodeURIComponent(location.hash.replace('#', ''))
+    const hashRoot = raw.split('/')[0] ?? ''
+    const pathChanged = prevPathRef.current !== location.pathname
+    const hashRootChanged = prevHashRootRef.current !== hashRoot
+    prevPathRef.current = location.pathname
+    prevHashRootRef.current = hashRoot
+
+    // Same-page nested hashes (e.g. #financial/budget-allocations) must not jump to top.
+    if (!pathChanged && (raw.includes('/') || !hashRootChanged)) return
+
+    // Portal tabs use hashes like #calendar. Do not steal scroll to a homepage section id.
+    if (
+      location.pathname === '/portal' &&
+      ['tracking', 'grievance', 'announcements', 'calendar', 'faq'].includes(hashRoot)
+    ) {
+      if (pathChanged) scrollPageTo(0, false)
+      return
+    }
+
+    const target = hashRoot ? document.getElementById(hashRoot) : null
     const scroller = document.querySelector('.app-scroll')
     if (target && scroller instanceof HTMLElement) {
       const top =
@@ -280,41 +302,53 @@ function AnimatedRoutes() {
       scrollPageTo(Math.max(0, top), false)
       return
     }
-    scrollPageTo(0, false)
+    if (pathChanged) {
+      scrollPageTo(0, false)
+    }
   }, [location.pathname, location.hash])
+
+  const skipPageFade = reduce || isAppleTouch()
+  const publicRoutes = (
+    <Routes location={location}>
+      <Route path="/" element={<Home />} />
+      <Route path="/how-it-works" element={<HowItWorks />} />
+      <Route path="/about" element={<Navigate to="/" replace />} />
+      <Route path="/contact" element={<Navigate to="/#contact" replace />} />
+      <Route path="/services/grievance" element={<Navigate to="/portal#grievance" replace />} />
+      <Route path="/about/the-council" element={<TheCouncil />} />
+      <Route path="/governance/legislative" element={<Navigate to="/transparency" replace />} />
+      <Route path="/governance/executive" element={<Navigate to="/about/the-council" replace />} />
+      <Route path="/announcements/:id" element={<Announcement />} />
+      <Route path="/projects" element={<ProjectsPage />} />
+      <Route path="/projects/:slug" element={<ProjectsRoute />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/login/forgot" element={<ForgotPassword />} />
+      <Route path="/portal" element={<Portal />} />
+      <Route path="/portal/reserve/:shop/:itemId" element={<Reservation />} />
+      <Route path="/lockers" element={<LockerPage />} />
+      <Route path="/merch" element={<MerchPage />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/forms" element={<Forms />} />
+      <Route path="/transparency" element={<Transparency />} />
+      <Route path="*" element={<Placeholder />} />
+    </Routes>
+  )
+
+  if (skipPageFade) {
+    return <div className="grow">{publicRoutes}</div>
+  }
 
   return (
     <AnimatePresence mode="wait">
       <motion.div
         key={location.pathname}
-        initial={reduce ? false : { opacity: 0 }}
+        initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        exit={reduce ? undefined : { opacity: 0 }}
+        exit={{ opacity: 0 }}
         transition={{ duration: 0.45, ease: pageEase }}
         className="grow"
       >
-        <Routes location={location}>
-          <Route path="/" element={<Home />} />
-          <Route path="/how-it-works" element={<HowItWorks />} />
-          <Route path="/about" element={<Navigate to="/" replace />} />
-          <Route path="/contact" element={<Navigate to="/#contact" replace />} />
-          <Route path="/about/the-council" element={<TheCouncil />} />
-          <Route path="/governance/legislative" element={<LegislativePage />} />
-          <Route path="/governance/executive" element={<ExecutivePage />} />
-          <Route path="/announcements/:id" element={<Announcement />} />
-          <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/projects/:slug" element={<ProjectsRoute />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/login/forgot" element={<ForgotPassword />} />
-          <Route path="/portal" element={<Portal />} />
-          <Route path="/portal/reserve/:shop/:itemId" element={<Reservation />} />
-          <Route path="/lockers" element={<LockerPage />} />
-          <Route path="/merch" element={<MerchPage />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/forms" element={<Forms />} />
-          <Route path="/transparency" element={<Transparency />} />
-          <Route path="*" element={<Placeholder />} />
-        </Routes>
+        {publicRoutes}
       </motion.div>
     </AnimatePresence>
   )

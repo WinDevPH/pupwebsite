@@ -13,21 +13,6 @@ export function shopCatalogPath(shop: ShopId) {
 export const LOCKER_ROWS = ['A', 'B', 'C', 'D', 'E'] as const
 export const LOCKER_COLS = 12
 
-/** Sample assigned lockers from the council availability chart. */
-export const LOCKER_ASSIGNED_SEED = [
-  'A-03',
-  'B-08',
-  'C-01',
-  'C-02',
-  'C-04',
-  'C-06',
-  'C-08',
-  'D-04',
-  'D-06',
-  'E-02',
-  'E-08',
-] as const
-
 export function lockerCode(row: string, col: number) {
   return `${row}-${String(col).padStart(2, '0')}`
 }
@@ -57,15 +42,20 @@ export const LOCKER_RATES = [
   { transaction: 'Renewal', location: 'Row E', fee: 350 },
 ] as const
 
-export function lockerCodeFromItem(item: Pick<ShopItem, 'id' | 'name' | 'number'>) {
-  const raw = (item.number || item.id || item.name).toUpperCase().replace(/\s+/g, '')
+export function lockerCodeFromItem(item: {
+  id?: string | number
+  name?: string
+  number?: string | null
+}) {
+  const raw = String(item.number || item.name || item.id || '')
+    .toUpperCase()
+    .replace(/\s+/g, '')
   const match = raw.match(/([A-E])-?(\d{1,2})/)
   if (!match) return ''
   return lockerCode(match[1], Number(match[2]))
 }
 
 export function buildLockerGridItems(): ShopItem[] {
-  const assigned = new Set<string>(LOCKER_ASSIGNED_SEED)
   const items: ShopItem[] = []
   for (const row of LOCKER_ROWS) {
     for (let col = 1; col <= LOCKER_COLS; col += 1) {
@@ -79,7 +69,6 @@ export function buildLockerGridItems(): ShopItem[] {
         stock: 1,
         image: lockerBay,
         alt: `Locker ${code}`,
-        availability: assigned.has(code) ? 'reserved' : undefined,
       })
     }
   }

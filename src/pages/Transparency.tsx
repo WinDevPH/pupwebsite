@@ -1,20 +1,37 @@
-import { useEffect, useMemo, useState, type KeyboardEvent } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { createPortal } from 'react-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
-import { ArrowUpRight, FileText, Loader2, Search } from 'lucide-react'
+import { ArrowUpRight, FileText, LayoutGrid, ListFilter, Loader2, Scale, Search } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
-import { siteName } from '@/components/layout/nav-data'
+import { siteName, transparencyPageDescription } from '@/components/layout/nav-data'
 import { Reveal } from '@/components/motion/Reveal'
 import { SectionKicker } from '@/components/ui/SectionKicker'
 import { listDocuments, type DocumentRecord } from '@/lib/documents-api'
+import { popIn } from '@/lib/motion'
 import {
   DEFAULT_TRANSPARENCY_CATEGORIES,
   listTransparencyCategories,
+  resolveTransparencyInnerTab,
   resolveTransparencyTabSlug,
   type TransparencyCategoryRecord,
+  type TransparencyInnerTab,
 } from '@/lib/transparency-categories-api'
-import { transparencyIcon } from '@/lib/transparency-icons'
+import { transparencyIcon, transparencyInnerTabIcon } from '@/lib/transparency-icons'
 import { cn } from '@/lib/utils'
+
+const tabRow =
+  '-mr-4 flex w-full gap-2 overflow-x-auto overscroll-x-contain scroll-pr-4 pr-4 touch-pan-x [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mr-0 sm:overflow-visible sm:scroll-pr-0 sm:pr-0'
+
+const tabChip =
+  'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border text-center leading-tight transition-colors sm:min-w-0 sm:whitespace-normal sm:text-pretty'
+
+function scrollSelectedTab(node: HTMLElement | null) {
+  const root = node?.parentElement
+  if (!node || !root || window.matchMedia('(min-width: 640px)').matches) return
+  const left = node.getBoundingClientRect().left - root.getBoundingClientRect().left + root.scrollLeft - 8
+  root.scrollTo({ left: Math.max(0, left), behavior: 'auto' })
+}
 
 const ease = [0.16, 1, 0.3, 1] as const
 
@@ -54,12 +71,14 @@ function onTabKeyDown(
 
 export default function Transparency() {
   const { hash } = useLocation()
+  const navigate = useNavigate()
   const [categories, setCategories] = useState<TransparencyCategoryRecord[]>([])
   const [documents, setDocuments] = useState<DocumentRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [tab, setTab] = useState('')
+  const [innerTab, setInnerTab] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -96,6 +115,12 @@ export default function Transparency() {
   }, [categories, hash])
 
   useEffect(() => {
+    const category = categories.find((item) => item.slug === tab) ?? null
+    if (!category) return
+    setInnerTab(resolveTransparencyInnerTab(hash, category))
+  }, [categories, hash, tab])
+
+  useEffect(() => {
     const previous = document.title
     document.title = `Transparency & Documents · ${siteName.short} ${siteName.unit}`
     return () => {
@@ -120,6 +145,23 @@ export default function Transparency() {
     return documents.filter((item) => item.category === active.slug && matchesDocument(item, needle))
   }, [active, documents, needle])
 
+  function selectTab(slug: string) {
+    setTab(slug)
+    const category = categories.find((item) => item.slug === slug)
+    if (hash !== `#${slug}`) {
+      navigate({ pathname: '/transparency', hash: slug }, { replace: true, preventScrollReset: true })
+    }
+    setInnerTab(category?.tabs?.length ? 'all' : '')
+  }
+
+  function selectInnerTab(slug: string) {
+    setInnerTab(slug)
+    const nextHash = slug && slug !== 'all' ? `${tab}/${slug}` : tab
+    if (hash !== `#${nextHash}`) {
+      navigate({ pathname: '/transparency', hash: nextHash }, { replace: true, preventScrollReset: true })
+    }
+  }
+
   return (
     <>
       <section aria-labelledby="transparency-page-title" className="hero-blend relative isolate overflow-hidden bg-white">
@@ -134,15 +176,24 @@ export default function Transparency() {
             }}
             className="flex w-full max-w-4xl flex-col items-center text-center"
           >
+            <motion.div variants={rise}>
+              <SectionKicker icon={Scale}>Governance</SectionKicker>
+            </motion.div>
             <motion.h1
               id="transparency-page-title"
               variants={rise}
-              className="max-w-4xl font-hero text-[clamp(2.05rem,0.8rem+4.4vw,4.25rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950"
+              className="mt-3 max-w-4xl font-hero text-[clamp(2.05rem,0.8rem+4.4vw,4.25rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950"
             >
               Governance and
               <br />
               <span className="text-brand-600">Transparency</span>
             </motion.h1>
+            <motion.p
+              variants={rise}
+              className="mt-5 max-w-2xl text-sm leading-6 text-zinc-500 sm:text-[15px]"
+            >
+              {transparencyPageDescription}
+            </motion.p>
           </motion.div>
         </div>
       </section>
@@ -162,65 +213,52 @@ export default function Transparency() {
                 body="Published document categories will appear here."
               />
             ) : (
-              <>
-                <div
-                  className="grid w-full max-w-5xl grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
-                  role="tablist"
-                  aria-label="Transparency"
-                  onKeyDown={(event) => onTabKeyDown(event, tab, categories, setTab)}
-                >
-                  {categories.map((item) => {
-                    const selected = tab === item.slug
-                    const Icon = transparencyIcon(item.icon)
-                    const count = loading ? undefined : tabCounts[item.slug]
-                    return (
-                      <button
-                        key={item.slug}
-                        type="button"
-                        role="tab"
-                        id={`transparency-tab-${item.slug}`}
-                        aria-selected={selected}
-                        aria-controls="transparency-panel"
-                        tabIndex={selected ? 0 : -1}
-                        onClick={() => setTab(item.slug)}
-                        className={cn(
-                          'inline-flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-center text-[13px] leading-tight transition-colors sm:text-sm',
-                          selected
-                            ? 'border-brand-700 bg-brand-700 font-semibold text-white shadow-[0_10px_18px_-14px_rgba(76,29,149,0.9)]'
-                            : 'border-zinc-200 bg-white font-medium text-zinc-600 hover:border-brand-200 hover:text-brand-800',
-                        )}
-                      >
-                        <Icon className="size-3.5 shrink-0" aria-hidden />
-                        <span className="min-w-0 text-pretty">{item.label}</span>
-                        {typeof count === 'number' ? (
-                          <span
-                            className={cn(
-                              'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums',
-                              selected ? 'bg-white/20 text-white' : 'bg-brand-50 text-brand-700',
-                            )}
-                          >
-                            {count}
-                          </span>
-                        ) : null}
-                      </button>
-                    )
-                  })}
-                </div>
-                <label className="relative mt-4 w-full max-w-5xl">
-                  <span className="sr-only">Search documents</span>
-                  <Search
-                    className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-zinc-400"
-                    aria-hidden
-                  />
-                  <input
-                    type="search"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search documents"
-                    className="h-11 w-full rounded-xl border border-zinc-200 bg-white pr-4 pl-10 text-sm text-brand-950 outline-none placeholder:text-zinc-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-                  />
-                </label>
-              </>
+              <div
+                data-lenis-prevent
+                className={cn(tabRow, 'max-w-5xl sm:grid sm:grid-cols-3 lg:grid-cols-5')}
+                role="tablist"
+                aria-label="Transparency"
+                onKeyDown={(event) => onTabKeyDown(event, tab, categories, selectTab)}
+              >
+                {categories.map((item) => {
+                  const selected = tab === item.slug
+                  const Icon = transparencyIcon(item.icon)
+                  const count = loading ? undefined : tabCounts[item.slug]
+                  return (
+                    <button
+                      key={item.slug}
+                      type="button"
+                      role="tab"
+                      id={`transparency-tab-${item.slug}`}
+                      aria-selected={selected}
+                      aria-controls="transparency-panel"
+                      tabIndex={selected ? 0 : -1}
+                      ref={selected ? scrollSelectedTab : undefined}
+                      onClick={() => selectTab(item.slug)}
+                      className={cn(
+                        tabChip,
+                        'px-2.5 py-2.5 text-[13px] sm:w-full sm:text-sm',
+                        selected
+                          ? 'border-brand-700 bg-brand-700 font-semibold text-white shadow-[0_10px_18px_-14px_rgba(76,29,149,0.9)]'
+                          : 'border-zinc-200 bg-white font-medium text-zinc-600 hover:border-brand-200 hover:text-brand-800',
+                      )}
+                    >
+                      <Icon className="size-3.5 shrink-0" aria-hidden />
+                      <span className="min-w-0 text-pretty">{item.label}</span>
+                      {typeof count === 'number' ? (
+                        <span
+                          className={cn(
+                            'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums',
+                            selected ? 'bg-white/20 text-white' : 'bg-brand-50 text-brand-700',
+                          )}
+                        >
+                          {count}
+                        </span>
+                      ) : null}
+                    </button>
+                  )
+                })}
+              </div>
             )}
           </div>
         </div>
@@ -242,6 +280,11 @@ export default function Transparency() {
               folder={active.folder}
               seriesLabel={active.seriesLabel || active.label}
               items={visibleDocs}
+              tabs={active.tabs ?? []}
+              innerTab={innerTab}
+              onInnerTab={selectInnerTab}
+              query={query}
+              onQuery={setQuery}
               loading={loading}
               error={error}
               searching={needle !== ''}
@@ -289,6 +332,11 @@ function Archive({
   folder,
   seriesLabel,
   items,
+  tabs = [],
+  innerTab = '',
+  onInnerTab,
+  query = '',
+  onQuery,
   loading = false,
   error = '',
   searching = false,
@@ -302,15 +350,61 @@ function Archive({
   folder?: string
   seriesLabel: string
   items: DocumentRecord[]
+  tabs?: TransparencyInnerTab[]
+  innerTab?: string
+  onInnerTab?: (slug: string) => void
+  query?: string
+  onQuery?: (value: string) => void
   loading?: boolean
   error?: string
   searching?: boolean
 }) {
+  const activeInner = tabs.some((item) => item.slug === innerTab) ? innerTab : tabs.length ? 'all' : ''
+  const grouped =
+    tabs.length && activeInner && activeInner !== 'all'
+      ? items.filter((item) => (item.subcategory || tabs[0]?.slug) === activeInner)
+      : items
+  const innerCounts = Object.fromEntries(
+    tabs.map((item) => [
+      item.slug,
+      items.filter((doc) => (doc.subcategory || tabs[0]?.slug) === item.slug).length,
+    ]),
+  ) as Record<string, number>
+
   return (
-    <Reveal>
-      <section id={id} className="scroll-mt-28">
-        <SectionHeading icon={icon} kicker={kicker} title={title} accent={accent} count={items.length} />
-        {note ? <p className="mt-4 max-w-3xl text-sm leading-6 text-zinc-500">{note}</p> : null}
+    <section id={id} className="scroll-mt-28">
+      <Reveal>
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:gap-x-6">
+          <SectionHeading icon={icon} kicker={kicker} title={title} accent={accent} count={items.length} />
+          {note ? (
+            <p className="max-w-3xl text-sm leading-6 text-zinc-500 sm:order-3 sm:col-span-2">{note}</p>
+          ) : null}
+          <div className="flex w-full items-center gap-2 sm:order-2 sm:w-auto">
+            <label className="relative min-w-0 flex-1 sm:w-56 sm:flex-none lg:w-64">
+              <span className="sr-only">Search documents</span>
+              <Search
+                className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-zinc-400"
+                aria-hidden
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => onQuery?.(event.target.value)}
+                placeholder="Search"
+                className="h-9 w-full rounded-lg border border-zinc-200 bg-white pr-3 pl-8 text-[13px] text-brand-950 outline-none placeholder:text-zinc-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+              />
+            </label>
+            {tabs.length > 0 ? (
+              <ArchiveFilter
+                value={activeInner || 'all'}
+                options={tabs}
+                counts={innerCounts}
+                total={items.length}
+                onChange={(slug) => onInnerTab?.(slug)}
+              />
+            ) : null}
+          </div>
+        </div>
         {folder ? (
           <p className="mt-3 text-[11px] font-semibold tracking-[0.16em] text-brand-700 uppercase">{folder}</p>
         ) : null}
@@ -321,7 +415,7 @@ function Archive({
           </p>
         ) : null}
         {!loading && error ? <p className="mt-5 text-sm text-zinc-500">{error}</p> : null}
-        {!loading && !error && items.length === 0 ? (
+        {!loading && !error && grouped.length === 0 ? (
           <EmptyState
             title={searching ? 'No matching documents' : 'No documents published yet'}
             body={
@@ -331,40 +425,187 @@ function Archive({
             }
           />
         ) : null}
+      </Reveal>
         <ul className="mt-5 grid gap-3">
-          {items.map((item) => (
+          {grouped.map((item, index) => (
             <li key={item.id}>
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4 transition-colors hover:border-brand-200 sm:flex-row sm:items-center sm:gap-4"
-              >
-                <span className="flex min-w-0 flex-1 items-start gap-3">
-                  <span className="pt-0.5 font-hero text-xl leading-none text-brand-600 tabular-nums">
-                    {item.number || '—'}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[11px] font-semibold tracking-[0.14em] text-brand-700 uppercase">
-                      {item.number
-                        ? `${item.seriesLabel || seriesLabel} No. ${item.number}, s. 2026`
-                        : item.seriesLabel || seriesLabel}
+              <Reveal delay={Math.min(index, 4) * 0.05}>
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4 transition-colors hover:border-brand-200 sm:flex-row sm:items-center sm:gap-4"
+                >
+                  <span className="flex min-w-0 flex-1 items-start gap-3">
+                    <span className="pt-0.5 font-hero text-xl leading-none text-brand-600 tabular-nums">
+                      {item.number || '—'}
                     </span>
-                    <span className="mt-1 block text-sm leading-5 font-semibold text-balance text-brand-950">
-                      {item.title}
+                    <span className="min-w-0">
+                      <span className="block text-[11px] font-semibold tracking-[0.14em] text-brand-700 uppercase">
+                        {item.number
+                          ? `${item.seriesLabel || seriesLabel} No. ${item.number}, s. 2026`
+                          : item.seriesLabel || seriesLabel}
+                      </span>
+                      <span className="mt-1 block text-sm leading-5 font-semibold text-balance text-brand-950">
+                        {item.title}
+                      </span>
                     </span>
                   </span>
-                </span>
-                <span className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-brand-700 px-4 text-sm font-semibold text-white transition-colors group-hover:bg-brand-800">
-                  Open PDF
-                  <ArrowUpRight className="size-4" aria-hidden />
-                </span>
-              </a>
+                  <span className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-brand-700 px-4 text-sm font-semibold text-white transition-colors group-hover:bg-brand-800">
+                    Open PDF
+                    <ArrowUpRight className="size-4" aria-hidden />
+                  </span>
+                </a>
+              </Reveal>
             </li>
           ))}
         </ul>
-      </section>
-    </Reveal>
+    </section>
+  )
+}
+
+function ArchiveFilter({
+  value,
+  options,
+  counts,
+  total,
+  onChange,
+}: {
+  value: string
+  options: TransparencyInnerTab[]
+  counts: Record<string, number>
+  total: number
+  onChange: (slug: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const filtering = value !== 'all'
+  const items = [{ slug: 'all', label: 'All' }, ...options]
+
+  useEffect(() => {
+    if (!open) {
+      setMenuPos(null)
+      return
+    }
+    function place() {
+      const el = rootRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      setMenuPos({ top: rect.bottom + 8, right: Math.max(8, window.innerWidth - rect.right) })
+    }
+    function onKey(event: globalThis.KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    function onPointer(event: MouseEvent) {
+      const target = event.target as Node
+      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) return
+      setOpen(false)
+    }
+    place()
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onPointer)
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onPointer)
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [open])
+
+  return (
+    <div ref={rootRef} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((next) => !next)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Filter financial categories"
+        className={cn(
+          'relative inline-flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-semibold transition-colors sm:px-3',
+          filtering
+            ? 'border-brand-700 bg-brand-700 text-white'
+            : 'border-zinc-200 bg-white text-brand-950 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800',
+        )}
+      >
+        <ListFilter className="size-3.5" strokeWidth={2.1} aria-hidden />
+        Filter
+        {filtering ? (
+          <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-white ring-2 ring-brand-700" />
+        ) : null}
+      </button>
+      {open && menuPos
+        ? createPortal(
+            <motion.div
+              ref={menuRef}
+              role="menu"
+              initial={popIn.initial}
+              animate={popIn.animate}
+              transition={popIn.transition}
+              style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 60 }}
+              className="w-72 rounded-2xl border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/50"
+            >
+              <div className="flex items-center gap-2 px-2 py-2">
+                <div className="grid size-8 place-items-center rounded-lg bg-brand-50 text-brand-700">
+                  <ListFilter className="size-3.5" strokeWidth={2.1} aria-hidden />
+                </div>
+                <div className="min-w-0 leading-tight">
+                  <p className="text-[13px] font-semibold text-brand-950">Filters</p>
+                  <p className="text-[11.5px] text-zinc-500">Report type</p>
+                </div>
+              </div>
+              <div className="border-t border-zinc-100 py-1">
+                {items.map((item) => {
+                  const selected = item.slug === value
+                  const Icon = item.slug === 'all' ? LayoutGrid : transparencyInnerTabIcon(item.slug)
+                  const count = item.slug === 'all' ? total : (counts[item.slug] ?? 0)
+                  return (
+                    <button
+                      key={item.slug}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={selected}
+                      onClick={() => {
+                        onChange(item.slug)
+                        setOpen(false)
+                      }}
+                      className={cn(
+                        'flex h-10 w-full items-center justify-between gap-3 rounded-xl px-2.5 text-left text-[13px] font-medium',
+                        selected ? 'bg-brand-50 text-brand-800' : 'text-brand-950 hover:bg-zinc-50',
+                      )}
+                    >
+                      <span className="inline-flex min-w-0 items-center gap-2">
+                        <Icon className="size-3.5 shrink-0" aria-hidden />
+                        {item.label}
+                      </span>
+                      <span className="text-xs text-zinc-500">{count}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              {filtering ? (
+                <div className="border-t border-zinc-100 px-2 py-2 text-center dark:border-zinc-800">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onChange('all')
+                      setOpen(false)
+                    }}
+                    className="text-xs font-semibold text-brand-700 hover:text-brand-600"
+                  >
+                    Clear filters
+                  </button>
+                </div>
+              ) : null}
+            </motion.div>,
+            document.body,
+          )
+        : null}
+    </div>
   )
 }
 

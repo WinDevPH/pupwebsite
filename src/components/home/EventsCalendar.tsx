@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils'
 import { easeOut } from '@/lib/motion'
 import { Reveal } from '@/components/motion/Reveal'
 import { useHashScroll } from '@/hooks/useHashScroll'
-import emptyCalendar from '@/assets/calendar/empty.jpg'
+import emptyCalendar from '@/assets/calendar/empty.png'
 import { listCalendarEvents, type CalendarKind } from '@/lib/calendar-api'
 import {
   currentAcademicYearStart,
@@ -60,7 +60,7 @@ const kindMeta: Record<
     accent: 'border-l-gold-500',
     badge: 'bg-gold-500 text-brand-950',
     tone: 'text-gold-600',
-    image: '/calendar/defaults/holiday.jpg',
+    image: '/uploads/calendar/holiday.jpg',
     icon: Sun,
   },
   exam: {
@@ -70,7 +70,7 @@ const kindMeta: Record<
     accent: 'border-l-brand-700',
     badge: 'bg-brand-700 text-white',
     tone: 'text-brand-700',
-    image: '/calendar/defaults/exam.jpg',
+    image: '/uploads/calendar/exam.jpg',
     icon: GraduationCap,
   },
   enrollment: {
@@ -80,7 +80,7 @@ const kindMeta: Record<
     accent: 'border-l-brand-400',
     badge: 'bg-brand-600 text-white',
     tone: 'text-brand-600',
-    image: '/calendar/defaults/enrollment.jpg',
+    image: '/uploads/calendar/enrollment.jpg',
     icon: ClipboardPen,
   },
   academic: {
@@ -90,7 +90,7 @@ const kindMeta: Record<
     accent: 'border-l-maroon-700',
     badge: 'bg-maroon-700 text-white',
     tone: 'text-maroon-700',
-    image: '/calendar/defaults/academic.jpg',
+    image: '/uploads/calendar/academic.jpg',
     icon: BookOpen,
   },
 }
@@ -186,7 +186,8 @@ function dayLabel(date: Date) {
   return `${day} ${month}`
 }
 
-export function EventsCalendar() {
+export function EventsCalendar({ variant = 'page' }: { variant?: 'page' | 'portal' }) {
+  const portal = variant === 'portal'
   const reduce = useReducedMotion() === true
   const today = useMemo(() => new Date(), [])
   const todayKey = dateKey(today)
@@ -200,7 +201,7 @@ export function EventsCalendar() {
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null)
   const filterRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
-  useHashScroll('calendar')
+  useHashScroll(portal ? '__unused__' : 'calendar')
   const filtering = kind !== 'all'
 
   useEffect(() => {
@@ -290,38 +291,65 @@ export function EventsCalendar() {
 
   return (
     <section
-      id="calendar"
-      aria-labelledby="calendar-title"
-      className="scroll-mt-28 bg-surface dark:bg-zinc-950"
+      id={portal ? undefined : 'calendar'}
+      aria-labelledby={portal ? undefined : 'calendar-title'}
+      aria-label={portal ? 'Upcoming Events' : undefined}
+      className={cn(portal ? 'bg-transparent' : 'scroll-mt-28 bg-surface dark:bg-zinc-950')}
     >
-      <div className="mx-auto max-w-7xl px-4 py-[clamp(3rem,2rem+3.2vw,5rem)] sm:px-6 lg:px-8">
-        <Reveal>
-        <header className="mx-auto max-w-3xl text-center">
-          <SectionKicker icon={CalendarDays}>Calendar</SectionKicker>
-          <h2
-            id="calendar-title"
-            className="mt-[clamp(0.85rem,0.5rem+1vw,1.25rem)] font-hero text-[clamp(1.85rem,0.9rem+3vw,3.75rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950 dark:text-zinc-50"
-          >
-            Upcoming <span className="text-brand-600 dark:text-brand-400">Events</span>
-          </h2>
-          <p className="mx-auto mt-[clamp(0.75rem,0.4rem+1vw,1.15rem)] max-w-lg text-[clamp(0.875rem,0.82rem+0.2vw,0.95rem)] leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Examinations, enrollment, and holiday breaks from the A.Y.{' '}
-            {formatAcademicYear(currentAcademicYearStart())} academic calendar.
-          </p>
-          {loading ? (
-            <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400" aria-live="polite">
-              Loading calendar…
+      <div
+        className={cn(
+          portal
+            ? 'w-full py-0'
+            : 'mx-auto max-w-7xl px-4 py-[clamp(3rem,2rem+3.2vw,5rem)] sm:px-6 lg:px-8',
+        )}
+      >
+        {portal ? (
+          loading || loadError ? (
+            <p
+              className={cn(
+                'mb-3 text-sm',
+                loadError ? 'text-maroon-700 dark:text-maroon-300' : 'text-zinc-500 dark:text-zinc-400',
+              )}
+              aria-live="polite"
+              role={loadError ? 'alert' : undefined}
+            >
+              {loadError ?? 'Loading calendar…'}
             </p>
-          ) : null}
-          {loadError ? (
-            <p className="mt-3 text-sm text-maroon-700 dark:text-maroon-300" role="alert">
-              {loadError}
-            </p>
-          ) : null}
-        </header>
-        </Reveal>
+          ) : null
+        ) : (
+          <Reveal>
+            <header className="mx-auto max-w-3xl text-center">
+              <SectionKicker icon={CalendarDays}>Calendar</SectionKicker>
+              <h2
+                id="calendar-title"
+                className="mt-[clamp(0.85rem,0.5rem+1vw,1.25rem)] font-hero text-[clamp(1.85rem,0.9rem+3vw,3.75rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950 dark:text-zinc-50"
+              >
+                Upcoming <span className="text-brand-600 dark:text-brand-400">Events</span>
+              </h2>
+              <p className="mx-auto mt-[clamp(0.75rem,0.4rem+1vw,1.15rem)] max-w-lg text-[clamp(0.875rem,0.82rem+0.2vw,0.95rem)] leading-relaxed text-zinc-500 dark:text-zinc-400">
+                Examinations, enrollment, and holiday breaks from the A.Y.{' '}
+                {formatAcademicYear(currentAcademicYearStart())} academic calendar.
+              </p>
+              {loading ? (
+                <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400" aria-live="polite">
+                  Loading calendar…
+                </p>
+              ) : null}
+              {loadError ? (
+                <p className="mt-3 text-sm text-maroon-700 dark:text-maroon-300" role="alert">
+                  {loadError}
+                </p>
+              ) : null}
+            </header>
+          </Reveal>
+        )}
 
-        <Reveal delay={0.08} className="mt-[clamp(1.5rem,1rem+1.5vw,2.25rem)] overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+        <div
+          className={cn(
+            'overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950',
+            portal ? '' : 'mt-[clamp(1.5rem,1rem+1.5vw,2.25rem)]',
+          )}
+        >
           <div className="grid items-stretch lg:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="min-w-0">
           <div className="flex items-center gap-2 border-b border-zinc-100 p-3 sm:p-4 dark:border-zinc-800">
@@ -451,14 +479,13 @@ export function EventsCalendar() {
             transition={{ duration: 0.25, ease: easeOut }}
             className="@container m-2 min-w-0 rounded-xl border border-zinc-200 bg-zinc-50/40 p-2 sm:m-3 sm:p-3 dark:border-zinc-800 dark:bg-zinc-900/60"
           >
-            <div className="grid grid-cols-7 gap-1 sm:gap-2">
+            <div className="grid grid-cols-5 gap-1 sm:grid-cols-7 sm:gap-2">
               {weekdayLabels.map((label) => (
                 <div
                   key={label}
-                  className="px-1 pb-2 text-left text-[10px] font-medium text-zinc-400 sm:text-xs dark:text-zinc-500"
+                  className="hidden px-1 pb-2 text-left text-xs font-medium text-zinc-400 sm:block dark:text-zinc-500"
                 >
-                  <span className="sm:hidden">{label.slice(0, 3)}</span>
-                  <span className="hidden sm:inline">{label}</span>
+                  {label}
                 </div>
               ))}
               {cells.map((date) => {
@@ -490,7 +517,7 @@ export function EventsCalendar() {
                   >
                     <span
                       className={cn(
-                        'text-[10px] font-medium tabular-nums sm:text-xs',
+                        'flex items-baseline justify-between gap-0.5 text-[10px] font-medium tabular-nums sm:block sm:text-xs',
                         isToday
                           ? 'font-semibold text-brand-700 dark:text-brand-300'
                           : inMonth
@@ -498,6 +525,9 @@ export function EventsCalendar() {
                             : 'text-zinc-400 dark:text-zinc-600',
                       )}
                     >
+                      <span className="text-[9px] font-semibold tracking-wide uppercase sm:hidden">
+                        {weekdayLabels[(date.getDay() + 6) % 7].slice(0, 3)}
+                      </span>
                       {dayLabel(date)}
                     </span>
                     <span className="mt-1 hidden min-w-0 flex-col gap-1 @[32rem]:flex">
@@ -535,7 +565,7 @@ export function EventsCalendar() {
           </motion.div>
           </div>
 
-          <aside className="flex flex-col border-t border-zinc-200 bg-white p-4 shadow-none sm:p-5 lg:border-t-0 lg:border-l dark:border-zinc-800 dark:bg-zinc-950 lg:dark:border-l-zinc-800">
+          <aside className="flex isolate flex-col border-t border-zinc-200 bg-white p-4 shadow-none sm:p-5 lg:border-t-0 lg:border-l dark:border-zinc-800 dark:bg-zinc-950 lg:dark:border-l-zinc-800">
             <div className="flex items-center justify-between gap-3 border-b border-zinc-100 pb-3 dark:border-zinc-800">
               <h3 className="text-lg font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">Schedule</h3>
               <p className="flex items-center gap-1.5 text-[13px] font-medium text-zinc-500 dark:text-zinc-400">
@@ -558,7 +588,7 @@ export function EventsCalendar() {
                   alt=""
                   width={640}
                   height={640}
-                  className="h-36 w-auto max-w-full object-contain"
+                  className="illustration-knockout h-36 w-auto max-w-full object-contain"
                 />
                 <h4 className="mt-4 font-display text-xl font-medium text-brand-950 dark:text-zinc-50">
                   No events on this day
@@ -642,7 +672,7 @@ export function EventsCalendar() {
             </motion.div>
           </aside>
           </div>
-        </Reveal>
+        </div>
       </div>
     </section>
   )

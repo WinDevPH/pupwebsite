@@ -119,19 +119,30 @@ function api_project_root(): string
     return dirname(__DIR__, 2);
 }
 
+function api_uploads_bucket(string $bucket = 'announcements'): string
+{
+    return preg_replace('/[^a-z0-9_-]/i', '', $bucket) ?: 'announcements';
+}
+
 /**
- * Local Vite keeps uploads under /public/{bucket}/uploads;
- * production package serves them at /{bucket}/uploads.
+ * All public pictures live under one uploads root:
+ * local Vite: /public/uploads/{bucket}
+ * production: /uploads/{bucket}
  */
 function api_uploads_dir(string $bucket = 'announcements'): string
 {
-    $safe = preg_replace('/[^a-z0-9_-]/i', '', $bucket) ?: 'announcements';
+    $safe = api_uploads_bucket($bucket);
     $root = api_project_root();
     if (is_dir($root . DIRECTORY_SEPARATOR . 'public')) {
-        return $root . '/public/' . $safe . '/uploads';
+        return $root . '/public/uploads/' . $safe;
     }
 
-    return $root . '/' . $safe . '/uploads';
+    return $root . '/uploads/' . $safe;
+}
+
+function api_uploads_url(string $bucket, string $filename): string
+{
+    return '/uploads/' . api_uploads_bucket($bucket) . '/' . ltrim($filename, '/');
 }
 
 /** Private uploads (not web-served), e.g. portal request attachments. */
@@ -157,16 +168,41 @@ function api_config(): array
     }
 
     $extraCors = getenv('CORS_ORIGINS');
+    $origins = is_array($config['cors_origins'] ?? null) ? $config['cors_origins'] : [];
     if (is_string($extraCors) && trim($extraCors) !== '') {
-        $parsed = array_values(array_filter(array_map('trim', explode(',', $extraCors))));
-        $existing = $config['cors_origins'] ?? [];
-        $config['cors_origins'] = array_values(array_unique([
-            ...(is_array($existing) ? $existing : []),
-            ...$parsed,
-        ]));
+        $origins = array_merge($origins, array_filter(array_map('trim', explode(',', $extraCors))));
     }
+    $siteUrl = rtrim((string) (getenv('MAIL_SITE_URL') ?: ($config['mail']['site_url'] ?? '')), '/');
+    if ($siteUrl !== '' && preg_match('#^https?://#i', $siteUrl)) {
+        $origins[] = $siteUrl;
+        $host = parse_url($siteUrl, PHP_URL_HOST);
+        $scheme = parse_url($siteUrl, PHP_URL_SCHEME) ?: 'https';
+        if (is_string($host) && $host !== '' && !str_starts_with($host, 'www.')) {
+            $origins[] = $scheme . '://www.' . $host;
+        }
+    }
+    $config['cors_origins'] = array_values(array_unique(array_filter($origins)));
 
     return $config;
+}
+
+function api_is_production(): bool
+{
+    return api_detect_env() === 'production';
+}
+
+function api_json_db_error(Throwable $error): never
+{
+    $payload = [
+        'ok' => false,
+        'error' => api_is_production()
+            ? 'The service is temporarily unavailable. Please try again.'
+            : 'Database unavailable. Start MySQL and check the local schema.',
+    ];
+    if (!api_is_production()) {
+        $payload['detail'] = $error->getMessage();
+    }
+    api_json($payload, 503);
 }
 
 function api_pdo(): PDO
@@ -189,6 +225,7 @@ function api_pdo(): PDO
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false,
+        PDO::ATTR_TIMEOUT => 5,
     ]);
 
     // Keep MySQL NOW()/CURRENT_TIMESTAMP aligned with PHP Asia/Manila.

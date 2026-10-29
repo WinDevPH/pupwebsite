@@ -40,8 +40,9 @@ export default function Privacy() {
         </Reveal>
 
         <ul className="mx-auto mt-[clamp(1.5rem,1rem+1.5vw,2.25rem)] grid max-w-3xl gap-3">
-          {points.map((point) => (
+          {points.map((point, index) => (
             <li key={point.title}>
+              <Reveal delay={Math.min(index, 4) * 0.05}>
               <article className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-4 sm:gap-4 sm:p-5">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
                   <point.icon className="size-4" aria-hidden />
@@ -51,6 +52,7 @@ export default function Privacy() {
                   <p className="mt-1 text-sm leading-6 text-zinc-500">{point.text}</p>
                 </span>
               </article>
+              </Reveal>
             </li>
           ))}
         </ul>

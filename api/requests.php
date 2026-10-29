@@ -18,11 +18,7 @@ try {
         default => api_json(['ok' => false, 'error' => 'Method not allowed.'], 405),
     };
 } catch (Throwable $error) {
-    api_json([
-        'ok' => false,
-        'error' => 'Database unavailable. Import database/migrations/006_portal_requests.sql and start MySQL.',
-        'detail' => $error->getMessage(),
-    ], 503);
+    api_json_db_error($error);
 }
 
 /** @return list<string> */
@@ -778,6 +774,7 @@ function requests_create(): never
         'Academic Support',
         'Student Organization Proposal',
         'Feedback/Suggestion/Student concerns tracking',
+        'Sponsorship & Donations',
     ];
 
     $errors = [];
@@ -795,7 +792,11 @@ function requests_create(): never
     }
 
     $file = $_FILES['file'] ?? $_FILES['attachment'] ?? null;
-    if (!is_array($file)) {
+    $attachmentOptional = $subject === 'Sponsorship & Donations';
+    $uploadError = is_array($file) ? (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) : UPLOAD_ERR_NO_FILE;
+    $hasUpload = is_array($file) && $uploadError !== UPLOAD_ERR_NO_FILE;
+
+    if (!$attachmentOptional && !$hasUpload) {
         $errors['file'] = 'Attach a PDF, image, or document.';
     }
 
@@ -803,71 +804,77 @@ function requests_create(): never
         api_json(['ok' => false, 'error' => reset($errors), 'errors' => $errors], 422);
     }
 
-    /** @var array $file */
-    $uploadError = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
-    if ($uploadError !== UPLOAD_ERR_OK) {
-        $message = match ($uploadError) {
-            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'File must be 10 MB or smaller.',
-            UPLOAD_ERR_PARTIAL => 'Upload was interrupted. Try again.',
-            UPLOAD_ERR_NO_FILE => 'Attach a PDF, image, or document.',
-            default => 'Could not upload the attachment.',
-        };
-        api_json(['ok' => false, 'error' => $message], 422);
-    }
+    $original = '';
+    $attachmentPath = '';
+    $dest = '';
+    $mime = '';
 
-    $tmp = (string) ($file['tmp_name'] ?? '');
-    $size = (int) ($file['size'] ?? 0);
-    $original = (string) ($file['name'] ?? 'attachment');
-
-    if ($tmp === '' || !is_uploaded_file($tmp)) {
-        api_json(['ok' => false, 'error' => 'Invalid upload.'], 422);
-    }
-
-    $maxBytes = 10 * 1024 * 1024;
-    if ($size <= 0 || $size > $maxBytes) {
-        api_json(['ok' => false, 'error' => 'File must be 10 MB or smaller.'], 422);
-    }
-
-    $finfo = new finfo(FILEINFO_MIME_TYPE);
-    $mime = $finfo->file($tmp) ?: '';
-    $allowed = [
-        'application/pdf' => 'pdf',
-        'image/jpeg' => 'jpg',
-        'image/png' => 'png',
-        'image/webp' => 'webp',
-        'image/gif' => 'gif',
-        'text/plain' => 'txt',
-        'application/msword' => 'doc',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
-    ];
-
-    $ext = $allowed[$mime] ?? null;
-    if ($ext === null) {
-        if (preg_match('/\.(pdf|png|jpe?g|webp|gif|docx?|txt)$/i', $original, $m)) {
-            $ext = strtolower($m[1] === 'jpeg' ? 'jpg' : $m[1]);
-            $mime = $mime !== '' ? $mime : 'application/octet-stream';
+    if ($hasUpload) {
+        /** @var array $file */
+        if ($uploadError !== UPLOAD_ERR_OK) {
+            $message = match ($uploadError) {
+                UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'File must be 10 MB or smaller.',
+                UPLOAD_ERR_PARTIAL => 'Upload was interrupted. Try again.',
+                default => 'Could not upload the attachment.',
+            };
+            api_json(['ok' => false, 'error' => $message], 422);
         }
-    }
 
-    if ($ext === null) {
-        api_json(['ok' => false, 'error' => 'Use a PDF, image, or document.'], 422);
+        $tmp = (string) ($file['tmp_name'] ?? '');
+        $size = (int) ($file['size'] ?? 0);
+        $original = (string) ($file['name'] ?? 'attachment');
+
+        if ($tmp === '' || !is_uploaded_file($tmp)) {
+            api_json(['ok' => false, 'error' => 'Invalid upload.'], 422);
+        }
+
+        $maxBytes = 10 * 1024 * 1024;
+        if ($size <= 0 || $size > $maxBytes) {
+            api_json(['ok' => false, 'error' => 'File must be 10 MB or smaller.'], 422);
+        }
+
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->file($tmp) ?: '';
+        $allowed = [
+            'application/pdf' => 'pdf',
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'image/gif' => 'gif',
+            'text/plain' => 'txt',
+            'application/msword' => 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+        ];
+
+        $ext = $allowed[$mime] ?? null;
+        if ($ext === null) {
+            if (preg_match('/\.(pdf|png|jpe?g|webp|gif|docx?|txt)$/i', $original, $m)) {
+                $ext = strtolower($m[1] === 'jpeg' ? 'jpg' : $m[1]);
+                $mime = $mime !== '' ? $mime : 'application/octet-stream';
+            }
+        }
+
+        if ($ext === null) {
+            api_json(['ok' => false, 'error' => 'Use a PDF, image, or document.'], 422);
+        }
+
+        $base = api_slugify(pathinfo($original, PATHINFO_FILENAME));
+        $filename = sprintf('%s-%s.%s', $base, bin2hex(random_bytes(4)), $ext);
+
+        $storageDir = api_private_uploads_dir('requests');
+        if (!is_dir($storageDir) && !mkdir($storageDir, 0755, true) && !is_dir($storageDir)) {
+            api_json(['ok' => false, 'error' => 'Could not create upload folder.'], 500);
+        }
+
+        $dest = $storageDir . DIRECTORY_SEPARATOR . $filename;
+        if (!move_uploaded_file($tmp, $dest)) {
+            api_json(['ok' => false, 'error' => 'Could not save the attachment.'], 500);
+        }
+
+        $attachmentPath = 'storage/requests/' . $filename;
     }
 
     $tracking = requests_make_tracking_id();
-    $base = api_slugify(pathinfo($original, PATHINFO_FILENAME));
-    $filename = sprintf('%s-%s.%s', $base, bin2hex(random_bytes(4)), $ext);
-
-    $storageDir = api_private_uploads_dir('requests');
-    if (!is_dir($storageDir) && !mkdir($storageDir, 0755, true) && !is_dir($storageDir)) {
-        api_json(['ok' => false, 'error' => 'Could not create upload folder.'], 500);
-    }
-
-    $dest = $storageDir . DIRECTORY_SEPARATOR . $filename;
-    if (!move_uploaded_file($tmp, $dest)) {
-        api_json(['ok' => false, 'error' => 'Could not save the attachment.'], 500);
-    }
-
-    $attachmentPath = 'storage/requests/' . $filename;
     $ip = api_client_ip();
 
     $pdo = api_pdo();
@@ -898,7 +905,7 @@ function requests_create(): never
         'email' => $email,
         'subject' => $subject,
         'body' => $body,
-        'attachment' => $original,
+        'attachment' => $original !== '' ? $original : 'None',
     ]);
 
     $mailResult = ['ok' => false, 'error' => 'Mail recipient is not configured.'];
@@ -908,13 +915,15 @@ function requests_create(): never
             '[' . $tracking . '] ' . $subject,
             $councilTpl['text'],
             $email,
-            [
-                [
-                    'path' => $dest,
-                    'name' => $original,
-                    'mime' => $mime,
-                ],
-            ],
+            $dest !== ''
+                ? [
+                    [
+                        'path' => $dest,
+                        'name' => $original,
+                        'mime' => $mime,
+                    ],
+                ]
+                : [],
             $councilTpl['html'],
         );
     }

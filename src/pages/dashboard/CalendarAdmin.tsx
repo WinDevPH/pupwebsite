@@ -85,10 +85,10 @@ const VIEW_KEY = 'pup-admin-calendar-view'
 const REGISTER_HEADING_ID = 'calendar-register-heading'
 
 const kindDefaultImages: Record<CalendarKind, string> = {
-  holiday: '/calendar/defaults/holiday.jpg',
-  exam: '/calendar/defaults/exam.jpg',
-  enrollment: '/calendar/defaults/enrollment.jpg',
-  academic: '/calendar/defaults/academic.jpg',
+  holiday: '/uploads/calendar/holiday.jpg',
+  exam: '/uploads/calendar/exam.jpg',
+  enrollment: '/uploads/calendar/enrollment.jpg',
+  academic: '/uploads/calendar/academic.jpg',
 }
 
 const kindMeta: Record<CalendarKind, { label: string; icon: typeof Sun; image: string }> = {

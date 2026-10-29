@@ -82,7 +82,7 @@ export default function SettingsAdmin() {
       return
     }
     setContact(mergeSiteContact(defaultSiteContact, result.data.contact))
-    showToast('Saved. Contact, header, and footer will use these details.', 'success')
+    showToast('Saved. Contact, header, footer, and grievance links will use these details.', 'success')
   }
 
   if (needsLogin) return <RequireLoginRedirect />
@@ -91,7 +91,7 @@ export default function SettingsAdmin() {
   return (
     <CmsPage
       title="Settings"
-      blurb="Contact details and social links shown in the header, footer, and contact section."
+      blurb="Contact details, social links, and the Student Grievance form used on the public site."
     >
       <form onSubmit={(event) => void onSubmit(event)} className={formWorkspaceCardCls}>
         <div className={formWorkspaceCardEyebrowCls}>
@@ -162,6 +162,38 @@ export default function SettingsAdmin() {
                     placeholder="https://…"
                   />
                 </CmsField>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Student Grievance</p>
+                <p className="text-[13px] leading-5 text-zinc-500">
+                  These links appear on the Student Grievance tab in the Student Services Portal
+                  and can be updated without a code change.
+                </p>
+                <div className="grid gap-3">
+                  <CmsField label="Google Form URL" required>
+                    <input
+                      type="url"
+                      required
+                      value={contact.grievanceFormUrl}
+                      disabled={saving}
+                      onChange={(event) => patch({ grievanceFormUrl: event.target.value })}
+                      className={cmsInputCls}
+                      placeholder="https://docs.google.com/forms/…"
+                    />
+                  </CmsField>
+                  <CmsField label="Guidelines URL" required>
+                    <input
+                      type="url"
+                      required
+                      value={contact.grievanceGuidelinesUrl}
+                      disabled={saving}
+                      onChange={(event) => patch({ grievanceGuidelinesUrl: event.target.value })}
+                      className={cmsInputCls}
+                      placeholder="https://drive.google.com/…"
+                    />
+                  </CmsField>
+                </div>
               </div>
 
               <SocialsEditor

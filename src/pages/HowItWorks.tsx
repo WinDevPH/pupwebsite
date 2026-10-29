@@ -1,20 +1,21 @@
-import { useEffect, useRef, useState, type AnimationEvent as ReactAnimationEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type AnimationEvent as ReactAnimationEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Bookmark, Clock, IdCard, Mail, MailCheck, Package, Play, Search, ShieldCheck } from 'lucide-react'
+import { Bookmark, Clock, IdCard, LayoutGrid, LockKeyhole, Mail, MailCheck, MessageCircle, Package, Play, Search, ShieldCheck, Shirt } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { useReducedMotion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Reveal } from '@/components/motion/Reveal'
 import { SectionKicker } from '@/components/ui/SectionKicker'
 import { Button } from '@/components/ui/button'
+import { listSwap } from '@/lib/motion'
 import { cn } from '@/lib/utils'
-import requestSubmit from '@/assets/how-it-works/request-submit.jpg'
-import requestAck from '@/assets/how-it-works/request-ack.jpg'
-import requestReview from '@/assets/how-it-works/request-review.jpg'
-import requestReply from '@/assets/how-it-works/request-reply.jpg'
-import reserveChoose from '@/assets/how-it-works/reserve-choose.jpg'
-import reserveDetails from '@/assets/how-it-works/reserve-details.jpg'
-import reserveSend from '@/assets/how-it-works/reserve-send.jpg'
-import reserveTrack from '@/assets/how-it-works/reserve-track.jpg'
+import requestSubmit from '@/assets/how-it-works/request-submit.png'
+import requestAck from '@/assets/how-it-works/request-ack.png'
+import requestReview from '@/assets/how-it-works/request-review.png'
+import requestReply from '@/assets/how-it-works/request-reply.png'
+import reserveChoose from '@/assets/how-it-works/reserve-choose.png'
+import reserveDetails from '@/assets/how-it-works/reserve-details.png'
+import reserveSend from '@/assets/how-it-works/reserve-send.png'
+import reserveTrack from '@/assets/how-it-works/reserve-track.png'
 
 type FlowStep = { title: string; detail: string; icon: LucideIcon; image: string }
 
@@ -92,6 +93,7 @@ type GuideId = (typeof guides)[number]['id']
 export default function HowItWorks() {
   const [guide, setGuide] = useState<GuideId>('request')
   const selected = guides.find((item) => item.id === guide) ?? guides[0]
+  const reduce = useReducedMotion() === true
 
   return (
     <main id="main-content" className="bg-white">
@@ -139,27 +141,47 @@ export default function HowItWorks() {
           </header>
         </Reveal>
 
-        <Reveal delay={0.06}>
-          <FlowChart steps={selected.steps} panelId="guide-panel" labelledBy={`guide-tab-${selected.id}`} />
-        </Reveal>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={selected.id}
+            initial={reduce ? false : listSwap.initial}
+            animate={listSwap.animate}
+            exit={reduce ? undefined : listSwap.exit}
+            transition={listSwap.transition}
+          >
+            <FlowChart steps={selected.steps} panelId="guide-panel" labelledBy={`guide-tab-${selected.id}`} />
+          </motion.div>
+        </AnimatePresence>
 
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           {selected.id === 'request' ? (
             <>
               <Button asChild size="lg" className="h-12 w-full rounded-xl px-6 sm:w-auto">
-                <Link to="/portal">Open the portal</Link>
+                <Link to="/portal">
+                  <LayoutGrid className="size-4" aria-hidden />
+                  Open the portal
+                </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="h-12 w-full rounded-xl px-6 sm:w-auto">
-                <Link to="/#contact">Contact the Council</Link>
+                <Link to="/#contact">
+                  <MessageCircle className="size-4" aria-hidden />
+                  Contact the Council
+                </Link>
               </Button>
             </>
           ) : (
             <>
               <Button asChild size="lg" className="h-12 w-full rounded-xl px-6 sm:w-auto">
-                <Link to="/lockers">Reserve a locker</Link>
+                <Link to="/lockers">
+                  <LockKeyhole className="size-4" aria-hidden />
+                  Reserve a locker
+                </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="h-12 w-full rounded-xl px-6 sm:w-auto">
-                <Link to="/merch">Reserve merch</Link>
+                <Link to="/merch">
+                  <Shirt className="size-4" aria-hidden />
+                  Reserve merch
+                </Link>
               </Button>
             </>
           )}
@@ -182,6 +204,7 @@ function FlowChart({
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
   const resumeTimer = useRef<number | null>(null)
+  const scrollerRef = useRef<HTMLOListElement>(null)
 
   function advance(event: ReactAnimationEvent<HTMLSpanElement>) {
     if (reduce || paused || event.animationName !== 'step-progress') return
@@ -192,6 +215,14 @@ function FlowChart({
     setActive(0)
     setPaused(false)
   }, [steps])
+
+  useLayoutEffect(() => {
+    const root = scrollerRef.current
+    if (!root || window.matchMedia('(min-width: 640px)').matches) return
+    const item = root.children[active]
+    if (!(item instanceof HTMLElement)) return
+    root.scrollTo({ left: item.offsetLeft, behavior: reduce ? 'auto' : 'smooth' })
+  }, [active, reduce, steps])
 
   useEffect(() => {
     return () => {
@@ -242,7 +273,10 @@ function FlowChart({
           </span>
         ))}
       </div>
-      <ol className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <ol
+        ref={scrollerRef}
+        className="-mr-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain scroll-pr-4 pr-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mr-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:scroll-pr-0 sm:pr-0 sm:pb-0 sm:snap-none xl:grid-cols-4"
+      >
         {steps.map((step, index) => (
           <StepCard
             key={step.title}
@@ -271,7 +305,7 @@ function StepCard({
   const Icon = step.icon
 
   return (
-    <li className="min-w-0">
+    <li className="w-[min(20.5rem,78%)] shrink-0 snap-start sm:w-auto sm:min-w-0 sm:shrink">
       <button
         type="button"
         aria-pressed={active}
@@ -280,20 +314,20 @@ function StepCard({
           if (event.detail === 0) onSelect(index, 'key')
         }}
         className={cn(
-          'flex h-full w-full flex-col overflow-hidden rounded-2xl border bg-white text-left transition-[background-color,border-color,box-shadow,transform] duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
+          'flex h-full w-full flex-col overflow-hidden rounded-2xl border bg-white text-left transition-[background-color,border-color,box-shadow,transform] duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:bg-zinc-900',
           active
             ? 'border-brand-300 shadow-[0_22px_44px_-26px_rgba(117,36,219,0.72)]'
             : 'border-zinc-200 hover:border-brand-200',
         )}
       >
-        <span className="relative aspect-[5/4] overflow-hidden bg-[#f3f0ff]">
+        <span className="relative isolate aspect-[5/4] overflow-hidden bg-[#f3f0ff] dark:bg-zinc-900">
           <img
             src={step.image}
             alt=""
             width={1024}
             height={1024}
             className={cn(
-              'h-full w-full object-cover object-[center_40%] transition-transform duration-500',
+              'illustration-knockout h-full w-full object-cover object-[center_40%] transition-transform duration-500',
               active ? 'scale-[1.03]' : 'scale-100',
             )}
           />

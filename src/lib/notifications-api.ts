@@ -1,4 +1,5 @@
-export type NotificationKind = 'request' | 'reservation'
+import { unreachableServerMessage } from '@/lib/unreachable-server'
+export type NotificationKind = 'request' | 'reservation' | 'chat'
 
 export type AdminNotification = {
   id: string
@@ -35,7 +36,7 @@ async function request<T>(path: string): Promise<ApiOk<T> | ApiFailure> {
   } catch {
     return {
       ok: false,
-      error: 'Cannot reach the server. Start Apache and MySQL in XAMPP.',
+      error: unreachableServerMessage(),
       status: 0,
     }
   }
@@ -44,7 +45,7 @@ async function request<T>(path: string): Promise<ApiOk<T> | ApiFailure> {
 export async function listAdminNotifications() {
   return request<{
     items: AdminNotification[]
-    counts: { request: number; reservation: number; total: number }
+    counts: { request: number; reservation: number; chat: number; total: number }
   }>('/api/notifications.php')
 }
 

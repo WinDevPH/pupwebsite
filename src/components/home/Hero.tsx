@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
-import { Play } from 'lucide-react'
+import { Images, Play } from 'lucide-react'
 import heroCouncil40 from '@/assets/hero/hero-council-4.0.jpg'
 import heroCouncil41 from '@/assets/hero/hero-council-4.1.jpg'
 import heroCouncil42 from '@/assets/hero/hero-council-4.2.jpg'
@@ -37,11 +37,11 @@ export function Hero() {
   return (
     <section
       aria-labelledby="hero-title"
-      className="hero-blend relative isolate overflow-hidden bg-white text-zinc-900"
+      className="hero-blend relative isolate flex min-h-0 flex-1 flex-col overflow-hidden bg-white text-zinc-900"
     >
       <Backdrop />
 
-      <div className="relative mx-auto flex max-w-7xl flex-col items-center px-4 pt-[clamp(2.25rem,1.4rem+3vw,5rem)] pb-[clamp(2rem,1.2rem+2.5vw,4rem)] sm:px-6 lg:px-8">
+      <div className="relative mx-auto grid w-full max-w-7xl flex-1 grid-cols-1 items-center gap-8 px-4 pt-[clamp(1.25rem,0.7rem+1.4vw,2.5rem)] pb-[clamp(1.25rem,0.8rem+1.6vw,2.5rem)] sm:gap-10 sm:px-6 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-10 lg:px-8 xl:gap-14">
         <motion.div
           initial="hidden"
           animate="show"
@@ -49,7 +49,7 @@ export function Hero() {
             hidden: {},
             show: { transition: { staggerChildren: 0.09, delayChildren: 0.1 } },
           }}
-          className="flex w-full max-w-4xl flex-col items-center text-center"
+          className="flex w-full max-w-4xl flex-col items-center text-center lg:max-w-none lg:items-start lg:justify-center lg:text-left"
         >
           <motion.div variants={fadeUp} className="mb-5 sm:mb-6">
             <HeroCouncilRow />
@@ -58,19 +58,22 @@ export function Hero() {
           <motion.h1
             id="hero-title"
             variants={fadeUp}
-            className="font-hero text-[2.45rem] leading-[0.95] font-normal tracking-tight text-balance text-brand-950 sm:text-6xl lg:text-[4.75rem]"
+            className="font-hero flex flex-col gap-1.5 text-[2.65rem] leading-[0.9] font-normal tracking-[-0.03em] text-brand-950 sm:text-6xl lg:gap-2 lg:text-[clamp(2.9rem,1.2rem+3.2vw,4.35rem)]"
           >
-            For the <span className="text-brand-600">Students</span>.
-            <br />
-            For a Better{' '}
-            <span className="text-brand-600 sm:whitespace-nowrap">
-              PUP COLmmunity
+            <span>
+              For the <span className="text-brand-600">Students</span>.
+            </span>
+            <span>
+              For a Better{' '}
+              <span className="text-brand-600 whitespace-nowrap lg:mt-[0.08em] lg:block">
+                PUP COLmmunity
+              </span>
             </span>
           </motion.h1>
 
           <motion.p
             variants={fadeUp}
-            className="mt-[clamp(1rem,0.6rem+1vw,1.25rem)] max-w-2xl text-[clamp(0.9rem,0.82rem+0.25vw,1.125rem)] leading-relaxed text-zinc-500 sm:hidden"
+            className="mt-[clamp(1rem,0.6rem+1vw,1.25rem)] max-w-2xl text-[clamp(0.9rem,0.82rem+0.25vw,1.0625rem)] leading-relaxed text-zinc-500 sm:hidden"
           >
             The{' '}
             <strong className="font-semibold text-zinc-700">
@@ -82,7 +85,7 @@ export function Hero() {
           </motion.p>
           <motion.p
             variants={fadeUp}
-            className="mt-[clamp(1rem,0.6rem+1vw,1.25rem)] hidden max-w-2xl text-[clamp(0.9rem,0.82rem+0.25vw,1.125rem)] leading-relaxed text-zinc-500 sm:block"
+            className="mt-[clamp(1rem,0.6rem+1vw,1.25rem)] hidden max-w-2xl text-justify text-[clamp(0.875rem,0.8rem+0.18vw,1rem)] leading-6 text-zinc-500 sm:line-clamp-4 sm:block lg:mt-5 lg:max-w-xl"
           >
             The{' '}
             <strong className="font-semibold text-zinc-700">
@@ -99,23 +102,23 @@ export function Hero() {
 
           <motion.div
             variants={fadeUp}
-            className="mt-6 flex w-full flex-col items-center gap-5 sm:mt-8 sm:w-auto sm:flex-row sm:justify-center"
+            className="mt-6 flex w-full flex-col items-center gap-4 sm:mt-8 sm:w-auto sm:flex-row sm:justify-center lg:justify-start"
           >
             <Button
               asChild
               size="lg"
-              className="h-12 w-full rounded-xl px-6 shadow-lg shadow-brand-600/30 transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-xl hover:shadow-brand-600/35 sm:w-auto"
+              className="h-14 w-full rounded-xl px-7 text-base shadow-lg shadow-brand-600/30 transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-xl hover:shadow-brand-600/35 sm:w-auto"
             >
               <Link to={portalCta.to}>{portalCta.label}</Link>
             </Button>
             <Link
               to="/how-it-works"
-              className="inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-full bg-transparent py-1.5 pr-5 pl-1.5 text-[15px] font-medium text-brand-700 transition-colors hover:bg-white/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 sm:w-auto"
+              className="inline-flex h-14 w-full items-center justify-center gap-2.5 rounded-full bg-transparent py-1.5 pr-6 pl-1.5 text-base font-medium text-brand-700 transition-colors hover:bg-white/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 sm:w-auto"
             >
-              <span className="relative flex size-9 shrink-0 items-center justify-center">
+              <span className="relative flex size-10 shrink-0 items-center justify-center">
                 <span aria-hidden className="animate-pulse-shadow absolute inset-0 rounded-full" />
-                <span className="relative flex size-9 items-center justify-center rounded-full bg-brand-600 text-white">
-                  <Play className="ml-0.5 size-3.5 fill-current" aria-hidden />
+                <span className="relative flex size-10 items-center justify-center rounded-full bg-brand-600 text-white">
+                  <Play className="ml-0.5 size-4 fill-current" aria-hidden />
                 </span>
               </span>
               How It Works?
@@ -147,7 +150,7 @@ function HeroCouncilRow() {
   return (
     <Link
       to="/about/the-council"
-      className="flex items-center justify-center gap-3 text-left"
+      className="flex items-center justify-center gap-3 text-left lg:justify-start"
     >
       <span className="flex shrink-0">
         {seals.map((seal, index) => (
@@ -195,10 +198,13 @@ const fallbackHeroSlides: HeroSlide[] = [
 function HeroCarousel() {
   const reduce = useReducedMotion() === true
   const [slides, setSlides] = useState<HeroSlide[]>(fallbackHeroSlides)
+  const [failed, setFailed] = useState<Set<string>>(() => new Set())
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
   const activeRef = useRef(0)
-  const count = slides.length
+  const visible = slides.filter((slide) => !failed.has(slide.src))
+  const reel = visible.length > 0 ? visible : fallbackHeroSlides
+  const count = reel.length
   activeRef.current = active
 
   useEffect(() => {
@@ -217,6 +223,10 @@ function HeroCarousel() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    if (active >= count) setActive(0)
+  }, [active, count])
 
   useEffect(() => {
     if (reduce || paused) return
@@ -266,13 +276,8 @@ function HeroCarousel() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, ease, delay: 0.28 }}
-      className="relative mt-6 w-full max-w-5xl sm:mt-8"
+      className="relative w-full min-w-0 max-w-5xl justify-self-center lg:max-w-none"
     >
-      <div
-        aria-hidden
-        className="hero-neon-cast pointer-events-none absolute inset-x-[8%] bottom-[6%] h-[58%] rounded-full"
-      />
-
       <div
         role="region"
         aria-roledescription="carousel"
@@ -284,45 +289,89 @@ function HeroCarousel() {
         onMouseLeave={() => setPaused(false)}
         onFocus={() => setPaused(true)}
         onBlur={() => setPaused(false)}
-        className="hero-cast relative overflow-hidden rounded-[1.35rem] bg-zinc-100 shadow-[0_28px_50px_-28px_rgba(30,5,65,0.48)] select-none sm:rounded-[1.75rem] dark:bg-zinc-900"
+        className="hero-frame-neon relative overflow-hidden rounded-2xl bg-brand-950 p-[5px] select-none dark:bg-[#140a22]"
       >
-        <div className="relative aspect-[16/9] touch-pan-y">
-          {slides.map((slide, index) => (
-            <img
-              key={`${slide.src}-${index}`}
-              src={slide.src}
-              alt={index === active ? slide.alt : ''}
-              width={1600}
-              height={900}
-              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-out motion-reduce:transition-none ${
-                index === active ? 'opacity-100' : 'opacity-0'
-              }`}
-            />
-          ))}
+        <span
+          aria-hidden
+          className="hero-frame-sheen pointer-events-none absolute inset-y-0 -left-1/4 z-20 w-1/3 bg-gradient-to-r from-transparent via-white/25 to-transparent"
+        />
+        <div className="relative rounded-[0.85rem] bg-brand-300 p-px dark:bg-brand-800">
+          <div className="rounded-[0.8rem] bg-brand-50 p-2 sm:p-2.5 dark:bg-zinc-950">
+            <p className="relative mb-1.5 flex min-h-[14px] items-center justify-center sm:mb-2 sm:min-h-[16px]">
+              <span aria-hidden className="absolute top-1/2 left-0.5 flex -translate-y-1/2 items-center gap-[5px] sm:left-1 sm:gap-1.5">
+                <span className="size-[8px] rounded-full bg-[#ff5f57] ring-1 ring-black/10 sm:size-[9px] dark:ring-black/25" />
+                <span className="size-[8px] rounded-full bg-[#febc2e] ring-1 ring-black/10 sm:size-[9px] dark:ring-black/25" />
+                <span className="size-[8px] rounded-full bg-[#28c840] ring-1 ring-black/10 sm:size-[9px] dark:ring-black/25" />
+              </span>
+              <span className="flex items-center justify-center gap-2.5">
+                <span aria-hidden className="h-px w-5 bg-brand-400/55 sm:w-8" />
+                <span className="font-display text-[10px] leading-none font-semibold tracking-[0.32em] text-brand-900 uppercase sm:text-[11px]">
+                  Featured Photos
+                </span>
+                <span aria-hidden className="h-px w-5 bg-brand-400/55 sm:w-8" />
+              </span>
+              <span aria-hidden className="absolute top-1/2 right-0.5 -translate-y-1/2 text-brand-800/80 sm:right-1 dark:text-brand-200/80">
+                <Images className="size-[11px] sm:size-3" strokeWidth={2.25} />
+              </span>
+            </p>
+            <div className="relative overflow-hidden rounded-lg bg-brand-100 shadow-[inset_0_0_0_1px_rgba(30,5,65,0.08)] dark:bg-zinc-900 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
+              <div className="relative aspect-[16/9] touch-pan-y">
+                {reel.map((slide, index) => (
+                  <motion.img
+                    key={`${slide.src}-${index}`}
+                    src={slide.src}
+                    alt={index === active ? slide.alt : ''}
+                    width={1600}
+                    height={900}
+                    initial={false}
+                    animate={{
+                      opacity: index === active ? 1 : 0,
+                      scale: index === active ? 1.04 : 1.01,
+                    }}
+                    transition={
+                      reduce
+                        ? { duration: 0 }
+                        : { duration: 0.7, ease }
+                    }
+                    className="absolute inset-0 size-full object-cover object-center"
+                    onError={() => {
+                      setFailed((prev) => {
+                        if (prev.has(slide.src)) return prev
+                        const next = new Set(prev)
+                        next.add(slide.src)
+                        return next
+                      })
+                    }}
+                  />
+                ))}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-[28%] bg-gradient-to-t from-brand-950/45 to-transparent dark:from-black/50"
+                />
+              </div>
+            </div>
 
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent"
-          />
-        </div>
+            <p className="sr-only" aria-live="polite">
+              Slide {active + 1} of {count}
+            </p>
 
-        <p className="sr-only" aria-live="polite">
-          Slide {active + 1} of {count}
-        </p>
-
-        <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center gap-2 sm:bottom-4">
-          {slides.map((slide, index) => (
-            <button
-              key={`${slide.src}-${index}`}
-              type="button"
-              aria-label={`Show highlight ${index + 1}`}
-              aria-current={index === active || undefined}
-              onClick={() => go(index)}
-              className={`h-2 rounded-full transition-[width,background-color] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-                index === active ? 'w-6 bg-white' : 'w-2 bg-white/55 hover:bg-white/80'
-              }`}
-            />
-          ))}
+            <div className="flex items-center justify-center gap-1.5 pt-2.5">
+              {reel.map((slide, index) => (
+                <button
+                  key={`${slide.src}-${index}`}
+                  type="button"
+                  aria-label={`Show highlight ${index + 1}`}
+                  aria-current={index === active || undefined}
+                  onClick={() => go(index)}
+                  className={`h-1.5 rounded-full transition-[width,background-color] duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 ${
+                    index === active
+                      ? 'w-5 bg-brand-900'
+                      : 'w-1.5 bg-brand-900/25 hover:bg-brand-900/45'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -331,14 +380,14 @@ function HeroCarousel() {
 
 function Backdrop() {
   return (
-    <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden bg-white dark:bg-[#07070b]">
-      <div className="hero-wash absolute inset-0 bg-white" />
-      <div className="hero-neon">
-        <span className="hero-neon-orb hero-neon-orb--violet" />
-        <span className="hero-neon-orb hero-neon-orb--gold" />
-        <span className="hero-neon-orb hero-neon-orb--maroon" />
-        <span className="hero-neon-orb hero-neon-orb--peach" />
+    <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden bg-[#fcfbfe] dark:bg-[#09090b]">
+      <div className="hero-wash absolute inset-0" />
+      <div className="hero-bloom">
+        <span className="hero-bloom-spot hero-bloom-spot--violet" />
+        <span className="hero-bloom-spot hero-bloom-spot--gold" />
+        <span className="hero-bloom-spot hero-bloom-spot--ink" />
       </div>
+      <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-surface to-transparent lg:h-28 dark:from-zinc-950" />
     </div>
   )
 }

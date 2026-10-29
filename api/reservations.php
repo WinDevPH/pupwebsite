@@ -18,11 +18,7 @@ try {
         default => api_json(['ok' => false, 'error' => 'Method not allowed.'], 405),
     };
 } catch (Throwable $error) {
-    api_json([
-        'ok' => false,
-        'error' => 'Database unavailable. Run scripts/run-013-shop-reservations.php and start MySQL.',
-        'detail' => $error->getMessage(),
-    ], 503);
+    api_json_db_error($error);
 }
 
 /** @return list<string> */
@@ -100,10 +96,56 @@ function reservations_row(array $row): array
         'yearLevel' => (string) ($row['year_level'] ?? ''),
         'remarks' => $row['remarks'] !== null ? (string) $row['remarks'] : '',
         'status' => $status,
+        'image' => trim((string) ($row['item_image_url'] ?? '')),
         'submittedAt' => api_iso((string) $row['submitted_at']) ?? date('c'),
         'createdAt' => api_iso((string) $row['created_at']),
         'updatedAt' => api_iso((string) $row['updated_at']),
     ];
+}
+
+function reservations_from_sql(): string
+{
+    return 'SELECT r.*, si.image_url AS item_image_url
+            FROM shop_reservations r
+            LEFT JOIN shop_items si ON si.id = r.shop_item_id';
+}
+
+function reservations_locker_occupied(PDO $pdo, array $data, int $exceptId = 0): bool
+{
+    if (($data['shop'] ?? '') !== 'locker') {
+        return false;
+    }
+    if (strtolower((string) ($data['status'] ?? '')) === 'cancelled') {
+        return false;
+    }
+
+    $parts = [];
+    $params = [];
+    $itemId = (int) ($data['shop_item_id'] ?? 0);
+    $itemKey = strtolower(trim((string) ($data['item_key'] ?? '')));
+    if ($itemId > 0) {
+        $parts[] = 'shop_item_id = :sid';
+        $params['sid'] = $itemId;
+    }
+    if ($itemKey !== '') {
+        $parts[] = 'LOWER(item_key) = :key';
+        $params['key'] = $itemKey;
+    }
+    if ($parts === []) {
+        return false;
+    }
+
+    $sql = 'SELECT id FROM shop_reservations
+            WHERE shop = \'locker\' AND LOWER(status) <> \'cancelled\'
+              AND (' . implode(' OR ', $parts) . ')';
+    if ($exceptId > 0) {
+        $sql .= ' AND id <> :except';
+        $params['except'] = $exceptId;
+    }
+    $sql .= ' LIMIT 1';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return (bool) $stmt->fetch();
 }
 
 function reservations_make_code(PDO $pdo): string
@@ -347,10 +389,10 @@ function reservations_get(): never
 
     if ($id > 0 || $code !== '') {
         if ($id > 0) {
-            $stmt = $pdo->prepare('SELECT * FROM shop_reservations WHERE id = :id LIMIT 1');
+            $stmt = $pdo->prepare(reservations_from_sql() . ' WHERE r.id = :id LIMIT 1');
             $stmt->execute(['id' => $id]);
         } else {
-            $stmt = $pdo->prepare('SELECT * FROM shop_reservations WHERE code = :code LIMIT 1');
+            $stmt = $pdo->prepare(reservations_from_sql() . ' WHERE r.code = :code LIMIT 1');
             $stmt->execute(['code' => $code]);
         }
         $row = $stmt->fetch();
@@ -373,17 +415,17 @@ function reservations_get(): never
         api_json(['ok' => false, 'error' => 'Unknown status.'], 422);
     }
 
-    $sql = 'SELECT * FROM shop_reservations WHERE 1=1';
+    $sql = reservations_from_sql() . ' WHERE 1=1';
     $params = [];
     if ($shop !== '') {
-        $sql .= ' AND shop = :shop';
+        $sql .= ' AND r.shop = :shop';
         $params['shop'] = $shop;
     }
     if ($status !== '') {
-        $sql .= ' AND status = :status';
+        $sql .= ' AND r.status = :status';
         $params['status'] = $status;
     }
-    $sql .= ' ORDER BY submitted_at DESC, id DESC';
+    $sql .= ' ORDER BY r.submitted_at DESC, r.id DESC';
 
     if ($params) {
         $stmt = $pdo->prepare($sql);
@@ -426,6 +468,9 @@ function reservations_create(): never
     }
 
     $data = reservations_payload($body, $public);
+    if (reservations_locker_occupied($pdo, $data)) {
+        api_json(['ok' => false, 'error' => 'That locker already has an active reservation.'], 409);
+    }
     $code = trim((string) ($body['code'] ?? ''));
     if ($code === '' || $public) {
         $code = reservations_make_code($pdo);
@@ -517,6 +562,9 @@ function reservations_update(): never
 
     $previousStatus = strtolower((string) ($existing['status'] ?? 'submitted'));
     $data = reservations_payload($body, false);
+    if (reservations_locker_occupied($pdo, $data, $id)) {
+        api_json(['ok' => false, 'error' => 'That locker already has an active reservation.'], 409);
+    }
     $code = trim((string) ($body['code'] ?? $existing['code']));
     $code = strtoupper(preg_replace('/[^A-Z0-9-]/i', '', $code) ?: (string) $existing['code']);
     $notifyStatus = array_key_exists('notifyStatus', $body)

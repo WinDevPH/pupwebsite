@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { AlignLeft, Eye, Landmark, Loader2, RotateCcw, Settings2 } from 'lucide-react'
+import { AlignLeft, Eye, Landmark, Loader2, Plus, RotateCcw, Settings2, X } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { RequireLoginRedirect } from '@/components/portal/RequireLoginRedirect'
 import {
@@ -36,6 +36,7 @@ import {
   updateTransparencyCategory,
   type TransparencyCategoryInput,
   type TransparencyCategoryRecord,
+  type TransparencyInnerTab,
 } from '@/lib/transparency-categories-api'
 import { TRANSPARENCY_ICON_OPTIONS, transparencyIcon } from '@/lib/transparency-icons'
 
@@ -60,6 +61,7 @@ type FormState = {
   accent: string
   kicker: string
   note: string
+  tabs: TransparencyInnerTab[]
   folder: string
   seriesLabel: string
   icon: string
@@ -74,6 +76,7 @@ const emptyForm = (): FormState => ({
   accent: '',
   kicker: '',
   note: '',
+  tabs: [],
   folder: '',
   seriesLabel: '',
   icon: 'file-text',
@@ -89,6 +92,7 @@ function recordToForm(record: TransparencyCategoryRecord): FormState {
     accent: record.accent,
     kicker: record.kicker,
     note: record.note,
+    tabs: record.tabs ?? [],
     folder: record.folder,
     seriesLabel: record.seriesLabel,
     icon: record.icon || 'file-text',
@@ -106,6 +110,12 @@ function formToInput(form: FormState): TransparencyCategoryInput {
     accent: form.accent.trim(),
     kicker: form.kicker.trim(),
     note: form.note.trim(),
+    tabs: form.tabs
+      .map((item) => ({
+        slug: item.slug.trim(),
+        label: item.label.trim(),
+      }))
+      .filter((item) => item.label !== ''),
     folder: form.folder.trim(),
     seriesLabel: form.seriesLabel.trim(),
     icon: form.icon,
@@ -410,6 +420,63 @@ export default function TransparencyCategoryFormPage() {
                         disabled={disabled}
                       />
                     </Field>
+                    <div className={workspaceFormFieldGroupCls}>
+                      <span className={workspaceFormLabelCls}>
+                        Inner tabs
+                        <span className={workspaceFormOptionalBadgeCls}>Optional</span>
+                      </span>
+                      <p className={formSectionIntroCls}>
+                        Shown under this archive on the public page. Used for Financial Reports
+                        groups such as quarterly liquidations.
+                      </p>
+                      <div className="mt-2 space-y-2">
+                        {form.tabs.map((item, index) => (
+                          <div key={`${item.slug}-${index}`} className="flex gap-2">
+                            <input
+                              type="text"
+                              className={catalogInput}
+                              value={item.label}
+                              onChange={(e) => {
+                                const label = e.target.value
+                                set(
+                                  'tabs',
+                                  form.tabs.map((tab, i) =>
+                                    i === index ? { ...tab, label } : tab,
+                                  ),
+                                )
+                              }}
+                              placeholder="Quarterly liquidations"
+                              disabled={disabled}
+                            />
+                            <button
+                              type="button"
+                              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-zinc-500 hover:border-rose-200 hover:text-rose-700 dark:border-zinc-700"
+                              aria-label={`Remove ${item.label || 'tab'}`}
+                              disabled={disabled}
+                              onClick={() =>
+                                set(
+                                  'tabs',
+                                  form.tabs.filter((_, i) => i !== index),
+                                )
+                              }
+                            >
+                              <X className="h-4 w-4" aria-hidden />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-dashed border-zinc-300 px-3 text-[12px] font-semibold text-zinc-600 hover:border-brand-200 hover:text-brand-800 dark:border-zinc-700 dark:text-zinc-300"
+                          disabled={disabled}
+                          onClick={() =>
+                            set('tabs', [...form.tabs, { slug: '', label: '' }])
+                          }
+                        >
+                          <Plus className="h-3.5 w-3.5" aria-hidden />
+                          Add tab
+                        </button>
+                      </div>
+                    </div>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <Field label="Icon">
                         <CatalogSelect

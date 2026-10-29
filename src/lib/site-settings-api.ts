@@ -1,3 +1,4 @@
+import { unreachableServerMessage } from '@/lib/unreachable-server'
 export type SiteSocial = {
   name: string
   handle: string
@@ -13,6 +14,8 @@ export type SiteContact = {
   socials: SiteSocial[]
   footerSocials: SiteSocial[]
   studentHandbookUrl: string
+  grievanceFormUrl: string
+  grievanceGuidelinesUrl: string
 }
 
 type ApiFailure = { ok: false; error: string; status: number }
@@ -46,7 +49,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<ApiOk<T> | 
   } catch {
     return {
       ok: false,
-      error: 'Cannot reach the server. Start Apache and MySQL in XAMPP.',
+      error: unreachableServerMessage(),
       status: 0,
     }
   }
@@ -83,6 +86,8 @@ export function mergeSiteContact(
     socials: socials.length ? socials : fallback.socials,
     footerSocials: footerSocials.length ? footerSocials : fallback.footerSocials,
     studentHandbookUrl: partial.studentHandbookUrl?.trim() || fallback.studentHandbookUrl,
+    grievanceFormUrl: partial.grievanceFormUrl?.trim() || fallback.grievanceFormUrl,
+    grievanceGuidelinesUrl: partial.grievanceGuidelinesUrl?.trim() || fallback.grievanceGuidelinesUrl,
   }
 }
 

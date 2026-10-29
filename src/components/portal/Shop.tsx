@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Ban, Bookmark, Heart, LockKeyhole, Package, Shirt } from 'lucide-react'
 import type { ShopId, ShopItem } from '@/components/portal/catalog'
+import { Reveal } from '@/components/motion/Reveal'
 import { cn } from '@/lib/utils'
 
 const FAVORITES_KEY = 'pup-col-sc-shop-favorites'
@@ -76,7 +77,7 @@ export function ShopPanel({
           compact && 'lg:grid-cols-3',
         )}
       >
-        {items.map((entry) => {
+        {items.map((entry, index) => {
           const saved = favorites.ids.includes(entry.id)
           const closed = entry.availability === 'reserved' || entry.availability === 'out'
           const statusLabel =
@@ -91,9 +92,10 @@ export function ShopPanel({
                   : 'Merch'
           return (
             <li key={entry.id}>
+              <Reveal delay={Math.min(index, 4) * 0.05}>
               <article
                 className={cn(
-                  'flex h-full overflow-hidden rounded-2xl bg-white shadow-[0_10px_28px_-18px_rgba(30,5,65,0.45)]',
+                  'card-lift flex h-full overflow-hidden rounded-2xl bg-white shadow-[0_10px_28px_-18px_rgba(30,5,65,0.45)] dark:bg-zinc-900',
                   closed && 'opacity-70',
                 )}
               >
@@ -192,6 +194,7 @@ export function ShopPanel({
                   )}
                 </span>
               </article>
+              </Reveal>
             </li>
           )
         })}

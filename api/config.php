@@ -16,6 +16,8 @@ return [
         'http://127.0.0.1:5173',
         'http://localhost',
         'http://127.0.0.1',
+        'https://pupcolsc.com',
+        'https://www.pupcolsc.com',
     ],
     'session_name' => 'pup_col_sc_session',
     'session_lifetime_hours' => 12,

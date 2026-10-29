@@ -17,11 +17,7 @@ try {
         default => api_json(['ok' => false, 'error' => 'Method not allowed.'], 405),
     };
 } catch (Throwable $error) {
-    api_json([
-        'ok' => false,
-        'error' => 'Database unavailable. Import database/migrations/002_announcements.sql and start MySQL.',
-        'detail' => $error->getMessage(),
-    ], 503);
+    api_json_db_error($error);
 }
 
 function announcements_row(array $row): array

@@ -58,7 +58,7 @@ $ext = $allowed[$mime];
 $base = api_slugify(pathinfo($original, PATHINFO_FILENAME));
 $filename = sprintf('%s-%s.%s', $base, bin2hex(random_bytes(4)), $ext);
 
-$publicDir = api_uploads_dir();
+$publicDir = api_uploads_dir('announcements');
 if (!is_dir($publicDir) && !mkdir($publicDir, 0755, true) && !is_dir($publicDir)) {
     api_json(['ok' => false, 'error' => 'Could not create upload folder.'], 500);
 }
@@ -68,7 +68,7 @@ if (!move_uploaded_file($tmp, $dest)) {
     api_json(['ok' => false, 'error' => 'Could not save the uploaded image.'], 500);
 }
 
-$url = '/announcements/uploads/' . $filename;
+$url = api_uploads_url('announcements', $filename);
 
 api_json([
     'ok' => true,

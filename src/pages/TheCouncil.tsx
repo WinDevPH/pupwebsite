@@ -1,7 +1,7 @@
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { SectionKicker } from '@/components/ui/SectionKicker'
-import { motion, useReducedMotion } from 'motion/react'
+import { motion } from 'motion/react'
 import {
   BadgeCheck,
   BookMarked,
@@ -36,13 +36,14 @@ import lawStudentsSociety from '@/assets/logos/law-students-society.jpg'
 import studentCouncil from '@/assets/logos/student-council.png'
 import studentCouncilMark from '@/assets/logos/student-council-mark.jpg'
 import {
+  councilPageDescription,
   isExternalNavTo,
   siteName,
   studentHandbookUrl,
 } from '@/components/layout/nav-data'
 import { mapProjectRecord } from '@/components/home/project-data'
 import { Organizations } from '@/components/home/OrgDirectory'
-import { Reveal, useRevealViewport } from '@/components/motion/Reveal'
+import { Reveal } from '@/components/motion/Reveal'
 import { Button } from '@/components/ui/button'
 import { useAboutContent } from '@/hooks/useAboutContent'
 import { councilYearKicker, useCouncilBoard } from '@/hooks/useCouncilBoard'
@@ -56,7 +57,6 @@ import type {
 import { useSiteContact } from '@/hooks/useSiteContact'
 import { listPublicGallery, type GalleryImageRecord } from '@/lib/gallery-api'
 import { listProjects } from '@/lib/projects-api'
-import { fadeUp, stagger } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
 const seals = [
@@ -88,8 +88,8 @@ const tabs = [
   { id: 'values', label: 'Mission & values' },
   { id: 'goals', label: 'Goals' },
   { id: 'agenda', label: 'Term agenda' },
-  { id: 'officers', label: 'Officers' },
   { id: 'organizations', label: 'Accredited Organizations' },
+  { id: 'officers', label: 'Officers' },
   { id: 'structure', label: 'Structure' },
   { id: 'advisers', label: 'Advisory Board' },
   { id: 'commissions', label: 'Commissions' },
@@ -143,15 +143,24 @@ export default function TheCouncil() {
             }}
             className="flex w-full max-w-4xl flex-col items-center text-center"
           >
+            <motion.div variants={rise}>
+              <SectionKicker icon={Landmark}>The Council</SectionKicker>
+            </motion.div>
             <motion.h1
               id="council-page-title"
               variants={rise}
-              className="max-w-4xl font-hero text-[clamp(2.05rem,0.8rem+4.4vw,4.25rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950"
+              className="mt-3 max-w-4xl font-hero text-[clamp(2.05rem,0.8rem+4.4vw,4.25rem)] leading-[0.95] font-normal tracking-tight text-balance text-brand-950"
             >
               About the College of Law
               <br />
               <span className="text-brand-600">Student Council</span>
             </motion.h1>
+            <motion.p
+              variants={rise}
+              className="mt-5 max-w-2xl text-sm leading-6 text-zinc-500 sm:text-[15px]"
+            >
+              {councilPageDescription}
+            </motion.p>
           </motion.div>
         </div>
       </section>
@@ -291,8 +300,8 @@ const directory: { label: string; to: string; icon: LucideIcon }[] = [
   { label: 'Student Services Portal', to: '/portal', icon: LifeBuoy },
   { label: 'Announcements', to: '/announcements', icon: Megaphone },
   { label: 'Student Handbook', to: studentHandbookUrl, icon: BookMarked },
-  { label: 'Legislative', to: '/governance/legislative', icon: Scale },
-  { label: 'Executive', to: '/governance/executive', icon: Gavel },
+  { label: 'Transparency', to: '/transparency', icon: Scale },
+  { label: 'How It Works', to: '/how-it-works', icon: Gavel },
   { label: 'Contact', to: '/#contact', icon: Mail },
 ]
 
@@ -315,8 +324,6 @@ const overviewPoints: { icon: LucideIcon; title: string; text: string }[] = [
 ]
 
 function OverviewPanel() {
-  const reduce = useReducedMotion() === true
-  const viewport = useRevealViewport()
   const siteContact = useSiteContact()
   const [councilProjects, setCouncilProjects] =
     useState<CouncilProjectLink[]>(councilProjectsFallback)
@@ -366,20 +373,22 @@ function OverviewPanel() {
             </div>
           </div>
           <ul className="grid gap-3 sm:grid-cols-2 lg:flex lg:h-full lg:flex-col">
-            {overviewPoints.map((point) => (
-              <li
-                key={point.title}
-                className="flex flex-1 items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3.5"
-              >
-                <IconTile icon={point.icon} />
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-brand-950">{point.title}</span>
-                  <span className="mt-0.5 block text-sm leading-6 text-zinc-500">{point.text}</span>
-                </span>
+            {overviewPoints.map((point, index) => (
+              <li key={point.title} className="flex flex-1">
+                <Reveal delay={Math.min(index, 4) * 0.05} className="flex h-full w-full">
+                  <span className="flex flex-1 items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3.5">
+                    <IconTile icon={point.icon} />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-brand-950">{point.title}</span>
+                      <span className="mt-0.5 block text-sm leading-6 text-zinc-500">{point.text}</span>
+                    </span>
+                  </span>
+                </Reveal>
               </li>
             ))}
           </ul>
         </div>
+      </Reveal>
         <header className="mx-auto mt-10 flex max-w-3xl flex-col items-center text-center">
           <Eyebrow icon={ShieldCheck}>Evolution</Eyebrow>
           <h2
@@ -391,25 +400,25 @@ function OverviewPanel() {
         </header>
         <ul aria-labelledby="seals-title" className="mx-auto mt-6 grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3">
           {seals.map((seal, index) => (
-            <li
-              key={seal.label}
-              className="flex flex-col items-center rounded-2xl border border-zinc-200 bg-white px-3 py-4 text-center"
-            >
-              <img
-                src={seal.src}
-                alt=""
-                width={80}
-                height={80}
-                className="size-16 rounded-full border border-zinc-200 bg-white object-contain p-0.5 sm:size-[4.5rem]"
-              />
-              <p className="mt-3 text-[10px] font-semibold tracking-[0.14em] text-brand-700 tabular-nums">
-                {String(index + 1).padStart(2, '0')}
-              </p>
-              <p className="mt-1 text-sm leading-5 font-semibold text-balance text-brand-950">{seal.label}</p>
+            <li key={seal.label}>
+              <Reveal delay={Math.min(index, 4) * 0.05}>
+                <div className="flex flex-col items-center rounded-2xl border border-zinc-200 bg-white px-3 py-4 text-center">
+                  <img
+                    src={seal.src}
+                    alt=""
+                    width={80}
+                    height={80}
+                    className="size-16 rounded-full border border-zinc-200 bg-white object-contain p-0.5 sm:size-[4.5rem]"
+                  />
+                  <p className="mt-3 text-[10px] font-semibold tracking-[0.14em] text-brand-700 tabular-nums">
+                    {String(index + 1).padStart(2, '0')}
+                  </p>
+                  <p className="mt-1 text-sm leading-5 font-semibold text-balance text-brand-950">{seal.label}</p>
+                </div>
+              </Reveal>
             </li>
           ))}
         </ul>
-      </Reveal>
     </div>
 
     <section aria-labelledby="desk-title" className="bg-surface">
@@ -427,28 +436,24 @@ function OverviewPanel() {
             text="The path used in the Student Services Portal, from the first email to the reply."
           />
         </Reveal>
-        <motion.ol
-          initial={reduce ? false : 'hidden'}
-          whileInView="show"
-          viewport={viewport}
-          variants={stagger}
-          className="mt-[clamp(1.5rem,1rem+1.5vw,2.25rem)] grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
-        >
+        <ol className="mt-[clamp(1.5rem,1rem+1.5vw,2.25rem)] grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {requestSteps.map((step, index) => (
-            <motion.li key={step.title} variants={fadeUp}>
-              <article className="h-full rounded-2xl border border-zinc-200 bg-white p-5">
-                <div className="flex items-center justify-between">
-                  <IconTile icon={step.icon} />
-                  <span className="font-hero text-2xl leading-none text-brand-200">
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
-                </div>
-                <h3 className="mt-4 text-sm font-semibold text-brand-950">{step.title}</h3>
-                <p className="mt-1.5 text-sm leading-6 text-zinc-500">{step.detail}</p>
-              </article>
-            </motion.li>
+            <li key={step.title}>
+              <Reveal delay={Math.min(index, 4) * 0.05}>
+                <article className="h-full rounded-2xl border border-zinc-200 bg-white p-5">
+                  <div className="flex items-center justify-between">
+                    <IconTile icon={step.icon} />
+                    <span className="font-hero text-2xl leading-none text-brand-200">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                  </div>
+                  <h3 className="mt-4 text-sm font-semibold text-brand-950">{step.title}</h3>
+                  <p className="mt-1.5 text-sm leading-6 text-zinc-500">{step.detail}</p>
+                </article>
+              </Reveal>
+            </li>
           ))}
-        </motion.ol>
+        </ol>
         <div className="mt-8 flex justify-center">
           <Button asChild size="lg" className="h-12 rounded-xl px-6">
             <Link to="/portal">
@@ -476,19 +481,21 @@ function OverviewPanel() {
           />
         </Reveal>
         <ul className="mt-[clamp(1.5rem,1rem+1.5vw,2.25rem)] grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {councilProjects.map((project) => (
+          {councilProjects.map((project, index) => (
             <li key={project.to}>
-              <Link
-                to={project.to}
-                className="group flex h-full items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-4 transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[0_16px_32px_-24px_rgba(30,5,65,0.45)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-              >
-                <IconTile icon={project.icon} />
-                <span className="min-w-0 flex-1 text-sm font-semibold text-brand-950">{project.label}</span>
-                <ChevronsRight
-                  className="size-4 shrink-0 text-brand-300 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700"
-                  aria-hidden
-                />
-              </Link>
+              <Reveal delay={Math.min(index, 4) * 0.05}>
+                <Link
+                  to={project.to}
+                  className="group flex h-full items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-4 transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[0_16px_32px_-24px_rgba(30,5,65,0.45)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+                >
+                  <IconTile icon={project.icon} />
+                  <span className="min-w-0 flex-1 text-sm font-semibold text-brand-950">{project.label}</span>
+                  <ChevronsRight
+                    className="size-4 shrink-0 text-brand-300 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700"
+                    aria-hidden
+                  />
+                </Link>
+              </Reveal>
             </li>
           ))}
         </ul>
@@ -1189,86 +1196,108 @@ function StructurePanel() {
         <RosterEmpty message="No organization chart data published yet." />
       ) : null}
       {!loading && !error && (dean || president) ? (
-        <>
-          <div className="mt-8 flex flex-col items-center [&>:first-child]:mt-0 lg:hidden">
-            {dean ? (
-              <>
-                <ChartBand label="Advisory Board" />
-                <div className="w-full max-w-sm">
-                  <OrgNode seat={dean} lead compact />
-                </div>
-                {facultyAdvisers.length > 0 ? (
-                  <MobileRow people={facultyAdvisers} grouped />
-                ) : null}
-              </>
-            ) : null}
-            {president ? (
-              <>
-                <ChartBand label="Executive Board" />
-                <div className="w-full max-w-sm">
-                  <OrgNode seat={president} lead compact />
-                </div>
-                {lineOfficers.length > 0 ? <MobileRow people={lineOfficers} /> : null}
-                {staffOfficers.length > 0 ? <MobileRow people={staffOfficers} /> : null}
-              </>
-            ) : null}
-            {yearReps.length > 0 ? (
-              <>
-                <ChartBand label="Year level representatives" />
-                <MobileRow people={yearReps} grouped />
-              </>
-            ) : null}
-            {associates.length > 0 ? (
-              <>
-                <ChartBand label="Associates" />
-                <MobileRow people={associates} grouped />
-              </>
-            ) : null}
-          </div>
-
-          <div className="mt-8 hidden w-full overflow-x-auto lg:block">
-            <div className="mx-auto flex w-max min-w-full flex-col items-center py-2 [&>:first-child]:mt-0">
-              {dean ? (
-                <>
-                  <ChartBand label="Advisory Board" />
-                  <OrgRow people={[dean]} root />
-                  {facultyAdvisers.length > 0 ? <OrgRow people={facultyAdvisers} /> : null}
-                </>
-              ) : null}
-              {president ? (
-                <>
-                  <ChartBand label="Executive Board" />
-                  <OrgRow people={[president]} />
-                  {lineOfficers.length > 0 ? <OrgRow people={lineOfficers} /> : null}
-                  {staffOfficers.length > 0 ? <OrgRow people={staffOfficers} /> : null}
-                </>
-              ) : null}
-              {yearReps.length > 0 ? (
-                <>
-                  <ChartBand label="Year level representatives" />
-                  <OrgRow people={yearReps} />
-                </>
-              ) : null}
-              {associates.length > 0 ? (
-                <>
-                  <ChartBand label="Associates" />
-                  <OrgRow people={associates} />
-                </>
-              ) : null}
-            </div>
-          </div>
-        </>
+        <OrgChart
+          tiers={[
+            dean || facultyAdvisers.length
+              ? { label: 'Advisory Board', lead: dean, reports: facultyAdvisers }
+              : null,
+            president
+              ? {
+                  label: 'Executive Board',
+                  lead: president,
+                  reports: [...lineOfficers, ...staffOfficers],
+                }
+              : null,
+            yearReps.length
+              ? { label: 'Year Level Representatives', reports: yearReps }
+              : null,
+            associates.length ? { label: 'Associates', reports: associates } : null,
+          ].filter((tier): tier is OrgTier => Boolean(tier))}
+        />
       ) : null}
     </div>
   )
 }
 
-function ChartBand({ label }: { label: string }) {
+type OrgTier = {
+  label: string
+  lead?: Seat
+  reports: Seat[]
+}
+
+function orgGridClass(count: number) {
+  if (count <= 1) return 'mx-auto grid max-w-[20rem] grid-cols-1 gap-4'
+  if (count === 2) return 'mx-auto grid max-w-3xl grid-cols-2 gap-4'
+  if (count === 3) return 'grid grid-cols-1 gap-4 sm:grid-cols-3'
+  if (count === 4) return 'grid grid-cols-2 gap-4 lg:grid-cols-4'
+  return 'grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4'
+}
+
+function orgLineInsetClass(count: number) {
+  if (count === 2) return 'left-1/4 right-1/4'
+  if (count === 3) return 'left-[16.666%] right-[16.666%]'
+  if (count === 4) return 'left-1/4 right-1/4 lg:left-[12.5%] lg:right-[12.5%]'
+  return 'left-1/4 right-1/4 sm:left-[16.666%] sm:right-[16.666%] xl:left-[12.5%] xl:right-[12.5%]'
+}
+
+function OrgChart({ tiers }: { tiers: OrgTier[] }) {
   return (
-    <div className="mt-8 flex w-full items-center gap-4 lg:mt-10 lg:max-w-3xl">
-      <span className="h-px flex-1 bg-brand-200" aria-hidden />
-      <p className="text-[11px] font-semibold tracking-[0.16em] text-brand-700 uppercase">{label}</p>
-      <span className="h-px flex-1 bg-brand-200" aria-hidden />
+    <div className="mt-10 divide-y divide-zinc-100 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+      {tiers.map((tier) => {
+        const reports = tier.reports
+        const branched = reports.length > 1
+
+        return (
+          <section key={tier.label} className="px-4 py-8 sm:px-8">
+            <p className="text-center text-[11px] font-semibold tracking-[0.16em] text-brand-700 uppercase">
+              {tier.label}
+            </p>
+
+            {tier.lead ? (
+              <>
+                <span className="mx-auto mt-4 block h-5 w-px bg-brand-300" aria-hidden />
+                <div className="mx-auto w-full max-w-[20rem]">
+                  <OrgNode seat={tier.lead} lead />
+                </div>
+              </>
+            ) : null}
+
+            {reports.length > 0 ? (
+              <div className="flex w-full flex-col items-center">
+                {tier.lead || branched ? (
+                  <span className={cn('w-px bg-brand-300', tier.lead ? 'h-6' : 'mt-4 h-6')} aria-hidden />
+                ) : (
+                  <div className="mt-5" />
+                )}
+                <ul className={cn('relative w-full', orgGridClass(reports.length), branched && 'pt-6')}>
+                  {branched ? (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'pointer-events-none absolute top-0 hidden h-px bg-brand-300 sm:block',
+                        orgLineInsetClass(reports.length),
+                      )}
+                    />
+                  ) : null}
+                  {reports.map((person) => (
+                    <li key={`${person.role}-${person.name}`} className="relative min-w-0">
+                      {branched ? (
+                        <span
+                          aria-hidden
+                          className="absolute top-0 left-1/2 hidden h-6 w-px -translate-x-1/2 bg-brand-300 sm:block"
+                        />
+                      ) : null}
+                      <div className={cn(branched && 'sm:pt-6')}>
+                        <OrgNode seat={person} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </section>
+        )
+      })}
     </div>
   )
 }
@@ -1398,12 +1427,12 @@ function Mark({
     <img
       src={photo ? src : studentCouncil}
       alt=""
-      width={80}
-      height={80}
+      width={128}
+      height={128}
       className={cn(
         'shrink-0 bg-white',
         photo ? 'object-cover object-[center_18%]' : 'rounded-full object-contain p-1',
-        dense ? 'size-11' : prominent ? 'size-16' : 'size-14',
+        dense ? 'size-16' : prominent ? 'size-28 sm:size-32' : 'size-24 sm:size-28',
         photo ? 'rounded-xl' : 'rounded-full',
         'border border-zinc-200',
         prominent && 'ring-2 ring-gold-400',
@@ -1419,29 +1448,29 @@ function SeatCard({ seat, featured = false }: { seat: Seat; featured?: boolean }
   return (
     <article
       className={cn(
-        'flex h-full items-center rounded-2xl border bg-white',
+        'flex h-full rounded-2xl border bg-white',
         seat.vacant ? 'border-dashed border-zinc-300' : 'border-zinc-200',
         featured
-          ? 'gap-5 border-brand-200 p-5 shadow-[0_16px_36px_-28px_rgba(30,5,65,0.45)] sm:gap-6 sm:p-6'
-          : 'gap-4 p-4 sm:gap-5 sm:p-5',
+          ? 'flex-col items-center gap-4 border-brand-200 px-6 py-6 text-center shadow-[0_16px_36px_-28px_rgba(30,5,65,0.45)] sm:gap-5 sm:px-8 sm:py-7'
+          : 'items-center gap-4 p-4 sm:gap-5 sm:p-5',
       )}
     >
       <img
         src={photo ? seat.photo : studentCouncil}
         alt=""
-        width={featured ? 112 : 88}
-        height={featured ? 112 : 88}
+        width={featured ? 128 : 112}
+        height={featured ? 128 : 112}
         className={cn(
           'shrink-0 bg-white',
           photo ? 'object-cover object-[center_18%]' : 'rounded-full object-contain p-1.5',
-          featured ? 'size-24 sm:size-28' : 'size-20 sm:size-[5.5rem]',
+          featured ? 'size-28 sm:size-32' : 'size-24 sm:size-28',
           photo ? 'rounded-2xl' : 'rounded-full',
           'border border-zinc-200',
           featured && 'ring-2 ring-gold-400',
           seat.vacant && 'border-dashed opacity-40',
         )}
       />
-      <div className="min-w-0">
+      <div className={cn('min-w-0', featured && 'w-full')}>
         <p
           className={cn(
             'font-semibold tracking-[0.12em] text-brand-700 uppercase',
@@ -1463,84 +1492,32 @@ function SeatCard({ seat, featured = false }: { seat: Seat; featured?: boolean }
   )
 }
 
-function OrgRow({ people, root = false }: { people: Seat[]; root?: boolean }) {
-  return (
-    <div className="flex flex-col items-center">
-      {root ? null : <span className="h-6 w-px bg-brand-200" aria-hidden />}
-      <ul className="relative flex justify-center">
-        {people.length > 1 ? (
-          <span aria-hidden className="absolute top-0 h-px bg-brand-200" style={{ left: '7rem', right: '7rem' }} />
-        ) : null}
-        {people.map((person) => (
-          <li key={`${person.role}-${person.name}`} className="flex w-56 flex-col items-center px-2">
-            {root ? null : <span className="h-5 w-px bg-brand-200" aria-hidden />}
-            <OrgNode seat={person} lead={person.role === 'President'} />
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-function MobileRow({ people, grouped = false }: { people: Seat[]; grouped?: boolean }) {
-  const columns = people.length === 3 ? 'grid-cols-3' : 'grid-cols-2'
-  const oddLast = people.length % 2 === 1 && people.length !== 3
-
-  return (
-    <div className="flex w-full flex-col items-center">
-      {grouped ? null : <span className="h-4 w-px bg-brand-200" aria-hidden />}
-      {grouped ? null : (
-        <span
-          className={cn('h-px bg-brand-200', people.length === 3 ? 'w-2/3' : 'w-1/2')}
-          aria-hidden
-        />
-      )}
-      <ul className={cn('mt-3 grid w-full gap-2', columns, grouped && 'mt-4')}>
-        {people.map((person, index) => {
-          const center = oddLast && index === people.length - 1
-          return (
-            <li key={`${person.role}-${person.name}`} className={cn('flex flex-col items-center', center && 'col-span-2')}>
-              {grouped ? null : <span className="mb-2 h-3 w-px bg-brand-200" aria-hidden />}
-              <div className={cn('w-full', center && 'w-1/2')}>
-                <OrgChip seat={person} />
-              </div>
-            </li>
-          )
-        })}
-      </ul>
-    </div>
-  )
-}
-
-function OrgChip({ seat }: { seat: Seat }) {
+function OrgNode({ seat, lead = false }: { seat: Seat; lead?: boolean }) {
   return (
     <article
       className={cn(
-        'flex h-full flex-col items-center rounded-2xl border bg-white px-2 py-3 text-center',
+        'flex h-full w-full flex-col items-center rounded-2xl border bg-white text-center',
         seat.vacant ? 'border-dashed border-zinc-300' : 'border-zinc-200',
-      )}
-    >
-      <Mark src={seat.photo} dense muted={seat.vacant} />
-      <p className="mt-2 text-[10px] leading-3 font-semibold tracking-[0.08em] text-brand-700 uppercase">{seat.role}</p>
-      <p className="mt-1 text-xs leading-4 font-semibold text-balance break-words text-brand-950">{seat.name}</p>
-    </article>
-  )
-}
-
-function OrgNode({ seat, lead = false, compact = false }: { seat: Seat; lead?: boolean; compact?: boolean }) {
-  if (compact) return <SeatCard seat={seat} featured={lead} />
-
-  return (
-    <article
-      className={cn(
-        'flex w-full flex-col items-center rounded-2xl border bg-white px-3 py-4 text-center',
-        seat.vacant ? 'border-dashed border-zinc-300' : 'border-zinc-200',
-        lead && 'border-brand-200',
+        lead ? 'border-brand-200 px-5 py-6 shadow-[0_18px_36px_-28px_rgba(30,5,65,0.5)]' : 'px-4 py-5',
       )}
     >
       <Mark src={seat.photo} prominent={lead} muted={seat.vacant} />
-      <p className="mt-3 text-[11px] leading-4 font-semibold tracking-[0.12em] text-brand-700 uppercase">{seat.role}</p>
-      <p className="mt-1 text-sm leading-5 font-semibold text-balance break-words text-brand-950">{seat.name}</p>
+      <p
+        className={cn(
+          'mt-3.5 font-semibold tracking-[0.12em] text-brand-700 uppercase',
+          lead ? 'text-xs leading-4' : 'text-[11px] leading-4',
+        )}
+      >
+        {seat.role}
+      </p>
+      <p
+        className={cn(
+          'mt-1.5 font-semibold text-balance break-words text-brand-950',
+          lead ? 'text-lg leading-6' : 'text-base leading-6',
+        )}
+      >
+        {seat.name}
+      </p>
     </article>
   )
 }

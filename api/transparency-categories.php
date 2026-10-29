@@ -18,11 +18,7 @@ try {
         default => api_json(['ok' => false, 'error' => 'Method not allowed.'], 405),
     };
 } catch (Throwable $error) {
-    api_json([
-        'ok' => false,
-        'error' => 'Database unavailable. Run scripts/run-015-transparency-categories.php and start MySQL.',
-        'detail' => $error->getMessage(),
-    ], 503);
+    api_json_db_error($error);
 }
 
 function transparency_categories_payload(?array $body = null): array
@@ -34,6 +30,7 @@ function transparency_categories_payload(?array $body = null): array
     $kicker = trim((string) ($body['kicker'] ?? ''));
     $note = trim((string) ($body['note'] ?? ''));
     $folder = trim((string) ($body['folder'] ?? ''));
+    $tabs = transparency_tabs_normalize($body['tabs'] ?? []);
     $series = trim((string) ($body['seriesLabel'] ?? $body['series_label'] ?? ''));
     $icon = trim((string) ($body['icon'] ?? 'file-text'));
     $slug = trim((string) ($body['slug'] ?? ''));
@@ -77,6 +74,7 @@ function transparency_categories_payload(?array $body = null): array
         'accent' => mb_substr($accent, 0, 160),
         'kicker' => mb_substr($kicker, 0, 80),
         'note' => $note,
+        'tabs_json' => json_encode($tabs, JSON_UNESCAPED_UNICODE),
         'folder' => mb_substr($folder, 0, 160),
         'series_label' => mb_substr($series, 0, 120),
         'icon' => mb_substr($icon, 0, 64),
@@ -146,9 +144,9 @@ function transparency_categories_create(): never
 
     $stmt = $pdo->prepare(
         'INSERT INTO transparency_categories
-          (slug, label, title, accent, kicker, note, folder, series_label, icon, sort_order, is_published)
+          (slug, label, title, accent, kicker, note, tabs_json, folder, series_label, icon, sort_order, is_published)
          VALUES
-          (:slug, :label, :title, :accent, :kicker, :note, :folder, :series_label, :icon, :sort_order, :is_published)'
+          (:slug, :label, :title, :accent, :kicker, :note, :tabs_json, :folder, :series_label, :icon, :sort_order, :is_published)'
     );
     $stmt->execute($data);
 
@@ -192,7 +190,7 @@ function transparency_categories_update(): never
                  accent = :accent,
                  kicker = :kicker,
                  note = :note,
-                 folder = :folder,
+                 tabs_json = :tabs_json,
                  series_label = :series_label,
                  icon = :icon,
                  sort_order = :sort_order,

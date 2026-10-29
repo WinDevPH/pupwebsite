@@ -92,7 +92,7 @@ foreach ($files as $file) {
         api_json(['ok' => false, 'error' => 'Could not save the uploaded image.'], 500);
     }
 
-    $url = '/gallery/uploads/' . $filename;
+    $url = api_uploads_url('gallery', $filename);
     $uploaded[] = [
         'url' => $url,
         'image' => $url,

@@ -28,6 +28,7 @@ type NotificationsContextValue = {
   unreadCount: number
   hasUnread: boolean
   hasUnreadKind: (kind: NotificationKind) => boolean
+  kindCount: (kind: NotificationKind) => number
   loading: boolean
   refreshing: boolean
   error: string | null
@@ -71,7 +72,9 @@ function pruneToKnown(ids: Set<string>, known: Set<string>) {
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const location = useLocation()
+  const emptyCounts = { request: 0, reservation: 0, chat: 0, total: 0 }
   const [rawItems, setRawItems] = useState<AdminNotification[]>([])
+  const [counts, setCounts] = useState(emptyCounts)
   const [seenIds, setSeenIds] = useState<Set<string>>(() => readIdSet(SEEN_KEY))
   const [clearedIds, setClearedIds] = useState<Set<string>>(() => readIdSet(CLEARED_KEY))
   const [loading, setLoading] = useState(true)
@@ -99,12 +102,19 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     const nextItems = result.data.items
     const knownIds = new Set(nextItems.map((item) => item.id))
     setRawItems(nextItems)
+    setCounts({
+      request: result.data.counts?.request ?? 0,
+      reservation: result.data.counts?.reservation ?? 0,
+      chat: result.data.counts?.chat ?? 0,
+      total: result.data.counts?.total ?? nextItems.length,
+    })
     setError(null)
     setLastUpdatedAt(Date.now())
 
     setSeenIds((prev) => {
       const pruned = pruneToKnown(prev, knownIds)
       for (const id of prev) {
+        if (id.startsWith('chat:')) continue
         if (!knownIds.has(id) && pruned.size < MAX_STORED_IDS) pruned.add(id)
       }
       writeIdSet(SEEN_KEY, pruned)
@@ -146,14 +156,24 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }
   }, [panelOpen, refresh])
 
-  const items = useMemo(
+  const visibleItems = useMemo(
     () => rawItems.filter((item) => !clearedIds.has(item.id)),
     [rawItems, clearedIds],
+  )
+
+  const items = useMemo(
+    () => visibleItems.filter((item) => item.kind !== 'chat'),
+    [visibleItems],
   )
 
   const unread = useMemo(
     () => items.filter((item) => !seenIds.has(item.id)),
     [items, seenIds],
+  )
+
+  const unreadChat = useMemo(
+    () => visibleItems.filter((item) => item.kind === 'chat' && !seenIds.has(item.id)),
+    [seenIds, visibleItems],
   )
 
   const markRead = useCallback((id: string) => {
@@ -169,7 +189,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const markAllRead = useCallback(() => {
     setSeenIds((prev) => {
       const next = new Set(prev)
-      for (const item of items) next.add(item.id)
+      for (const item of items) {
+        if (item.kind === 'chat') continue
+        next.add(item.id)
+      }
       writeIdSet(SEEN_KEY, next)
       return next
     })
@@ -178,13 +201,19 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const clearAll = useCallback(() => {
     setClearedIds((prev) => {
       const next = new Set(prev)
-      for (const item of rawItems) next.add(item.id)
+      for (const item of rawItems) {
+        if (item.kind === 'chat') continue
+        next.add(item.id)
+      }
       writeIdSet(CLEARED_KEY, next)
       return next
     })
     setSeenIds((prev) => {
       const next = new Set(prev)
-      for (const item of rawItems) next.add(item.id)
+      for (const item of rawItems) {
+        if (item.kind === 'chat') continue
+        next.add(item.id)
+      }
       writeIdSet(SEEN_KEY, next)
       return next
     })
@@ -209,12 +238,21 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     const reservationMatch = path.match(/^\/admin\/reservations\/(\d+)(?:\/edit)?\/?$/)
     if (reservationMatch?.[1]) {
       markRead(`reservation:${reservationMatch[1]}`)
+      return
     }
   }, [location.pathname, markRead])
 
   const hasUnreadKind = useCallback(
-    (kind: NotificationKind) => unread.some((item) => item.kind === kind),
-    [unread],
+    (kind: NotificationKind) =>
+      kind === 'chat'
+        ? unreadChat.length > 0
+        : unread.some((item) => item.kind === kind),
+    [unread, unreadChat],
+  )
+
+  const kindCount = useCallback(
+    (kind: NotificationKind) => (kind === 'chat' ? unreadChat.length : counts[kind] ?? 0),
+    [counts, unreadChat],
   )
 
   const value = useMemo<NotificationsContextValue>(
@@ -224,6 +262,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       unreadCount: unread.length,
       hasUnread: unread.length > 0,
       hasUnreadKind,
+      kindCount,
       loading,
       refreshing,
       error,
@@ -238,6 +277,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       items,
       unread,
       hasUnreadKind,
+      kindCount,
       loading,
       refreshing,
       error,

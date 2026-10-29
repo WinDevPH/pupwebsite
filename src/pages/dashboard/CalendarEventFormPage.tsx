@@ -85,10 +85,10 @@ const kindOptions: { id: CalendarKind; label: string; icon: typeof Sun }[] = [
 ]
 
 const kindDefaultImages: Record<CalendarKind, string> = {
-  holiday: '/calendar/defaults/holiday.jpg',
-  exam: '/calendar/defaults/exam.jpg',
-  enrollment: '/calendar/defaults/enrollment.jpg',
-  academic: '/calendar/defaults/academic.jpg',
+  holiday: '/uploads/calendar/holiday.jpg',
+  exam: '/uploads/calendar/exam.jpg',
+  enrollment: '/uploads/calendar/enrollment.jpg',
+  academic: '/uploads/calendar/academic.jpg',
 }
 
 function isKindDefaultImage(url: string) {

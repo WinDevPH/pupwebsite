@@ -224,7 +224,10 @@ function DesktopNav({ items }: { items: NavItem[] }) {
           .filter((item) => !item.mobileOnly)
           .map((item) =>
             item.groups ? (
-              <NavigationMenu.Item key={item.label}>
+              <NavigationMenu.Item
+                key={item.label}
+                className={menuWidth(item) > 640 ? undefined : 'relative'}
+              >
                 <NavigationMenu.Trigger
                   className={cn(
                     navLinkClass,
@@ -238,10 +241,12 @@ function DesktopNav({ items }: { items: NavItem[] }) {
                   />
                 </NavigationMenu.Trigger>
                 <NavigationMenu.Content
-                  className="data-[motion=from-end]:animate-menu-in data-[motion=from-start]:animate-menu-in"
+                  className="absolute top-full left-1/2 z-50 pt-3 -translate-x-1/2"
                   style={{ width: menuWidth(item) }}
                 >
-                  <MegaMenu item={item} />
+                  <div className="origin-top overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-[0_28px_60px_-24px_rgba(30,5,65,0.4)] animate-menu-in dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/50">
+                    <MegaMenu item={item} />
+                  </div>
                 </NavigationMenu.Content>
               </NavigationMenu.Item>
             ) : (
@@ -258,10 +263,6 @@ function DesktopNav({ items }: { items: NavItem[] }) {
             ),
           )}
       </NavigationMenu.List>
-
-      <div className="absolute top-full left-1/2 z-50 flex -translate-x-1/2 justify-center pt-3">
-        <NavigationMenu.Viewport className="relative h-(--radix-navigation-menu-viewport-height) w-(--radix-navigation-menu-viewport-width) origin-top overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-[0_28px_60px_-24px_rgba(30,5,65,0.4)] transition-[width,height] duration-200 data-[state=closed]:animate-menu-out data-[state=open]:animate-menu-in dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/50" />
-      </div>
     </NavigationMenu.Root>
   )
 }
@@ -413,9 +414,11 @@ function MobileNav({
     if (!open) return
     const previous = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    document.documentElement.classList.add('mobile-nav-open')
     setPageScrollLocked(true)
     return () => {
       document.body.style.overflow = previous
+      document.documentElement.classList.remove('mobile-nav-open')
       setPageScrollLocked(false)
     }
   }, [open])

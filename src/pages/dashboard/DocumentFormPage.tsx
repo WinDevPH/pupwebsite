@@ -28,12 +28,17 @@ import {
   workspaceTenantMainStackCls,
 } from '@/components/portal/register-ui'
 import { Button } from '@/components/ui/button'
+import { transparencyInnerTabIcon } from '@/lib/transparency-icons'
+import { cn } from '@/lib/utils'
 import { Snackbar, type SnackToast } from '@/components/ui/Snackbar'
 import {
   createDocument,
+  FINANCIAL_DOCUMENT_TABS,
   getDocumentById,
+  listDocuments,
   updateDocument,
   type DocumentCategory,
+  type DocumentInnerTab,
   type DocumentInput,
   type DocumentRecord,
 } from '@/lib/documents-api'
@@ -58,10 +63,14 @@ const SERIES_HINT: Record<string, string> = {
   memorandum: 'Memorandum',
   report: 'Report',
   financial: 'Financial Report',
+  'quarterly-liquidations': 'Quarterly Liquidation',
+  'budget-allocations': 'Budget Allocation',
+  'financial-statements': 'Financial Statement',
 }
 
 type FormState = {
   category: DocumentCategory
+  subcategory: string
   number: string
   title: string
   url: string
@@ -70,13 +79,19 @@ type FormState = {
   published: boolean
 }
 
-function emptyForm(category: DocumentCategory = 'board_resolution', withHint = false): FormState {
+function emptyForm(
+  category: DocumentCategory = 'board_resolution',
+  withHint = false,
+  tabs: DocumentInnerTab[] = [],
+): FormState {
+  const subcategory = tabs[0]?.slug ?? ''
   return {
     category,
+    subcategory,
     number: '',
     title: '',
     url: '',
-    seriesLabel: withHint ? SERIES_HINT[category] : '',
+    seriesLabel: withHint ? SERIES_HINT[subcategory] || SERIES_HINT[category] || '' : '',
     sortOrder: '0',
     published: true,
   }
@@ -85,6 +100,7 @@ function emptyForm(category: DocumentCategory = 'board_resolution', withHint = f
 function recordToForm(record: DocumentRecord): FormState {
   return {
     category: record.category,
+    subcategory: record.subcategory || '',
     number: record.number,
     title: record.title,
     url: record.url || record.href,
@@ -97,6 +113,7 @@ function recordToForm(record: DocumentRecord): FormState {
 function formToInput(form: FormState): DocumentInput {
   return {
     category: form.category,
+    subcategory: form.subcategory.trim(),
     number: form.number.trim(),
     title: form.title.trim(),
     url: form.url.trim(),
@@ -113,7 +130,12 @@ export default function DocumentFormPage({ archive }: { archive: TransparencyArc
   const mode: 'create' | 'edit' = Number.isFinite(editId) && editId > 0 ? 'edit' : 'create'
   const seriesHint = SERIES_HINT[archive.slug] || archive.label
 
-  const [form, setForm] = useState<FormState>(() => emptyForm(archive.slug, true))
+  const [tabs, setTabs] = useState<DocumentInnerTab[]>(
+    archive.slug === 'financial' ? FINANCIAL_DOCUMENT_TABS : [],
+  )
+  const [form, setForm] = useState<FormState>(() =>
+    emptyForm(archive.slug, true, archive.slug === 'financial' ? FINANCIAL_DOCUMENT_TABS : []),
+  )
   const [tab, setTab] = useState<EditorTab>('content')
   const [loading, setLoading] = useState(mode === 'edit')
   const [loadError, setLoadError] = useState('')
@@ -132,9 +154,31 @@ export default function DocumentFormPage({ archive }: { archive: TransparencyArc
   }, [toast])
 
   useEffect(() => {
+    let cancelled = false
+    void listDocuments({ all: true, category: archive.slug }).then((result) => {
+      if (cancelled || !result.ok) return
+      const nextTabs = result.data.tabs ?? (archive.slug === 'financial' ? FINANCIAL_DOCUMENT_TABS : [])
+      setTabs(nextTabs)
+      setForm((prev) => {
+        if (nextTabs.length === 0) return { ...prev, subcategory: '' }
+        if (nextTabs.some((item) => item.slug === prev.subcategory)) return prev
+        const first = nextTabs[0].slug
+        return {
+          ...prev,
+          subcategory: first,
+          seriesLabel: prev.seriesLabel.trim() ? prev.seriesLabel : SERIES_HINT[first] || prev.seriesLabel,
+        }
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [archive.slug])
+
+  useEffect(() => {
     setTab('content')
     if (mode !== 'edit') {
-      setForm(emptyForm(archive.slug, true))
+      setForm(emptyForm(archive.slug, true, archive.slug === 'financial' ? FINANCIAL_DOCUMENT_TABS : []))
       setLoading(false)
       setLoadError('')
       setNeedsLogin(false)
@@ -170,7 +214,8 @@ export default function DocumentFormPage({ archive }: { archive: TransparencyArc
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  const contentIncomplete = !form.title.trim() || !form.url.trim()
+  const contentIncomplete =
+    !form.title.trim() || !form.url.trim() || (tabs.length > 0 && !form.subcategory)
   const tabAlert: Record<EditorTab, boolean> = {
     content: contentIncomplete,
     details: false,
@@ -314,9 +359,57 @@ export default function DocumentFormPage({ archive }: { archive: TransparencyArc
                     <SectionIntro
                       icon={<FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />}
                       title="Content"
-                      body="Title and link shown on the transparency and Legislative pages."
+                      body="Title and link shown on the Transparency pages."
                     />
                     <div className={`${formControlWellCls} grid gap-3 sm:grid-cols-2 sm:gap-4`}>
+                      {tabs.length > 0 ? (
+                        <div className={cn(workspaceFormFieldGroupCls, 'sm:col-span-2')}>
+                          <span className={workspaceFormLabelCls}>
+                            Category
+                            <span aria-hidden className={workspaceFormRequiredMarkCls}>
+                              {' '}
+                              *
+                            </span>
+                          </span>
+                          <div
+                            role="tablist"
+                            aria-label="Financial report category"
+                            className="flex flex-wrap gap-2"
+                          >
+                            {tabs.map((item) => {
+                              const selected = form.subcategory === item.slug
+                              const Icon = transparencyInnerTabIcon(item.slug)
+                              return (
+                                <button
+                                  key={item.slug}
+                                  type="button"
+                                  role="tab"
+                                  aria-selected={selected}
+                                  disabled={disabled}
+                                  onClick={() => {
+                                    set('subcategory', item.slug)
+                                    if (
+                                      !form.seriesLabel.trim() ||
+                                      Object.values(SERIES_HINT).includes(form.seriesLabel)
+                                    ) {
+                                      set('seriesLabel', SERIES_HINT[item.slug] || form.seriesLabel)
+                                    }
+                                  }}
+                                  className={cn(
+                                    'inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold transition',
+                                    selected
+                                      ? 'border-brand-700 bg-brand-700 text-white'
+                                      : 'border-zinc-200 bg-white text-zinc-600 hover:border-brand-200 hover:text-brand-800 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300',
+                                  )}
+                                >
+                                  <Icon className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                                  {item.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
                       <div className="sm:col-span-2">
                         <Field label="Title" required>
                           <input

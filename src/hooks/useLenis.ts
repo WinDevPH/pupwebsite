@@ -1,5 +1,6 @@
 import { useEffect, type RefObject } from 'react'
 import Lenis from 'lenis'
+import { isAppleTouch } from '@/lib/device'
 
 let lenisInstance: Lenis | null = null
 
@@ -49,10 +50,7 @@ export function useLenis(
     if (!wrapper || !content) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     // Lenis intercepts touch scrolling. On iPhone that leaves the fixed frame stuck and blank.
-    const ios =
-      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-    if (ios) return
+    if (isAppleTouch()) return
 
     const lenis = new Lenis({
       wrapper,

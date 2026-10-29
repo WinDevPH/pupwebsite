@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom'
 import { Mail } from 'lucide-react'
 import logo from '@/assets/pup-col-sc-logo.png'
 import { footerColumns, isExternalNavTo, siteName } from '@/components/layout/nav-data'
-import { Reveal } from '@/components/motion/Reveal'
 import { scrollPageTo } from '@/hooks/useLenis'
 import { useSiteContact } from '@/hooks/useSiteContact'
 
@@ -14,7 +13,7 @@ export function Footer() {
 
   return (
     <footer className="w-full border-t border-zinc-200 bg-white text-zinc-950 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
-      <Reveal className="mx-auto w-full max-w-7xl px-4 pt-12 pb-5 sm:px-6 sm:pt-14 lg:px-8">
+      <div className="mx-auto w-full max-w-7xl px-4 pt-12 pb-5 sm:px-6 sm:pt-14 lg:px-8">
         <div className="grid w-full gap-12 lg:grid-cols-[minmax(20rem,0.9fr)_minmax(0,1.5fr)] lg:items-start lg:gap-16">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
             <Link
@@ -121,7 +120,7 @@ export function Footer() {
             © {year} {siteName.short} {siteName.unit}. All rights reserved.
           </p>
         </div>
-      </Reveal>
+      </div>
     </footer>
   )
 }

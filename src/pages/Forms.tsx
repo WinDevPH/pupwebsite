@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FileText, FolderOpen, Loader2, Search } from 'lucide-react'
+import { FileText, FolderOpen, Library, Loader2, Search } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import { formsPageDescription, isExternalNavTo, siteName } from '@/components/layout/nav-data'
 import { Reveal } from '@/components/motion/Reveal'
+import { SectionKicker } from '@/components/ui/SectionKicker'
 import { useResourceLibrary } from '@/hooks/useResourceLibrary'
 import { listFormGroups, type FormFileRecord, type FormGroupRecord } from '@/lib/forms-api'
 
@@ -94,12 +95,9 @@ export default function Forms() {
             }}
             className="flex w-full max-w-4xl flex-col items-center text-center"
           >
-            <motion.p
-              variants={rise}
-              className="text-[11px] font-semibold tracking-[0.22em] text-brand-700 uppercase"
-            >
-              Resources
-            </motion.p>
+            <motion.div variants={rise}>
+              <SectionKicker icon={Library}>Resources</SectionKicker>
+            </motion.div>
             <motion.h1
               id="forms-page-title"
               variants={rise}
@@ -168,10 +166,10 @@ export default function Forms() {
           ) : null}
 
           {!loading && !error && (visible.length > 0 || visibleExtraLinks.length > 0) ? (
-            <Reveal>
-              <div className="grid gap-x-16 gap-y-12 md:grid-cols-2">
-                {visible.map((group) => (
-                  <section key={group.id} aria-labelledby={`form-group-${group.id}`}>
+            <div className="grid gap-x-16 gap-y-12 md:grid-cols-2">
+              {visible.map((group, index) => (
+                <Reveal key={group.id} delay={Math.min(index, 4) * 0.05}>
+                  <section aria-labelledby={`form-group-${group.id}`}>
                     <h2
                       id={`form-group-${group.id}`}
                       className="text-lg font-semibold tracking-tight text-brand-950"
@@ -189,8 +187,10 @@ export default function Forms() {
                       ))}
                     </ul>
                   </section>
-                ))}
-                {visibleExtraLinks.length > 0 ? (
+                </Reveal>
+              ))}
+              {visibleExtraLinks.length > 0 ? (
+                <Reveal delay={0.1}>
                   <section aria-labelledby="resource-library-links">
                     <h2
                       id="resource-library-links"
@@ -206,9 +206,9 @@ export default function Forms() {
                       ))}
                     </ul>
                   </section>
-                ) : null}
-              </div>
-            </Reveal>
+                </Reveal>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </main>

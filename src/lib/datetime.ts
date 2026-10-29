@@ -93,6 +93,68 @@ export function formatPhTime(value: string | Date | null | undefined): string {
   return new Intl.DateTimeFormat('en-PH', timeOpts).format(date)
 }
 
+export function formatChatClock(value: string | Date | null | undefined): string {
+  const date = value instanceof Date ? value : parseApiDate(value ?? null)
+  if (!date) return ''
+  return new Intl.DateTimeFormat('en-PH', timeOpts).format(date)
+}
+
+const dayKeyOpts: Intl.DateTimeFormatOptions = {
+  timeZone: PH_TIMEZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}
+
+export function formatPhDayKey(value: string | Date | null | undefined): string {
+  const date = value instanceof Date ? value : parseApiDate(value ?? null)
+  if (!date) return ''
+  return new Intl.DateTimeFormat('en-CA', dayKeyOpts).format(date)
+}
+
+function shiftDayKey(ymd: string, delta: number): string {
+  const [year, month, day] = ymd.split('-').map(Number)
+  if (!year || !month || !day) return ''
+  return new Date(Date.UTC(year, month - 1, day + delta)).toISOString().slice(0, 10)
+}
+
+export function formatChatDayLabel(value: string | Date | null | undefined, now = new Date()): string {
+  const date = value instanceof Date ? value : parseApiDate(value ?? null)
+  if (!date) return ''
+  const day = formatPhDayKey(date)
+  const today = formatPhDayKey(now)
+  if (!day || !today) return ''
+  if (day === today) return 'Today'
+  if (day === shiftDayKey(today, -1)) return 'Yesterday'
+  return day.startsWith(`${today.slice(0, 4)}-`) ? formatPhShortDate(date) : formatPhDate(date)
+}
+
+export function chatStampBreaks(
+  previous: string | Date | null | undefined,
+  next: string | Date | null | undefined,
+  gapMs = 5 * 60 * 1000,
+) {
+  const later = next instanceof Date ? next : parseApiDate(next ?? null)
+  if (!later) return false
+  const earlier = previous instanceof Date ? previous : parseApiDate(previous ?? null)
+  if (!earlier) return true
+  if (formatPhDayKey(earlier) !== formatPhDayKey(later)) return true
+  return later.getTime() - earlier.getTime() >= gapMs
+}
+
+export function formatChatDivider(
+  value: string | Date | null | undefined,
+  previous?: string | Date | null,
+  now = new Date(),
+): string {
+  const date = value instanceof Date ? value : parseApiDate(value ?? null)
+  if (!date) return ''
+  const prev = previous instanceof Date ? previous : parseApiDate(previous ?? null)
+  const newDay = !prev || formatPhDayKey(prev) !== formatPhDayKey(date)
+  if (newDay) return formatChatDayLabel(date, now)
+  return formatChatClock(date)
+}
+
 export function formatPhLongDate(value: string | Date | null | undefined = new Date()): string {
   const date = value instanceof Date ? value : parseApiDate(value ?? null)
   if (!date) return '—'

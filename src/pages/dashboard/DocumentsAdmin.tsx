@@ -36,7 +36,13 @@ import {
   type RegisterView,
 } from '@/components/portal/register-ui'
 import { Snackbar, type SnackToast } from '@/components/ui/Snackbar'
-import { deleteDocument, listDocuments, type DocumentRecord } from '@/lib/documents-api'
+import {
+  deleteDocument,
+  FINANCIAL_DOCUMENT_TABS,
+  listDocuments,
+  type DocumentInnerTab,
+  type DocumentRecord,
+} from '@/lib/documents-api'
 import type { TransparencyArchive } from '@/lib/transparency-admin'
 import { transparencyIcon } from '@/lib/transparency-icons'
 import { cn } from '@/lib/utils'
@@ -56,6 +62,10 @@ export default function DocumentsAdmin({ archive }: { archive: TransparencyArchi
   const [reloadBusy, setReloadBusy] = useState(false)
   const [needsLogin, setNeedsLogin] = useState(false)
   const [query, setQuery] = useState('')
+  const [tabs, setTabs] = useState<DocumentInnerTab[]>(
+    archive.slug === 'financial' ? FINANCIAL_DOCUMENT_TABS : [],
+  )
+  const [innerFilter, setInnerFilter] = useState('all')
   const [pageNo, setPageNo] = useState(1)
   const [pageSize, setPageSize] = useState(() => readStoredRegisterPageSize(pageSizeKey))
   const [registerView, setRegisterView] = useState<RegisterView>(() => initialRegisterView(viewKey))
@@ -87,6 +97,7 @@ export default function DocumentsAdmin({ archive }: { archive: TransparencyArchi
       }
       setNeedsLogin(false)
       setItems(result.data.items)
+      setTabs(result.data.tabs ?? (archive.slug === 'financial' ? FINANCIAL_DOCUMENT_TABS : []))
       setLoading(false)
       setReloadBusy(false)
     },
@@ -114,17 +125,22 @@ export default function DocumentsAdmin({ archive }: { archive: TransparencyArchi
 
   useEffect(() => {
     setPageNo(1)
-  }, [query, pageSize])
+  }, [query, pageSize, innerFilter])
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return items
       .filter((item) => {
+        if (innerFilter !== 'all') {
+          const assigned = item.subcategory || tabs[0]?.slug || ''
+          if (assigned !== innerFilter) return false
+        }
         if (!needle) return true
-        return `${item.title} ${item.number} ${item.seriesLabel}`.toLowerCase().includes(needle)
+        const tabLabel = tabs.find((tab) => tab.slug === item.subcategory)?.label ?? item.subcategory
+        return `${item.title} ${item.number} ${item.seriesLabel} ${tabLabel}`.toLowerCase().includes(needle)
       })
       .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
-  }, [items, query])
+  }, [innerFilter, items, query, tabs])
 
   const pageMeta = useMemo(() => {
     const total = filtered.length
@@ -311,6 +327,35 @@ export default function DocumentsAdmin({ archive }: { archive: TransparencyArchi
                 </div>
               </div>
             </div>
+            {tabs.length > 0 ? (
+              <div
+                role="tablist"
+                aria-label="Financial report categories"
+                className="flex flex-wrap gap-2"
+              >
+                {[{ slug: 'all', label: 'All' }, ...tabs].map((item) => {
+                  const selected = innerFilter === item.slug
+                  return (
+                    <button
+                      key={item.slug}
+                      type="button"
+                      role="tab"
+                      aria-selected={selected}
+                      disabled={busy}
+                      onClick={() => setInnerFilter(item.slug)}
+                      className={cn(
+                        'inline-flex min-h-8 items-center rounded-lg border px-2.5 text-[12px] font-semibold transition',
+                        selected
+                          ? 'border-brand-700 bg-brand-700 text-white'
+                          : 'border-zinc-200 bg-white text-zinc-600 hover:border-brand-200 hover:text-brand-800 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300',
+                      )}
+                    >
+                      {item.label}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
@@ -379,6 +424,14 @@ export default function DocumentsAdmin({ archive }: { archive: TransparencyArchi
                     >
                       Title
                     </th>
+                    {tabs.length > 0 ? (
+                      <th
+                        scope="col"
+                        className={cn(workspaceRegisterThSortCellCls, 'w-[10rem] text-left')}
+                      >
+                        Category
+                      </th>
+                    ) : null}
                     <th
                       scope="col"
                       className={cn(workspaceRegisterThSortCellCls, 'w-[7rem] text-left')}
@@ -432,6 +485,13 @@ export default function DocumentsAdmin({ archive }: { archive: TransparencyArchi
                           </div>
                         </div>
                       </td>
+                      {tabs.length > 0 ? (
+                        <td className="whitespace-nowrap px-1.5 py-2 text-[12px] text-zinc-600 sm:px-2 dark:text-zinc-400">
+                          {tabs.find((tab) => tab.slug === item.subcategory)?.label ||
+                            item.subcategory ||
+                            '—'}
+                        </td>
+                      ) : null}
                       <td className="whitespace-nowrap px-1.5 py-2 font-mono text-[12px] text-zinc-600 sm:px-2 dark:text-zinc-400">
                         {item.number || '—'}
                       </td>
@@ -507,6 +567,13 @@ export default function DocumentsAdmin({ archive }: { archive: TransparencyArchi
                         {item.seriesLabel ? (
                           <p className="mt-1 truncate text-[12px] text-zinc-600 dark:text-zinc-400">
                             {item.seriesLabel}
+                          </p>
+                        ) : null}
+                        {tabs.length > 0 ? (
+                          <p className="mt-1 truncate text-[11px] font-medium text-brand-700 dark:text-brand-300">
+                            {tabs.find((tab) => tab.slug === item.subcategory)?.label ||
+                              item.subcategory ||
+                              'Unassigned'}
                           </p>
                         ) : null}
                       </div>

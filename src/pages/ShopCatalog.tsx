@@ -12,7 +12,7 @@ import {
 import { LockerGrid } from '@/components/portal/LockerGrid'
 import { ShopPanel } from '@/components/portal/Shop'
 import { lockerGuidelinesUrl, merchGuidelinesUrl, siteName } from '@/components/layout/nav-data'
-import { Reveal } from '@/components/motion/Reveal'
+import { SectionKicker } from '@/components/ui/SectionKicker'
 import { cn } from '@/lib/utils'
 
 const ease = [0.16, 1, 0.3, 1] as const
@@ -30,17 +30,20 @@ const copy: Record<
     eyebrow: 'Services & Store',
     title: 'Locker',
     accent: 'Availability',
-    body: 'Tap an unassigned locker to reserve it. The Council confirms by email — no payment is taken here.',
+    body: 'Secure your study space on campus. Apply for, renew, and manage your student locker assignments through the official PUP College of Law Student Council locker rental program.',
     documentTitle: `Locker Availability · ${siteName.short} ${siteName.unit}`,
   },
   merch: {
     eyebrow: 'Services & Store',
     title: 'Merchandise',
     accent: 'Reservation',
-    body: 'Reserve official Student Council merchandise. The Council confirms by email — no payment is taken here.',
+    body: "The official Student Council Store powers student-led initiatives, academic support programs, and community welfare projects. Every purchase directly feeds into the council's IGP, helping build a more equipped, responsive, and empowering PUP COLmmunity.",
     documentTitle: `Merchandise Reservation · ${siteName.short} ${siteName.unit}`,
   },
 }
+
+const igpNote =
+  'Income-Generating Projects (IGPs) are established to provide financial sustainability for council advocacies while providing quality legal apparel and merchandise to the student body. Revenue generated through these initiatives is strictly funneled into student welfare campaigns, facility improvements, academic support projects, and emergency assistance funds for the PUP College of Law community.'
 
 export function LockerPage() {
   return <ShopCatalogPage shop="locker" />
@@ -87,21 +90,6 @@ function ShopCatalogPage({ shop }: { shop: ShopId }) {
     [listing.items, needle, shop],
   )
 
-  if (shop === 'locker') {
-    return (
-      <main id="main-content" className="bg-white">
-        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-center gap-2 px-4 pt-8 sm:px-6 lg:px-8">
-          <ShopSwitch shop={shop} />
-          <GuidelinesLink shop="locker" />
-          <TrackReservationLink />
-        </div>
-        <div className="pt-8">
-          <LockerGrid items={listing.items} />
-        </div>
-      </main>
-    )
-  }
-
   return (
     <>
       <section
@@ -119,12 +107,9 @@ function ShopCatalogPage({ shop }: { shop: ShopId }) {
             }}
             className="flex w-full max-w-4xl flex-col items-center text-center"
           >
-            <motion.p
-              variants={rise}
-              className="text-[11px] font-semibold tracking-[0.22em] text-brand-700 uppercase"
-            >
-              {page.eyebrow}
-            </motion.p>
+            <motion.div variants={rise}>
+              <SectionKicker icon={shop === 'merch' ? Shirt : LockKeyhole}>{page.eyebrow}</SectionKicker>
+            </motion.div>
             <motion.h1
               id={`${shop}-page-title`}
               variants={rise}
@@ -140,13 +125,21 @@ function ShopCatalogPage({ shop }: { shop: ShopId }) {
             </motion.p>
             <motion.div variants={rise} className="mt-6 flex flex-wrap items-center justify-center gap-2">
               <ShopSwitch shop={shop} />
-              <GuidelinesLink shop="merch" />
+              <GuidelinesLink shop={shop} />
               <TrackReservationLink />
             </motion.div>
           </motion.div>
         </div>
       </section>
 
+      {shop === 'locker' ? (
+        <main id="main-content" className="min-w-0 overflow-x-hidden bg-white">
+          <div className="min-w-0 pt-5 sm:pt-8">
+            <LockerGrid items={listing.items} />
+            <IgpNote />
+          </div>
+        </main>
+      ) : (
       <main id="main-content" className="bg-[#f4f5f7]">
         <div className="bg-[#f6f5fb]">
           <div className="mx-auto flex max-w-7xl flex-col items-center px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -188,20 +181,28 @@ function ShopCatalogPage({ shop }: { shop: ShopId }) {
             }
           />
         ) : (
-          <Reveal>
-            <div className="pt-[clamp(1.5rem,1rem+1.2vw,2.5rem)]">
-              <ShopPanel
-                shop={shop}
-                title={listing.title}
-                kicker={listing.kicker}
-                items={merchItems}
-                showTitle={false}
-              />
-            </div>
-          </Reveal>
+          <div className="pt-[clamp(1.5rem,1rem+1.2vw,2.5rem)]">
+            <ShopPanel
+              shop={shop}
+              title={listing.title}
+              kicker={listing.kicker}
+              items={merchItems}
+              showTitle={false}
+            />
+            <IgpNote />
+          </div>
         )}
       </main>
+      )}
     </>
+  )
+}
+
+function IgpNote() {
+  return (
+    <p className="mx-auto max-w-3xl px-4 pb-[clamp(2.5rem,1.6rem+2.4vw,4rem)] text-center text-[13px] leading-6 text-zinc-500 italic sm:px-6 lg:px-8">
+      {igpNote}
+    </p>
   )
 }
 

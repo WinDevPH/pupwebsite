@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
-import { contact, footerSocials, studentHandbookUrl } from '@/components/layout/nav-data'
+import {
+  contact,
+  footerSocials,
+  grievanceFormUrl,
+  grievanceGuidelinesUrl,
+  studentHandbookUrl,
+} from '@/components/layout/nav-data'
 import { getSiteContact, mergeSiteContact, type SiteContact } from '@/lib/site-settings-api'
 
 /** Bundled defaults from nav-data; used until (or unless) the CMS API responds. */
@@ -12,6 +18,8 @@ export const defaultSiteContact: SiteContact = {
   socials: contact.socials.map((item) => ({ ...item })),
   footerSocials: footerSocials.map((item) => ({ ...item })),
   studentHandbookUrl,
+  grievanceFormUrl,
+  grievanceGuidelinesUrl,
 }
 
 export function useSiteContact() {

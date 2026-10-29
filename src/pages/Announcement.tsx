@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useParams } from 'react-router-dom'
+import { motion, useReducedMotion } from 'motion/react'
 import { ArrowUpRight, ChevronLeft, Clock, Flag, Loader2, X } from 'lucide-react'
 import {
   announcementKind,
@@ -19,10 +20,12 @@ import {
   getAnnouncementBySlug,
   listAnnouncements,
 } from '@/lib/announcements-api'
+import { easeOut } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
 export default function Announcement() {
   const { id = '' } = useParams()
+  const reduce = useReducedMotion() === true
   const [item, setItem] = useState<BulletinItem | null>(null)
   const [related, setRelated] = useState<BulletinItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -164,16 +167,22 @@ export default function Announcement() {
               More from the bulletin
             </h2>
             <ul className="mt-3 grid gap-2.5 sm:mt-4 sm:gap-3 lg:grid-cols-3">
-              {related.map((entry) => {
+              {related.map((entry, index) => {
                 const meta = announcementKind(entry.kind)
                 const EntryIcon = meta.icon
                 return (
-                  <li key={entry.id} className="min-w-0">
+                  <motion.li
+                    key={entry.id}
+                    className="min-w-0"
+                    initial={reduce ? false : { opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, ease: easeOut, delay: reduce ? 0 : 0.06 * index }}
+                  >
                     <Link
                       to={`/announcements/${entry.id}`}
-                      className="group flex h-full min-h-[5.25rem] min-w-0 overflow-hidden rounded-xl border border-zinc-200 bg-white"
+                      className="card-lift group flex h-full min-h-[5.25rem] min-w-0 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
                     >
-                      <span className="relative w-[5.5rem] shrink-0 self-stretch bg-zinc-100 sm:w-28">
+                      <span className="relative w-[5.5rem] shrink-0 self-stretch overflow-hidden bg-zinc-100 sm:w-28 dark:bg-zinc-800">
                         <img
                           src={entry.image}
                           alt=""
@@ -182,12 +191,12 @@ export default function Announcement() {
                           className="absolute inset-0 h-full w-full object-cover"
                         />
                       </span>
-                      <span className="flex min-w-0 flex-1 flex-col justify-center border-l-2 border-brand-700 px-3.5 py-3">
+                      <span className="flex min-w-0 flex-1 flex-col justify-center border-l-2 border-brand-700 px-3.5 py-3 dark:border-brand-400">
                         <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.14em] text-brand-700 uppercase">
                           <EntryIcon className="size-3" aria-hidden />
                           {meta.label}
                         </span>
-                        <span className="mt-1 line-clamp-2 font-display text-[0.95rem] leading-5 font-medium text-brand-950 group-hover:text-brand-700">
+                        <span className="mt-1 line-clamp-2 font-display text-[0.95rem] leading-5 font-medium text-brand-950 transition-colors duration-200 group-hover:text-brand-700 dark:text-zinc-50 dark:group-hover:text-brand-300">
                           {entry.title}
                         </span>
                         <time
@@ -198,7 +207,7 @@ export default function Announcement() {
                         </time>
                       </span>
                     </Link>
-                  </li>
+                  </motion.li>
                 )
               })}
             </ul>

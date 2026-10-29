@@ -113,7 +113,7 @@ export function PortalShell() {
 
   if (authState === 'checking' || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+      <div className="flex min-h-dvh items-center justify-center bg-white text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
         <div className="inline-flex items-center gap-2 text-sm font-medium">
           <Loader2 className="size-4 animate-spin" aria-hidden />
           Checking sign-in…
@@ -127,8 +127,8 @@ export function PortalShell() {
 
   return (
     <NotificationsProvider>
-      <div className="portal-shell min-h-screen bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-        <div className="flex min-h-screen">
+      <div className="portal-shell min-h-dvh bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+        <div className="flex min-h-dvh">
           <PortalSidebar
             mobileOpen={mobileNavOpen}
             desktopCollapsed={desktopSidebarCollapsed}

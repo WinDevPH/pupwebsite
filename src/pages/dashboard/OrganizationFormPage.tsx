@@ -424,7 +424,7 @@ export default function OrganizationFormPage() {
                           className={`${catalogInput} min-w-0 flex-1`}
                           value={form.logo}
                           onChange={(e) => set('logo', e.target.value)}
-                          placeholder="/org-logos/name.png"
+                          placeholder="/uploads/org-logos/name.png"
                           disabled={saving}
                         />
                       </div>

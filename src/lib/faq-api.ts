@@ -1,3 +1,4 @@
+import { unreachableServerMessage } from '@/lib/unreachable-server'
 export type FaqRecord = {
   id: number
   slug: string
@@ -50,7 +51,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<ApiOk<T> | 
   } catch {
     return {
       ok: false,
-      error: 'Cannot reach the server. Start Apache and MySQL in XAMPP.',
+      error: unreachableServerMessage(),
       status: 0,
     }
   }

@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
-import { navItems, type NavItem } from '@/components/layout/nav-data'
+import {
+  navItems,
+  transparencyNavLinks,
+  type NavItem,
+} from '@/components/layout/nav-data'
 import {
   getResourceLibrary,
   type ResourceLibrary,
   type ResourceLinkRecord,
 } from '@/lib/resource-library-api'
+import {
+  DEFAULT_TRANSPARENCY_CATEGORIES,
+  listTransparencyCategories,
+  type TransparencyCategoryRecord,
+} from '@/lib/transparency-categories-api'
 
 export const defaultResourceLibrary: ResourceLibrary = {
   items: [],
@@ -50,7 +59,40 @@ export function applyResourceLibrary(items: NavItem[], links: ResourceLinkRecord
   })
 }
 
+function applyTransparencyNav(
+  items: NavItem[],
+  categories: TransparencyCategoryRecord[],
+): NavItem[] {
+  if (categories.length === 0) return items
+  const links = transparencyNavLinks(categories)
+  return items.map((item) => {
+    if (!('groups' in item) || !item.groups || item.label !== 'Governance') return item
+    return {
+      ...item,
+      groups: item.groups.map((group) =>
+        group.title === 'Official documents and issuances' ? { ...group, links } : group,
+      ),
+    }
+  })
+}
+
 export function useNavItems() {
   const library = useResourceLibrary()
-  return useMemo(() => applyResourceLibrary(navItems, library.items), [library.items])
+  const [categories, setCategories] = useState(DEFAULT_TRANSPARENCY_CATEGORIES)
+
+  useEffect(() => {
+    let cancelled = false
+    void listTransparencyCategories().then((result) => {
+      if (cancelled || !result.ok || result.data.items.length === 0) return
+      setCategories(result.data.items)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  return useMemo(
+    () => applyTransparencyNav(applyResourceLibrary(navItems, library.items), categories),
+    [library.items, categories],
+  )
 }

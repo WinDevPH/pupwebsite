@@ -10,6 +10,7 @@ import {
   Images,
   Inbox,
   Megaphone,
+  MessageCircle,
   RefreshCw,
   Settings2,
   Shirt,
@@ -50,6 +51,7 @@ const ADMIN = '/admin'
 
 const QUICK_LINKS: { to: string; label: string; hint: string; Icon: LucideIcon }[] = [
   { to: `${ADMIN}/requests`, label: 'Requests', hint: 'Student inquiries', Icon: FileText },
+  { to: `${ADMIN}/chat`, label: 'Chat', hint: 'Landing-page messages', Icon: MessageCircle },
   { to: `${ADMIN}/reservations`, label: 'Reservations', hint: 'Locker & merch', Icon: Bookmark },
   { to: `${ADMIN}/income`, label: 'Income reports', hint: 'Fees & filters', Icon: Wallet },
   { to: `${ADMIN}/announcements`, label: 'Announcements', hint: 'Public posts', Icon: Megaphone },

@@ -32,3 +32,6 @@ release
 storage/*
 !storage/.htaccess
 !storage/**/.gitkeep
+
+# Production dumps (contain live accounts)
+database/imports/

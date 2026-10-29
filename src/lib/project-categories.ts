@@ -12,6 +12,8 @@ export type ProjectCategorySlug = (typeof PROJECT_CATEGORY_SLUGS)[number]
 export type ProjectCategory = {
   slug: ProjectCategorySlug
   label: string
+  headlineLead: string
+  headlineAccent: string
   description: string
   to: string
   icon: LucideIcon
@@ -21,6 +23,8 @@ export const PROJECT_CATEGORIES: ProjectCategory[] = [
   {
     slug: 'internal-affairs',
     label: 'Internal Affairs and Student Welfare',
+    headlineLead: 'Internal Affairs and',
+    headlineAccent: 'Student Welfare',
     description:
       'Core initiatives and support programs dedicated to improving daily student life, academic resources, campus welfare, and student-to-council relations within the college.',
     to: '/projects/internal-affairs',
@@ -29,6 +33,8 @@ export const PROJECT_CATEGORIES: ProjectCategory[] = [
   {
     slug: 'external-linkages',
     label: 'External Linkages, Advocacies, Community and Partnerships',
+    headlineLead: 'External Linkages, Advocacies,',
+    headlineAccent: 'Community and Partnerships',
     description:
       'Collaborative programs, inter-school networks, legal aid outreaches, and public service advocacies bridging the PUP College of Law with the wider legal community and society.',
     to: '/projects/external-linkages',
@@ -37,6 +43,8 @@ export const PROJECT_CATEGORIES: ProjectCategory[] = [
   {
     slug: 'institutional-sustainability',
     label: 'Institutional Sustainability',
+    headlineLead: 'Institutional',
+    headlineAccent: 'Sustainability',
     description:
       'Long-term developmental projects, digital infrastructure upgrades, and administrative policy frameworks designed to secure the enduring growth and operational stability of the Student Council.',
     to: '/projects/institutional-sustainability',

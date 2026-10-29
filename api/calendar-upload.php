@@ -68,7 +68,7 @@ if (!move_uploaded_file($tmp, $dest)) {
     api_json(['ok' => false, 'error' => 'Could not save the uploaded image.'], 500);
 }
 
-$url = '/calendar/uploads/' . $filename;
+$url = api_uploads_url('calendar', $filename);
 
 api_json([
     'ok' => true,

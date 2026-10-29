@@ -106,7 +106,7 @@ function hero_slides_seed_if_empty(PDO $pdo): int
     }
 
     $root = api_project_root();
-    $seedDir = $root . '/public/hero/seed';
+    $seedDir = api_uploads_dir('hero');
     $sourceDir = $root . '/src/assets/hero';
     if (!is_dir($seedDir)) {
         mkdir($seedDir, 0755, true);
@@ -124,7 +124,7 @@ function hero_slides_seed_if_empty(PDO $pdo): int
             copy($from, $to);
         }
         $insert->execute([
-            'image_url' => '/hero/seed/' . $item['file'],
+            'image_url' => api_uploads_url('hero', $item['file']),
             'alt_text' => $item['alt'],
             'sort_order' => $item['sort'],
         ]);

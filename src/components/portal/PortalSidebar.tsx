@@ -72,10 +72,17 @@ function isMultiGroup(group: (typeof portalNavGroups)[number]) {
   return group.collapsible !== false && group.items.length > 1
 }
 
-function alertDotForItem(itemId: string, flags: { request: boolean; reservation: boolean }) {
+type NavAlertFlags = { request: boolean; reservation: boolean; chat: number }
+
+function alertDotForItem(itemId: string, flags: NavAlertFlags) {
   if (itemId === 'requests') return flags.request
   if (itemId === 'reservations') return flags.reservation
+  if (itemId === 'chat') return flags.chat > 0
   return false
+}
+
+function alertCountForItem(itemId: string, flags: NavAlertFlags) {
+  return itemId === 'chat' && flags.chat > 0 ? flags.chat : 0
 }
 
 function normalizeSearch(value: string) {
@@ -163,25 +170,67 @@ function NavSearchField({
   )
 }
 
+function NavAlertBadge({
+  count,
+  collapsed = false,
+  onIcon = false,
+}: {
+  count: number
+  collapsed?: boolean
+  onIcon?: boolean
+}) {
+  const label = count > 0 ? `${count} new` : 'New alerts'
+  if (count > 0) {
+    return (
+      <span
+        className={cn(
+          'inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white',
+          onIcon && 'absolute -top-1.5 -right-2 hidden ring-2 ring-zinc-50 xl:inline-flex dark:ring-zinc-950',
+          !onIcon && collapsed && 'xl:hidden',
+        )}
+        aria-label={label}
+      >
+        {count > 9 ? '9+' : count}
+      </span>
+    )
+  }
+  if (onIcon) {
+    return (
+      <span
+        className="absolute -top-0.5 -right-0.5 hidden size-2 rounded-full bg-rose-500 ring-2 ring-zinc-50 xl:block dark:ring-zinc-950"
+        aria-hidden
+      />
+    )
+  }
+  return (
+    <span
+      className={cn('size-2 shrink-0 rounded-full bg-rose-500', collapsed && 'xl:hidden')}
+      aria-label={label}
+    />
+  )
+}
+
 function NavItemLink({
   item,
   desktopCollapsed,
   onCloseMobile,
   nested = false,
   showAlert = false,
+  alertCount = 0,
 }: {
   item: PortalNavItem
   desktopCollapsed: boolean
   onCloseMobile: () => void
   nested?: boolean
   showAlert?: boolean
+  alertCount?: number
 }) {
   return (
     <li className={nested ? nestedTreeItemCls : undefined}>
       <NavLink
         to={item.to}
         end={item.exact ?? false}
-        title={item.label}
+        title={showAlert && alertCount > 0 ? `${item.label} (${alertCount} new)` : item.label}
         onClick={onCloseMobile}
         className={({ isActive }) =>
           cn(
@@ -204,10 +253,7 @@ function NavItemLink({
                 aria-hidden
               />
               {showAlert && desktopCollapsed ? (
-                <span
-                  className="absolute -top-0.5 -right-0.5 hidden size-2 rounded-full bg-rose-500 ring-2 ring-zinc-50 xl:block dark:ring-zinc-950"
-                  aria-hidden
-                />
+                <NavAlertBadge count={alertCount} onIcon />
               ) : null}
             </span>
             <span
@@ -219,13 +265,7 @@ function NavItemLink({
               {item.label}
             </span>
             {showAlert ? (
-              <span
-                className={cn(
-                  'relative z-[1] size-2 shrink-0 rounded-full bg-rose-500',
-                  desktopCollapsed && 'xl:hidden',
-                )}
-                aria-label="New alerts"
-              />
+              <NavAlertBadge count={alertCount} collapsed={desktopCollapsed} />
             ) : null}
           </>
         )}
@@ -253,7 +293,7 @@ function CollapsibleNavGroup({
   onToggle: (id: string) => void
   desktopCollapsed: boolean
   onCloseMobile: () => void
-  alertFlags: { request: boolean; reservation: boolean }
+  alertFlags: NavAlertFlags
 }) {
   const { pathname } = useLocation()
   const active = groupHasActive(pathname, items)
@@ -269,6 +309,7 @@ function CollapsibleNavGroup({
           onCloseMobile={onCloseMobile}
           nested
           showAlert={alertDotForItem(item.id, alertFlags)}
+          alertCount={alertCountForItem(item.id, alertFlags)}
         />
       ))}
     </ul>
@@ -317,6 +358,7 @@ function CollapsibleNavGroup({
             desktopCollapsed
             onCloseMobile={onCloseMobile}
             showAlert={alertDotForItem(items[0]!.id, alertFlags)}
+            alertCount={alertCountForItem(items[0]!.id, alertFlags)}
           />
         </div>
         <div className="xl:hidden">
@@ -346,13 +388,14 @@ export function PortalSidebar({
   onLogout,
 }: PortalSidebarProps) {
   const { pathname } = useLocation()
-  const { hasUnread, hasUnreadKind } = useNotifications()
+  const { hasUnread, hasUnreadKind, kindCount } = useNotifications()
   const alertFlags = useMemo(
     () => ({
       request: hasUnreadKind('request'),
       reservation: hasUnreadKind('reservation'),
+      chat: kindCount('chat'),
     }),
-    [hasUnreadKind],
+    [hasUnreadKind, kindCount],
   )
   const [menuOpen, setMenuOpen] = useState(false)
   const [openGroupId, setOpenGroupId] = useState<string | null>(null)
@@ -500,6 +543,7 @@ export function PortalSidebar({
                     onCloseMobile()
                   }}
                   showAlert={alertDotForItem(item.id, alertFlags)}
+                  alertCount={alertCountForItem(item.id, alertFlags)}
                 />
               ))
             )}

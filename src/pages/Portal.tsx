@@ -1,6 +1,7 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type FormEvent,
@@ -23,6 +24,7 @@ import {
   Eye,
   FileText,
   GraduationCap,
+  Handshake,
   Hash,
   Info,
   Loader2,
@@ -41,17 +43,20 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { Navigate, useLocation } from 'react-router'
+import { Navigate, useLocation, useNavigate } from 'react-router'
 import { Announcements } from '@/components/home/Announcements'
 import { FaqList } from '@/components/home/Faq'
 import { EventsCalendar } from '@/components/home/EventsCalendar'
+import { CouncilChat } from '@/components/home/CouncilChat'
+import { Grievance } from '@/components/home/Grievance'
 import {
   findReservation,
   reservationFromApi,
   type StoredReservation,
 } from '@/components/portal/reservations'
+import { TrackJourneyScene } from '@/components/portal/TrackJourneyScene'
 import { contact } from '@/components/layout/nav-data'
-import { setPageScrollLocked } from '@/hooks/useLenis'
+import { scrollPageTo, setPageScrollLocked } from '@/hooks/useLenis'
 import { Snackbar, type SnackVariant } from '@/components/ui/Snackbar'
 import {
   submitPortalRequest,
@@ -69,7 +74,10 @@ const subjects: { label: string; icon: LucideIcon }[] = [
   { label: 'Academic Support', icon: GraduationCap },
   { label: 'Student Organization Proposal', icon: Users },
   { label: 'Feedback/Suggestion/Student concerns tracking', icon: Lightbulb },
+  { label: 'Sponsorship & Donations', icon: Handshake },
 ]
+
+const optionalAttachmentSubject = 'Sponsorship & Donations'
 
 const maxFileBytes = 10 * 1024 * 1024
 
@@ -81,6 +89,7 @@ type Errors = Partial<Record<'name' | 'email' | 'subject' | 'body' | 'file', str
 const portalTabs = [
   { id: 'request', label: 'Request', icon: Send },
   { id: 'tracking', label: 'Track your request', icon: Hash },
+  { id: 'grievance', label: 'Grievance', icon: Scale },
   { id: 'announcements', label: 'Announcements', icon: Megaphone },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
   { id: 'faq', label: 'FAQ', icon: CircleHelp },
@@ -169,6 +178,7 @@ function fileAllowed(file: File) {
 
 export default function Portal() {
   const { hash } = useLocation()
+  const navigate = useNavigate()
   const formId = useId()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -219,6 +229,36 @@ export default function Portal() {
   useEffect(() => {
     setTab(tabFromHash(hash))
   }, [hash])
+
+  const tablistRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    const list = tablistRef.current
+    const active = list?.querySelector<HTMLElement>(`#portal-tab-${tab}`)
+    if (!list || !active) return
+    const listBox = list.getBoundingClientRect()
+    const tabBox = active.getBoundingClientRect()
+    const delta = tabBox.left + tabBox.width / 2 - (listBox.left + listBox.width / 2)
+    const max = Math.max(0, list.scrollWidth - list.clientWidth)
+    const next = Math.max(0, Math.min(max, list.scrollLeft + delta))
+    if (Math.abs(next - list.scrollLeft) < 1) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    list.scrollTo({ left: next, behavior: reduce ? 'auto' : 'smooth' })
+  }, [tab])
+
+  useLayoutEffect(() => {
+    if (tab !== 'calendar') return
+    const panel = document.getElementById('portal-panel-calendar')
+    const scroller = document.querySelector('.app-scroll')
+    if (!panel || panel.hidden || !(scroller instanceof HTMLElement)) return
+    const offset = 128
+    const top =
+      panel.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop
+    const viewTop = scroller.scrollTop + offset
+    const viewBottom = scroller.scrollTop + scroller.clientHeight * 0.45
+    if (top >= viewTop - 12 && top <= viewBottom) return
+    scrollPageTo(Math.max(0, top - offset), false)
+  }, [tab])
 
   useEffect(() => {
     if (!focusId) return
@@ -277,7 +317,9 @@ export default function Portal() {
     }
     if (!subject) nextErrors.subject = 'Select a subject.'
     if (!body.trim()) nextErrors.body = 'Enter the details of your request.'
-    if (!file) nextErrors.file = 'Attach a PDF, image, or document.'
+    if (subject !== optionalAttachmentSubject && !file) {
+      nextErrors.file = 'Attach a PDF, image, or document.'
+    }
 
     setErrors(nextErrors)
     if (Object.values(nextErrors).some(Boolean)) {
@@ -296,7 +338,7 @@ export default function Portal() {
       email: email.trim(),
       subject,
       body: body.trim(),
-      file: file!,
+      file: file ?? undefined,
     })
     setSubmitting(false)
 
@@ -315,12 +357,16 @@ export default function Portal() {
     )
   }
 
-  const ready = Boolean(name.trim() && email.trim() && subject && body.trim() && file)
+  const attachmentRequired = subject !== optionalAttachmentSubject
+  const ready = Boolean(
+    name.trim() && email.trim() && subject && body.trim() && (file || !attachmentRequired),
+  )
 
   if (hash === '#locker') return <Navigate to="/lockers" replace />
   if (hash === '#merch') return <Navigate to="/merch" replace />
 
   return (
+    <>
     <main id="main-content" className="bg-[#f4f5f7] text-zinc-900">
       <div className="mx-auto w-full max-w-7xl px-4 pt-4 sm:px-6 sm:pt-8 lg:px-8">
         <header className="flex items-center justify-between gap-3">
@@ -360,7 +406,16 @@ export default function Portal() {
             ) : null}
             {tab === 'faq' ? (
               <p className="mt-1 text-sm text-zinc-500">
-                Contact, services, reservations, and privacy.
+                <span className="sm:hidden">Common questions.</span>
+                <span className="hidden sm:inline">Answers to common questions.</span>
+              </p>
+            ) : null}
+            {tab === 'grievance' ? (
+              <p className="mt-1 text-sm text-zinc-500">
+                <span className="sm:hidden">File a confidential student concern.</span>
+                <span className="hidden sm:inline">
+                  Academic grievances, administrative inquiries, and welfare concerns.
+                </span>
               </p>
             ) : null}
           </div>
@@ -368,6 +423,7 @@ export default function Portal() {
         </header>
 
         <div
+          ref={tablistRef}
           className="mt-6 flex gap-6 overflow-x-auto border-b border-zinc-200 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="tablist"
           aria-label="Portal"
@@ -383,9 +439,15 @@ export default function Portal() {
                 id={`portal-tab-${item.id}`}
                 aria-selected={selected}
                 aria-controls={`portal-panel-${item.id}`}
-                onClick={() => setTab(item.id)}
+                onClick={() => {
+                  setTab(item.id)
+                  navigate(
+                    { pathname: '/portal', hash: item.id === 'request' ? '' : item.id },
+                    { replace: true },
+                  )
+                }}
                 className={cn(
-                  '-mb-px inline-flex items-center justify-center gap-1.5 border-b-2 px-1 pt-1 pb-3 text-sm whitespace-nowrap transition-colors',
+                  '-mb-px inline-flex shrink-0 items-center justify-center gap-1.5 border-b-2 px-1 pt-1 pb-3 text-sm whitespace-nowrap transition-colors',
                   selected
                     ? 'border-brand-600 font-semibold text-zinc-900'
                     : 'border-transparent font-medium text-zinc-500 hover:text-zinc-800',
@@ -400,27 +462,38 @@ export default function Portal() {
       </div>
 
       <div
+        id="portal-panel-grievance"
+        role="tabpanel"
+        aria-labelledby="portal-tab-grievance"
+        hidden={tab !== 'grievance'}
+        className="mx-auto mt-5 w-full max-w-7xl px-4 pb-10 sm:mt-8 sm:px-6 lg:px-8"
+      >
+        <Grievance variant="portal" />
+      </div>
+      <div
         id="portal-panel-announcements"
         role="tabpanel"
         aria-labelledby="portal-tab-announcements"
         hidden={tab !== 'announcements'}
+        className="mx-auto mt-5 w-full max-w-7xl px-4 pb-10 sm:mt-8 sm:px-6 lg:px-8"
       >
-        <Announcements />
+        <Announcements variant="portal" />
       </div>
       <div
         id="portal-panel-calendar"
         role="tabpanel"
         aria-labelledby="portal-tab-calendar"
         hidden={tab !== 'calendar'}
+        className="mx-auto mt-5 w-full max-w-7xl px-4 pb-10 sm:mt-8 sm:px-6 lg:px-8"
       >
-        <EventsCalendar />
+        <EventsCalendar variant="portal" />
       </div>
       <div
         id="portal-panel-faq"
         role="tabpanel"
         aria-labelledby="portal-tab-faq"
         hidden={tab !== 'faq'}
-        className="mx-auto mt-5 w-full max-w-3xl px-4 pb-10 sm:mt-8 sm:px-6 lg:px-8"
+        className="mx-auto mt-5 w-full max-w-7xl px-4 pb-10 sm:mt-8 sm:px-6 lg:px-8"
       >
         <FaqList />
       </div>
@@ -500,6 +573,9 @@ export default function Portal() {
                     onChange={(next) => {
                       setSubject(next)
                       setNotice(null)
+                      if (next === optionalAttachmentSubject) {
+                        setErrors((current) => ({ ...current, file: undefined, subject: undefined }))
+                      }
                     }}
                   />
                 </Field>
@@ -526,7 +602,12 @@ export default function Portal() {
                   icon={Paperclip}
                   htmlFor={`${formId}-file`}
                   error={errors.file}
-                  hint="PDF, image, or document, up to 10 MB."
+                  required={attachmentRequired}
+                  hint={
+                    attachmentRequired
+                      ? 'PDF, image, or document, up to 10 MB.'
+                      : 'Optional for Sponsorship & Donations. PDF, image, or document, up to 10 MB.'
+                  }
                 >
                   <div
                     className={cn(
@@ -675,7 +756,9 @@ export default function Portal() {
               </button>
               <p className="text-center text-xs leading-relaxed text-zinc-500" role="status">
                 {notice ??
-                  `Submit sends your request and attachment to ${contact.email}. A tracking ID and confirmation go to your email.`}
+                  (attachmentRequired
+                    ? `Submit sends your request and attachment to ${contact.email}. A tracking ID and confirmation go to your email.`
+                    : `Submit sends your request to ${contact.email}. A tracking ID and confirmation go to your email.`)}
               </p>
             </div>
           </aside>
@@ -692,6 +775,8 @@ export default function Portal() {
       </div>
       <Snackbar toast={snack} onDismiss={dismissSnack} />
     </main>
+    <CouncilChat />
+    </>
   )
 }
 
@@ -778,6 +863,12 @@ function TrackRequest({
       noValidate
       className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_10px_28px_-18px_rgba(30,5,65,0.45)] sm:rounded-3xl dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[0_10px_28px_-18px_rgba(0,0,0,0.55)]"
     >
+      <TrackJourneyScene
+        pending={pending}
+        missing={tone === 'missing'}
+        requestStatus={result?.status ?? null}
+        reservationStatus={reservation?.status ?? null}
+      />
       <div className="grid min-w-0 items-stretch lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
         <section className="flex min-w-0 flex-col p-4 sm:p-6">
           <h2 className="inline-flex items-center gap-2 text-base font-semibold text-zinc-950 dark:text-zinc-50">
@@ -1934,6 +2025,7 @@ function Field({
   htmlFor,
   error,
   hint,
+  required = true,
   children,
 }: {
   label: string
@@ -1941,6 +2033,7 @@ function Field({
   htmlFor: string
   error?: string
   hint?: string
+  required?: boolean
   children: ReactNode
 }) {
   return (
@@ -1950,7 +2043,9 @@ function Field({
           <Icon className="size-3.5" aria-hidden />
         </span>
         {label}
-        <span className="text-maroon-700"> *</span>
+        {required ? <span className="text-maroon-700"> *</span> : (
+          <span className="font-normal text-zinc-400"> Optional</span>
+        )}
       </label>
       <div className="mt-2 min-w-0">{children}</div>
       {hint ? (

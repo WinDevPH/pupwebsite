@@ -9,7 +9,7 @@ export function LogoMarquee() {
   return (
     <section
       aria-label="Recognized Student Organizations"
-      className="border-y border-zinc-200 bg-surface dark:border-zinc-800 dark:bg-zinc-950"
+      className="mt-auto shrink-0 border-y border-zinc-200 bg-surface dark:border-zinc-800 dark:bg-zinc-950"
     >
       <div
         className={

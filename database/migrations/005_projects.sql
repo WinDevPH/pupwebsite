@@ -28,7 +28,7 @@ VALUES
     'Board Meetings',
     'Policy Guidelines on the Conduct of Board Meetings and other Assemblies is Board Resolution No. 005, Series of 2026.',
     NULL,
-    '/projects/board-meetings.jpg',
+    '/uploads/projects/board-meetings.jpg',
     'calendar-check',
     JSON_ARRAY(
       JSON_OBJECT('label', 'Board Resolution No. 005', 'href', 'https://bit.ly/BoardResolution005s2026'),
@@ -42,7 +42,7 @@ VALUES
     'Lex in Motion',
     'Updates for this project are posted on the bulletin and the official Facebook page.',
     NULL,
-    '/projects/lex-in-motion.jpg',
+    '/uploads/projects/lex-in-motion.jpg',
     'megaphone',
     JSON_ARRAY(
       JSON_OBJECT('label', 'Bulletin', 'to', '/#bulletin'),
@@ -56,7 +56,7 @@ VALUES
     'Free Printing Service',
     'Open days, hours, and the page limit for the council''s free printing service.',
     NULL,
-    '/projects/free-printing.jpg',
+    '/uploads/projects/free-printing.jpg',
     'printer',
     JSON_ARRAY(
       JSON_OBJECT('label', 'Free printing service schedule', 'to', '/announcements/printing-schedule'),
@@ -70,7 +70,7 @@ VALUES
     'WiFi Library',
     'Updates for this project are posted on the bulletin and the official Facebook page.',
     NULL,
-    '/projects/wifi-library.jpg',
+    '/uploads/projects/wifi-library.jpg',
     'wifi',
     JSON_ARRAY(
       JSON_OBJECT('label', 'Bulletin', 'to', '/#bulletin'),
@@ -84,7 +84,7 @@ VALUES
     'Online Study Hub',
     'Updates for this project are posted on the bulletin and the official Facebook page.',
     NULL,
-    '/projects/online-study-hub.jpg',
+    '/uploads/projects/online-study-hub.jpg',
     'book-open',
     JSON_ARRAY(
       JSON_OBJECT('label', 'Bulletin', 'to', '/#bulletin'),
@@ -98,7 +98,7 @@ VALUES
     'JD Buddies',
     'Updates for this project are posted on the bulletin and the official Facebook page.',
     NULL,
-    '/projects/jd-buddies.jpg',
+    '/uploads/projects/jd-buddies.jpg',
     'users',
     JSON_ARRAY(
       JSON_OBJECT('label', 'Bulletin', 'to', '/#bulletin'),

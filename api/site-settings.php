@@ -15,11 +15,7 @@ try {
         default => api_json(['ok' => false, 'error' => 'Method not allowed.'], 405),
     };
 } catch (Throwable $error) {
-    api_json([
-        'ok' => false,
-        'error' => 'Database unavailable. Run scripts/run-012-public-cms.php and start MySQL.',
-        'detail' => $error->getMessage(),
-    ], 503);
+    api_json_db_error($error);
 }
 
 function site_settings_ensure_tables(PDO $pdo): void
@@ -75,6 +71,10 @@ function site_settings_contact_defaults(): array
         ],
         'studentHandbookUrl' =>
             'https://drive.google.com/file/d/1neq3kippfsVWgFeWYepQWOx04X4TaUlE/view?usp=sharing',
+        'grievanceFormUrl' =>
+            'https://docs.google.com/forms/d/e/1FAIpQLSdRdEa0MJPgriEsmIOKDi9Q70B25wnR3Ll_sjUT0O2rPiRjQg/viewform',
+        'grievanceGuidelinesUrl' =>
+            'https://drive.google.com/drive/folders/1_A1TJ_jdZXQhWOd5qd4nJmVw8Jr5scMk?usp=sharing',
     ];
 }
 
@@ -123,6 +123,10 @@ function site_settings_validate_contact(array $payload): array
     $sec = trim((string) ($payload['secRegistration'] ?? $payload['sec_registration'] ?? ''));
     $hours = trim((string) ($payload['hours'] ?? ''));
     $handbook = trim((string) ($payload['studentHandbookUrl'] ?? $payload['student_handbook_url'] ?? ''));
+    $grievanceForm = trim((string) ($payload['grievanceFormUrl'] ?? $payload['grievance_form_url'] ?? ''));
+    $grievanceGuidelines = trim(
+        (string) ($payload['grievanceGuidelinesUrl'] ?? $payload['grievance_guidelines_url'] ?? '')
+    );
 
     if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         api_json(['ok' => false, 'error' => 'A valid contact email is required.'], 422);
@@ -136,6 +140,12 @@ function site_settings_validate_contact(array $payload): array
     if ($handbook !== '' && !preg_match('#^https?://#i', $handbook)) {
         api_json(['ok' => false, 'error' => 'Student handbook URL must be http(s).'], 422);
     }
+    if ($grievanceForm === '' || !preg_match('#^https?://#i', $grievanceForm)) {
+        api_json(['ok' => false, 'error' => 'Grievance form URL must be http(s).'], 422);
+    }
+    if ($grievanceGuidelines === '' || !preg_match('#^https?://#i', $grievanceGuidelines)) {
+        api_json(['ok' => false, 'error' => 'Grievance guidelines URL must be http(s).'], 422);
+    }
 
     return [
         'email' => $email,
@@ -146,6 +156,8 @@ function site_settings_validate_contact(array $payload): array
         'socials' => site_settings_parse_socials($payload['socials'] ?? []),
         'footerSocials' => site_settings_parse_socials($payload['footerSocials'] ?? $payload['footer_socials'] ?? []),
         'studentHandbookUrl' => $handbook,
+        'grievanceFormUrl' => $grievanceForm,
+        'grievanceGuidelinesUrl' => $grievanceGuidelines,
     ];
 }
 

@@ -1,3 +1,4 @@
+import { unreachableServerMessage } from '@/lib/unreachable-server'
 export type ReservationShop = 'locker' | 'merch'
 
 export type ReservationStatus =
@@ -36,6 +37,7 @@ export type ReservationRecord = {
   yearLevel: string
   remarks: string
   status: ReservationStatus
+  image: string
   submittedAt: string
   createdAt?: string
   updatedAt?: string
@@ -95,7 +97,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<ApiOk<T> | 
   } catch {
     return {
       ok: false,
-      error: 'Cannot reach the server. Start Apache and MySQL in XAMPP.',
+      error: unreachableServerMessage(),
       status: 0,
     }
   }

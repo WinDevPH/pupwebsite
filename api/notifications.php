@@ -14,11 +14,7 @@ if ($method !== 'GET') {
 try {
     notifications_get();
 } catch (Throwable $error) {
-    api_json([
-        'ok' => false,
-        'error' => 'Could not load notifications.',
-        'detail' => $error->getMessage(),
-    ], 503);
+    api_json_db_error($error);
 }
 
 function notifications_get(): never
@@ -92,6 +88,39 @@ function notifications_get(): never
         // Table may not exist yet.
     }
 
+    try {
+        $stmt = $pdo->query(
+            "SELECT t.id, t.preview, t.last_role, t.updated_at
+             FROM chat_threads t
+             WHERE (
+                SELECT m.role
+                FROM chat_messages m
+                WHERE m.thread_id = t.id AND m.role IN ('visitor', 'staff')
+                ORDER BY m.id DESC
+                LIMIT 1
+             ) = 'visitor'
+             ORDER BY t.updated_at DESC, t.id DESC
+             LIMIT 20"
+        );
+        if ($stmt) {
+            foreach ($stmt->fetchAll() as $row) {
+                $id = (int) $row['id'];
+                $preview = trim((string) $row['preview']);
+                $items[] = [
+                    'id' => 'chat:' . $id,
+                    'kind' => 'chat',
+                    'title' => 'Chat · Visitor #' . $id,
+                    'body' => $preview !== '' ? $preview : 'Waiting for a reply',
+                    'href' => '/admin/chat',
+                    'status' => 'Open',
+                    'createdAt' => api_iso((string) $row['updated_at']) ?? date('c'),
+                ];
+            }
+        }
+    } catch (Throwable) {
+        // Table may not exist yet.
+    }
+
     usort($items, static function (array $a, array $b): int {
         return strcmp((string) $b['createdAt'], (string) $a['createdAt']);
     });
@@ -104,6 +133,7 @@ function notifications_get(): never
         'counts' => [
             'request' => count(array_filter($items, static fn ($i) => $i['kind'] === 'request')),
             'reservation' => count(array_filter($items, static fn ($i) => $i['kind'] === 'reservation')),
+            'chat' => count(array_filter($items, static fn ($i) => $i['kind'] === 'chat')),
             'total' => count($items),
         ],
     ]);

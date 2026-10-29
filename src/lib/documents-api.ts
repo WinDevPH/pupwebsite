@@ -1,3 +1,4 @@
+import { unreachableServerMessage } from '@/lib/unreachable-server'
 export type DocumentCategory = string
 
 export type DocumentCategoryOption = { value: DocumentCategory; label: string }
@@ -10,9 +11,18 @@ export const DOCUMENT_CATEGORIES: DocumentCategoryOption[] = [
   { value: 'financial', label: 'Financial Reports' },
 ]
 
+export type DocumentInnerTab = { slug: string; label: string }
+
+export const FINANCIAL_DOCUMENT_TABS: DocumentInnerTab[] = [
+  { slug: 'quarterly-liquidations', label: 'Quarterly liquidations' },
+  { slug: 'budget-allocations', label: 'Budget allocations' },
+  { slug: 'financial-statements', label: 'Financial statements' },
+]
+
 export type DocumentRecord = {
   id: number
   category: DocumentCategory
+  subcategory: string
   number: string
   title: string
   url: string
@@ -27,6 +37,7 @@ export type DocumentRecord = {
 export type DocumentInput = {
   id?: number
   category: DocumentCategory
+  subcategory?: string
   number?: string
   title: string
   url: string
@@ -66,7 +77,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<ApiOk<T> | 
   } catch {
     return {
       ok: false,
-      error: 'Cannot reach the server. Start Apache and MySQL in XAMPP.',
+      error: unreachableServerMessage(),
       status: 0,
     }
   }
@@ -77,9 +88,11 @@ export async function listDocuments(options?: { category?: DocumentCategory; all
   if (options?.category) params.set('category', options.category)
   if (options?.all) params.set('all', '1')
   const query = params.toString()
-  return request<{ items: DocumentRecord[]; categories?: DocumentCategoryOption[] }>(
-    `/api/documents.php${query ? `?${query}` : ''}`,
-  )
+  return request<{
+    items: DocumentRecord[]
+    categories?: DocumentCategoryOption[]
+    tabs?: DocumentInnerTab[]
+  }>(`/api/documents.php${query ? `?${query}` : ''}`)
 }
 
 export async function getDocumentById(id: number) {

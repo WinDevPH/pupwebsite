@@ -36,15 +36,18 @@ if (existsSync(resolve(root, 'database'))) {
   cpSync(resolve(root, 'database'), resolve(release, 'database'), { recursive: true })
 }
 
-mkdirSync(resolve(release, 'announcements/uploads'), { recursive: true })
-mkdirSync(resolve(release, 'calendar/uploads'), { recursive: true })
-mkdirSync(resolve(release, 'projects/uploads'), { recursive: true })
-mkdirSync(resolve(release, 'council/uploads'), { recursive: true })
-mkdirSync(resolve(release, 'council/people'), { recursive: true })
-if (existsSync(resolve(root, 'public/council/people'))) {
-  cpSync(resolve(root, 'public/council/people'), resolve(release, 'council/people'), {
-    recursive: true,
-  })
+for (const bucket of [
+  'announcements',
+  'calendar',
+  'council',
+  'gallery',
+  'hero',
+  'projects',
+  'shop',
+  'users',
+  'org-logos',
+]) {
+  mkdirSync(resolve(release, 'uploads', bucket), { recursive: true })
 }
 mkdirSync(resolve(release, 'storage/requests'), { recursive: true })
 if (existsSync(resolve(root, 'storage/.htaccess'))) {
@@ -69,6 +72,21 @@ Options -Indexes
   # Block direct access to SQL / schema dumps and private storage
   RewriteRule ^database(/|$) - [F,L]
   RewriteRule ^storage(/|$) - [F,L]
+
+  # Old picture URLs → /uploads/{bucket}/
+  RewriteRule ^(announcements|calendar|projects|council|gallery|hero|users|shop)/uploads/(.*)$ /uploads/$1/$2 [L]
+  RewriteRule ^hero/seed/(.*)$ /uploads/hero/$1 [L]
+  RewriteRule ^gallery/seed/(.*)$ /uploads/gallery/$1 [L]
+  RewriteRule ^council/people/(.*)$ /uploads/council/$1 [L]
+  RewriteRule ^calendar/defaults/(.*)$ /uploads/calendar/$1 [L]
+  RewriteRule ^org-logos/(.*)$ /uploads/org-logos/$1 [L]
+  RewriteRule ^announcements/(.+\\.(jpe?g|png|webp|gif|svg))$ /uploads/announcements/$1 [NC,L]
+  RewriteRule ^calendar/(.+\\.(jpe?g|png|webp|gif|svg))$ /uploads/calendar/$1 [NC,L]
+  RewriteRule ^projects/(.+\\.(jpe?g|png|webp|gif|svg))$ /uploads/projects/$1 [NC,L]
+  RewriteRule ^shop/(.+\\.(jpe?g|png|webp|gif|svg))$ /uploads/shop/$1 [NC,L]
+  RewriteRule ^hero/(.+\\.(jpe?g|png|webp|gif|svg))$ /uploads/hero/$1 [NC,L]
+  RewriteRule ^gallery/(.+\\.(jpe?g|png|webp|gif|svg))$ /uploads/gallery/$1 [NC,L]
+  RewriteRule ^council/(.+\\.(jpe?g|png|webp|gif|svg))$ /uploads/council/$1 [NC,L]
 
   # Existing files and API scripts
   RewriteCond %{REQUEST_FILENAME} -f [OR]

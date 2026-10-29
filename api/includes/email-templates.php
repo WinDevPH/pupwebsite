@@ -187,7 +187,9 @@ function api_mail_template_council_request(array $data): array
     $html = api_mail_layout([
         'preheader' => 'New request ' . $tracking . ' — ' . $subject,
         'title' => 'New request',
-        'intro' => 'A submission was received through the Student Services Portal. Reply to this email to reach the sender. The attachment is included.',
+        'intro' => $attachment !== '' && $attachment !== 'None'
+            ? 'A submission was received through the Student Services Portal. Reply to this email to reach the sender. The attachment is included.'
+            : 'A submission was received through the Student Services Portal. Reply to this email to reach the sender.',
         'bodyHtml' => api_mail_section_label('Request details')
             . api_mail_meta_table([
                 ['Tracking ID', $tracking],

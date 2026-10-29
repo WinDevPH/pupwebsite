@@ -96,12 +96,18 @@
 
 html {
   height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
   scroll-behavior: auto;
   overflow-anchor: none;
 }
 
 #root {
   height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
 }
 
 html,
@@ -275,7 +281,7 @@ html.dark body {
   .scroll-mouse-wheel,
   .step-progress,
   .logo-marquee,
-  .hero-neon-orb,
+  .hero-bloom-spot,
   .project-art-photo.is-live {
     animation: none;
   }
@@ -504,107 +510,155 @@ html.dark .ring-1.ring-black\/10 {
   --tw-ring-color: rgb(255 255 255 / 0.08);
 }
 
-html.dark .hero-wash {
-  background:
-    radial-gradient(ellipse 62% 46% at 50% 0%, rgb(138 60 245 / 0.26), transparent 66%),
-    linear-gradient(180deg, #0c0a12 0%, #07070b 58%, #07070b 100%);
+.hero-wash {
+  background: linear-gradient(180deg, #fcfbfe 0%, #faf9fc 48%, var(--color-surface) 100%);
 }
 
-.hero-neon {
+html.dark .hero-wash {
+  background: linear-gradient(180deg, #0a090e 0%, #09090b 48%, #09090b 100%);
+}
+
+.hero-bloom {
   pointer-events: none;
   position: absolute;
   inset: 0;
+  isolation: isolate;
 }
 
-.hero-neon-orb {
+.hero-bloom-spot {
   position: absolute;
-  border-radius: 9999px;
-  filter: blur(72px);
+  border-radius: 50%;
+  filter: blur(96px) saturate(1.45);
+  transform: translateZ(0);
   will-change: transform, opacity;
-  animation: hero-neon-drift 14s ease-in-out infinite;
+  animation: hero-bloom-breathe 24s ease-in-out infinite;
 }
 
-.hero-neon-orb--violet {
+.hero-bloom-spot--violet {
   top: -8%;
-  left: -6%;
-  width: min(34rem, 72vw);
-  height: min(22rem, 46vw);
-  background: radial-gradient(circle, rgb(138 60 245 / 0.22) 0%, transparent 70%);
-  animation-delay: 0s;
-}
-
-.hero-neon-orb--gold {
-  top: 18%;
-  right: -8%;
-  width: min(26rem, 58vw);
-  height: min(18rem, 40vw);
-  background: radial-gradient(circle, rgb(242 183 5 / 0.16) 0%, transparent 72%);
-  animation-delay: -4s;
-}
-
-.hero-neon-orb--maroon {
-  bottom: 8%;
-  left: 6%;
-  width: min(22rem, 50vw);
-  height: min(16rem, 36vw);
-  background: radial-gradient(circle, rgb(155 28 28 / 0.12) 0%, transparent 70%);
-  animation-delay: -8s;
-}
-
-.hero-neon-orb--peach {
-  bottom: -6%;
-  left: 50%;
-  width: min(40rem, 86vw);
-  height: min(20rem, 44vw);
-  translate: -50% 0;
-  background: radial-gradient(circle, rgb(255 186 160 / 0.28) 0%, rgb(219 198 255 / 0.14) 46%, transparent 72%);
-  animation-delay: -2s;
-}
-
-html.dark .hero-neon-orb--violet {
-  background: radial-gradient(circle, rgb(168 85 247 / 0.42) 0%, rgb(117 36 219 / 0.12) 58%, transparent 74%);
-  filter: blur(64px);
-}
-
-html.dark .hero-neon-orb--gold {
-  background: radial-gradient(circle, rgb(250 204 21 / 0.28) 0%, rgb(242 183 5 / 0.08) 60%, transparent 74%);
-  filter: blur(60px);
-}
-
-html.dark .hero-neon-orb--maroon {
-  background: radial-gradient(circle, rgb(244 63 94 / 0.22) 0%, rgb(155 28 28 / 0.1) 58%, transparent 74%);
-  filter: blur(58px);
-}
-
-html.dark .hero-neon-orb--peach {
-  background: radial-gradient(circle, rgb(138 60 245 / 0.32) 0%, rgb(242 183 5 / 0.1) 48%, transparent 74%);
-  filter: blur(70px);
-}
-
-.hero-neon-cast {
-  background: radial-gradient(ellipse at center, rgb(255 214 200 / 0.22) 0%, transparent 72%);
-  filter: blur(36px);
-}
-
-html.dark .hero-neon-cast {
+  right: -16%;
+  width: min(40rem, 58vw);
+  height: min(30rem, 48vw);
   background: radial-gradient(
-    ellipse at center,
-    rgb(168 85 247 / 0.28) 0%,
-    rgb(242 183 5 / 0.1) 42%,
-    transparent 72%
+    circle at 42% 46%,
+    rgb(117 36 219 / 0.72) 0%,
+    rgb(138 60 245 / 0.28) 34%,
+    transparent 66%
   );
 }
 
-@keyframes hero-neon-drift {
+.hero-bloom-spot--gold {
+  top: 62%;
+  right: -10%;
+  width: min(26rem, 40vw);
+  height: min(18rem, 28vw);
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgb(242 183 5 / 0.62) 0%,
+    rgb(217 119 6 / 0.18) 38%,
+    transparent 66%
+  );
+  filter: blur(88px) saturate(1.55);
+  animation-delay: -9s;
+}
+
+.hero-bloom-spot--ink {
+  top: -20%;
+  left: -16%;
+  width: min(34rem, 52vw);
+  height: min(22rem, 38vw);
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgb(30 5 65 / 0.1) 0%,
+    rgb(91 33 182 / 0.06) 46%,
+    transparent 70%
+  );
+  filter: blur(132px) saturate(1.15);
+  animation-delay: -16s;
+}
+
+html.dark .hero-bloom-spot {
+  filter: blur(108px) saturate(1.2);
+}
+
+html.dark .hero-bloom-spot--violet {
+  background: radial-gradient(
+    circle at 42% 46%,
+    rgb(117 36 219 / 0.52) 0%,
+    rgb(91 33 182 / 0.2) 40%,
+    transparent 68%
+  );
+}
+
+html.dark .hero-bloom-spot--gold {
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgb(242 183 5 / 0.2) 0%,
+    rgb(180 130 20 / 0.06) 46%,
+    transparent 68%
+  );
+  filter: blur(96px) saturate(1.25);
+}
+
+html.dark .hero-bloom-spot--ink {
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgb(73 18 147 / 0.3) 0%,
+    rgb(30 5 65 / 0.16) 50%,
+    transparent 72%
+  );
+  filter: blur(140px) saturate(1.1);
+}
+
+@media (max-width: 1023px) {
+  .hero-bloom-spot--violet {
+    top: auto;
+    right: -28%;
+    bottom: 0;
+    width: 88vw;
+    height: 54vw;
+  }
+
+  .hero-bloom-spot--gold {
+    top: auto;
+    right: 8%;
+    bottom: 4%;
+    width: 68vw;
+    height: 40vw;
+  }
+
+  .hero-bloom-spot--ink {
+    top: -12%;
+    left: -26%;
+    width: 90vw;
+    height: 44vw;
+  }
+}
+
+@keyframes hero-bloom-breathe {
   0%,
   100% {
     transform: translate3d(0, 0, 0) scale(1);
     opacity: 1;
   }
   50% {
-    transform: translate3d(2.5%, -3%, 0) scale(1.08);
-    opacity: 0.78;
+    transform: translate3d(1.4%, -1.2%, 0) scale(1.05);
+    opacity: 0.88;
   }
+}
+
+.hero-frame-neon {
+  box-shadow:
+    0 0 0 1px rgb(30 5 65 / 0.08),
+    0 22px 48px -22px rgb(30 5 65 / 0.32),
+    0 0 72px -20px rgb(117 36 219 / 0.2);
+}
+
+html.dark .hero-frame-neon {
+  box-shadow:
+    0 0 0 1px rgb(192 132 252 / 0.12),
+    0 24px 48px -24px rgb(8 0 24 / 0.72),
+    0 0 56px -16px rgb(117 36 219 / 0.18);
 }
 
 .auth-wash {
@@ -707,16 +761,216 @@ header.header-blend {
   padding-top: 5rem;
 }
 
+.hero-ui-grid {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgb(30 5 65 / 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(30 5 65 / 0.08) 1px, transparent 1px),
+    linear-gradient(to right, rgb(30 5 65 / 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(30 5 65 / 0.035) 1px, transparent 1px);
+  background-size:
+    80px 80px,
+    80px 80px,
+    20px 20px,
+    20px 20px;
+  background-position: center;
+  -webkit-mask-image:
+    linear-gradient(180deg, transparent 0%, #000 8%, #000 84%, transparent 100%),
+    radial-gradient(ellipse 88% 78% at 50% 42%, #000 22%, transparent 78%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(180deg, transparent 0%, #000 8%, #000 84%, transparent 100%),
+    radial-gradient(ellipse 88% 78% at 50% 42%, #000 22%, transparent 78%);
+  mask-composite: intersect;
+}
+
+html.dark .hero-ui-grid {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.07) 1px, transparent 1px),
+    linear-gradient(to right, rgb(255 255 255 / 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.03) 1px, transparent 1px);
+}
+
 html.dark .hero-blend {
   background-color: #07070b;
 }
 
 html.dark .hero-glow {
-  background-color: rgb(196 150 255 / 0.2);
+  background-color: rgb(138 60 245 / 0.16);
 }
 
 .hero-cast {
   filter: drop-shadow(0 22px 28px rgba(30, 5, 65, 0.08));
+}
+
+@keyframes hero-frame-sheen {
+  0% {
+    transform: translateX(-140%) skewX(-18deg);
+  }
+  100% {
+    transform: translateX(280%) skewX(-18deg);
+  }
+}
+
+.hero-frame-sheen {
+  animation: hero-frame-sheen 7s ease-in-out infinite;
+}
+
+@keyframes chat-wave {
+  0% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(2.15);
+    opacity: 0;
+  }
+}
+
+@keyframes chat-bubble-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-10px) translateY(6px) scale(0.86);
+  }
+  55% {
+    opacity: 1;
+    transform: translateX(2px) translateY(-3px) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+  }
+}
+
+@keyframes chat-bubble-wave {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1.4deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(1.4deg);
+  }
+}
+
+.chat-wave {
+  animation: chat-wave 2.4s ease-out infinite;
+}
+
+.chat-wave-delay {
+  animation-delay: 0.8s;
+}
+
+@keyframes chat-greet-cycle {
+  0%,
+  6% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.86);
+  }
+  12%,
+  48% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  56%,
+  100% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+  }
+}
+
+@keyframes chat-mascot-wave {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  40% {
+    transform: rotate(-18deg);
+  }
+  70% {
+    transform: rotate(10deg);
+  }
+}
+
+.chat-greet {
+  animation: chat-greet-cycle 7.5s ease-in-out infinite;
+  transform-origin: left bottom;
+}
+
+.chat-mascot-arm {
+  transform-box: fill-box;
+  transform-origin: 78% 86%;
+  animation: chat-mascot-wave 0.85s ease-in-out infinite;
+}
+
+.chat-bubble-pop {
+  animation: chat-bubble-wave 2.4s ease-in-out infinite;
+}
+
+.chat-typing {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 14px;
+}
+
+.chat-typing i {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-brand-600);
+  animation: chat-typing-dot 1.05s ease-in-out infinite;
+}
+
+.chat-typing i:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.chat-typing i:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+html.dark .chat-typing i {
+  background: #c084fc;
+}
+
+@keyframes chat-typing-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3.5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-wave,
+  .chat-wave-delay,
+  .chat-bubble-pop,
+  .chat-greet,
+  .chat-mascot-arm,
+  .chat-typing i {
+    animation: none;
+  }
+}
+
+@media (width < 80rem) {
+  html.mobile-nav-open [data-council-chat] {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-frame-sheen {
+    animation: none;
+  }
 }
 
 html.dark .hero-cast {
@@ -965,5 +1219,13 @@ html.dark .org-wash span:nth-child(3) {
 
   html.dark .sm\:text-brand-950 {
     color: #f7f2ff;
+  }
+}
+
+/* Fail-open: whileInView can leave tall card grids at opacity 0 on phones. */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  .reveal-in {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }

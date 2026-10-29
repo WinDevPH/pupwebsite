@@ -114,7 +114,7 @@ function cms_copy_file(string $from, string $to): void
     }
 }
 
-$orgLogoDir = $root . '/public/org-logos';
+$orgLogoDir = $root . '/public/uploads/org-logos';
 cms_ensure_dir($orgLogoDir);
 
 $orgLogoCopies = [
@@ -135,7 +135,7 @@ foreach ($orgLogoCopies as $source => $dest) {
     );
 }
 
-$shopDir = $root . '/public/shop';
+$shopDir = $root . '/public/uploads/shop';
 cms_ensure_dir($shopDir);
 
 $shopCopies = [
@@ -155,14 +155,14 @@ foreach ($shopCopies as $file) {
 $orgCount = (int) $pdo->query('SELECT COUNT(*) FROM organizations')->fetchColumn();
 if ($orgCount === 0) {
     $orgs = [
-        ['codal', 'CODAL', 'Christians On Demand At Law', 'https://www.facebook.com/ChristiansOnDemandAtLaw/', '/org-logos/codal.png', 10],
-        ['lacp', 'LACP', 'Legal Aid Clinic of PUP College of Law', 'https://www.facebook.com/puplawlegalaidclinic/', '/org-logos/lacp.png', 20],
-        ['comelec', 'COMELEC', 'PUP College of Law - COMELEC', 'https://www.facebook.com/PUPLawCOMELEC/', '/org-logos/comelec.png', 30],
-        ['research-corps', 'Research Corps', 'PUP College of Law Research Corps', 'https://www.facebook.com/PUPRC2015/', '/org-logos/research-corps.png', 40],
-        ['student-council', 'Student Council', 'PUP College of Law Student Council', 'https://www.facebook.com/pupcl.sc', '/org-logos/student-council.png', 50],
-        ['bar-ops', 'Bar Operations', 'PUP Law Bar Operations', 'https://www.facebook.com/PUPBarOperations', '/org-logos/bar-ops.png', 60],
-        ['mcds', 'MCDS', 'PUP Law Moot Court and Debate Society', 'https://www.facebook.com/PUPLawMCDS/', '/org-logos/mcds.png', 70],
-        ['solicitor', 'The Solicitor', 'PUP College of Law - The Solicitor', 'https://www.facebook.com/solicitorpuplaw', '/org-logos/solicitor.png', 80],
+        ['codal', 'CODAL', 'Christians On Demand At Law', 'https://www.facebook.com/ChristiansOnDemandAtLaw/', '/uploads/org-logos/codal.png', 10],
+        ['lacp', 'LACP', 'Legal Aid Clinic of PUP College of Law', 'https://www.facebook.com/puplawlegalaidclinic/', '/uploads/org-logos/lacp.png', 20],
+        ['comelec', 'COMELEC', 'PUP College of Law - COMELEC', 'https://www.facebook.com/PUPLawCOMELEC/', '/uploads/org-logos/comelec.png', 30],
+        ['research-corps', 'Research Corps', 'PUP College of Law Research Corps', 'https://www.facebook.com/PUPRC2015/', '/uploads/org-logos/research-corps.png', 40],
+        ['student-council', 'Student Council', 'PUP College of Law Student Council', 'https://www.facebook.com/pupcl.sc', '/uploads/org-logos/student-council.png', 50],
+        ['bar-ops', 'Bar Operations', 'PUP Law Bar Operations', 'https://www.facebook.com/PUPBarOperations', '/uploads/org-logos/bar-ops.png', 60],
+        ['mcds', 'MCDS', 'PUP Law Moot Court and Debate Society', 'https://www.facebook.com/PUPLawMCDS/', '/uploads/org-logos/mcds.png', 70],
+        ['solicitor', 'The Solicitor', 'PUP College of Law - The Solicitor', 'https://www.facebook.com/solicitorpuplaw', '/uploads/org-logos/solicitor.png', 80],
     ];
 
     $insertOrg = $pdo->prepare(
@@ -369,9 +369,9 @@ $shopCount = (int) $pdo->query('SELECT COUNT(*) FROM shop_items')->fetchColumn()
 if ($shopCount === 0) {
     $items = [
         // Lockers are seeded as the A–E / 01–12 availability grid by run-021-locker-grid.php.
-        ['merch', 'college-shirt', 'College shirt', 450.00, 'each', 18, '/shop/college-shirt.jpg', 'Sample photo of a violet college shirt', null, null, 70],
-        ['merch', 'college-polo', 'College polo', 550.00, 'each', 12, '/shop/college-polo.jpg', 'Sample photo of a white college polo', null, null, 80],
-        ['merch', 'lanyard', 'Lanyard', 150.00, 'each', 0, '/shop/lanyard.jpg', 'Sample photo of a violet lanyard', 'out', 90],
+        ['merch', 'college-shirt', 'College shirt', 450.00, 'each', 18, '/uploads/shop/college-shirt.jpg', 'Sample photo of a violet college shirt', null, null, 70],
+        ['merch', 'college-polo', 'College polo', 550.00, 'each', 12, '/uploads/shop/college-polo.jpg', 'Sample photo of a white college polo', null, null, 80],
+        ['merch', 'lanyard', 'Lanyard', 150.00, 'each', 0, '/uploads/shop/lanyard.jpg', 'Sample photo of a violet lanyard', 'out', 90],
     ];
 
     $insertShop = $pdo->prepare(
@@ -396,8 +396,6 @@ if ($shopCount === 0) {
             'sort_order' => $sort,
         ]);
     }
-    $assigned = ['A-03', 'B-08', 'C-01', 'C-02', 'C-04', 'C-06', 'C-08', 'D-04', 'D-06', 'E-02', 'E-08'];
-    $assignedLookup = array_fill_keys($assigned, true);
     $lockerCount = 0;
     foreach (['A', 'B', 'C', 'D', 'E'] as $rowIndex => $row) {
         $lockerPrice = $row === 'D' ? 450.00 : ($row === 'E' ? 350.00 : 600.00);
@@ -410,10 +408,10 @@ if ($shopCount === 0) {
                 'price' => $lockerPrice,
                 'unit' => 'per rental period',
                 'stock' => 1,
-                'image_url' => '/shop/locker-bay.jpg',
+                'image_url' => '/uploads/shop/locker-bay.jpg',
                 'alt_text' => 'Locker ' . $code,
                 'number_label' => $code,
-                'availability' => isset($assignedLookup[$code]) ? 'reserved' : null,
+                'availability' => null,
                 'sort_order' => ($rowIndex * 12) + $col,
             ]);
             $lockerCount++;

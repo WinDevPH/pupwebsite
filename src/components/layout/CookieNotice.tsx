@@ -38,7 +38,7 @@ export function CookieNotice() {
           animate={{ opacity: 1, y: 0 }}
           exit={reduce ? undefined : { opacity: 0, y: 12 }}
           transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          className="pointer-events-none fixed inset-x-0 bottom-0 z-50 p-4 sm:p-6"
+          className="pointer-events-none fixed inset-x-0 bottom-0 z-[80] p-4 sm:p-6"
         >
           <div className="pointer-events-auto mx-auto flex max-w-3xl flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-[0_24px_50px_-28px_rgba(30,5,65,0.45)] sm:flex-row sm:items-center sm:p-5 dark:border-zinc-700 dark:bg-zinc-900 dark:shadow-black/50">
             <div className="flex min-w-0 flex-1 items-center gap-3">

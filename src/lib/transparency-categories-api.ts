@@ -1,3 +1,9 @@
+import { unreachableServerMessage } from '@/lib/unreachable-server'
+export type TransparencyInnerTab = {
+  slug: string
+  label: string
+}
+
 export type TransparencyCategoryRecord = {
   id: number
   slug: string
@@ -6,6 +12,7 @@ export type TransparencyCategoryRecord = {
   accent: string
   kicker: string
   note: string
+  tabs: TransparencyInnerTab[]
   folder: string
   seriesLabel: string
   icon: string
@@ -23,6 +30,7 @@ export type TransparencyCategoryInput = {
   accent?: string
   kicker?: string
   note?: string
+  tabs?: TransparencyInnerTab[]
   folder?: string
   seriesLabel?: string
   icon?: string
@@ -39,6 +47,7 @@ export const DEFAULT_TRANSPARENCY_CATEGORIES: TransparencyCategoryRecord[] = [
     accent: 'and En Banc Issuances',
     kicker: 'Secretariat',
     note: 'Organized archive of resolutions arranged by Series/Academic Year. Downloadable PDF links provided.',
+    tabs: [],
     folder: '01 Board Resolution & Memoranda',
     seriesLabel: 'Board Resolution',
     icon: 'landmark',
@@ -53,6 +62,7 @@ export const DEFAULT_TRANSPARENCY_CATEGORIES: TransparencyCategoryRecord[] = [
     accent: 'Resolutions',
     kicker: 'Secretariat',
     note: 'Resolutions issued by the Commission on Appointments.',
+    tabs: [],
     folder: '',
     seriesLabel: 'Resolution',
     icon: 'gavel',
@@ -67,6 +77,7 @@ export const DEFAULT_TRANSPARENCY_CATEGORIES: TransparencyCategoryRecord[] = [
     accent: 'Administrative Requests',
     kicker: 'Secretariat',
     note: 'Repository of formal communications sent to and memorandas received from the Office of the Dean',
+    tabs: [],
     folder: '',
     seriesLabel: 'Memorandum',
     icon: 'mail',
@@ -79,8 +90,9 @@ export const DEFAULT_TRANSPARENCY_CATEGORIES: TransparencyCategoryRecord[] = [
     label: 'Accomplishment Reports',
     title: 'Accomplishment',
     accent: 'Reports',
-    kicker: 'Audit',
+    kicker: 'Secretariat',
     note: 'Semester-end and annual records of Council programs and outputs.',
+    tabs: [],
     folder: '',
     seriesLabel: 'Report',
     icon: 'clipboard-check',
@@ -93,8 +105,13 @@ export const DEFAULT_TRANSPARENCY_CATEGORIES: TransparencyCategoryRecord[] = [
     label: 'Financial Reports',
     title: 'Financial',
     accent: 'Reports',
-    kicker: 'Audit',
+    kicker: 'Finance & Audit',
     note: 'Monthly and semestral financial statements, liquidations, budget allocations, and audit reports.',
+    tabs: [
+      { slug: 'quarterly-liquidations', label: 'Quarterly liquidations' },
+      { slug: 'budget-allocations', label: 'Budget allocations' },
+      { slug: 'financial-statements', label: 'Financial statements' },
+    ],
     folder: '',
     seriesLabel: 'Financial Report',
     icon: 'wallet',
@@ -141,7 +158,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<ApiOk<T> | 
   } catch {
     return {
       ok: false,
-      error: 'Cannot reach the server. Start Apache and MySQL in XAMPP.',
+      error: unreachableServerMessage(),
       status: 0,
     }
   }
@@ -183,8 +200,20 @@ export function resolveTransparencyTabSlug(
   raw: string,
   categories: Pick<TransparencyCategoryRecord, 'slug'>[],
 ): string | null {
-  const id = raw.replace('#', '').trim()
+  const id = raw.replace('#', '').trim().split('/')[0] ?? ''
   if (!id) return null
   const mapped = TRANSPARENCY_TAB_ALIASES[id] ?? id
   return categories.some((item) => item.slug === mapped) ? mapped : null
+}
+
+export function resolveTransparencyInnerTab(
+  raw: string,
+  category: Pick<TransparencyCategoryRecord, 'slug' | 'tabs'> | null,
+): string {
+  const tabs = category?.tabs ?? []
+  if (tabs.length === 0) return ''
+  const parts = raw.replace('#', '').trim().split('/')
+  const inner = parts.slice(1).join('/')
+  if (!inner || inner === 'all') return 'all'
+  return tabs.some((item) => item.slug === inner) ? inner : 'all'
 }

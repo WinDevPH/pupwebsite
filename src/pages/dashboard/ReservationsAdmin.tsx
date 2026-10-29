@@ -525,16 +525,19 @@ export default function ReservationsAdmin() {
                       aria-label={`Edit reservation ${item.code}`}
                     >
                       <td className="w-[16rem] max-w-[16rem] px-1.5 py-2 sm:w-[20rem] sm:max-w-[20rem] sm:px-2 lg:w-[24rem] lg:max-w-[24rem]">
-                        <div className="min-w-0 max-w-full overflow-hidden">
-                          <p
-                            className="truncate font-semibold leading-tight text-zinc-900 dark:text-zinc-50"
-                            title={item.itemName}
-                          >
-                            {item.itemName || 'Untitled'}
-                          </p>
-                          <p className="mt-0.5 truncate font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
-                            {item.code || '—'}
-                          </p>
+                        <div className="flex min-w-0 max-w-full items-center gap-2.5 overflow-hidden sm:gap-3">
+                          <Thumb src={item.image ?? ''} shop={item.shop} size="sm" />
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <p
+                              className="truncate font-semibold leading-tight text-zinc-900 dark:text-zinc-50"
+                              title={item.itemName}
+                            >
+                              {item.itemName || 'Untitled'}
+                            </p>
+                            <p className="mt-0.5 truncate font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                              {item.code || '—'}
+                            </p>
+                          </div>
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-1.5 py-2 sm:px-2">
@@ -600,7 +603,7 @@ export default function ReservationsAdmin() {
                     aria-label={`Edit reservation ${item.code}`}
                   >
                     <div className="flex items-start justify-between gap-2 p-3.5 pb-0">
-                      <ShopBadge shop={item.shop} pill />
+                      <Thumb src={item.image ?? ''} shop={item.shop} size="lg" />
                       <div
                         className="flex items-center gap-1.5"
                         onClick={(event) => event.stopPropagation()}
@@ -614,6 +617,7 @@ export default function ReservationsAdmin() {
                     </div>
 
                     <div className="flex flex-1 flex-col gap-2.5 p-3.5 pt-3">
+                      <ShopBadge shop={item.shop} pill />
                       <div className="min-w-0">
                         <h3
                           className="truncate text-[13px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
@@ -700,6 +704,34 @@ export default function ReservationsAdmin() {
       />
     )
   }
+}
+
+function Thumb({
+  src,
+  shop,
+  size,
+}: {
+  src: string
+  shop: ReservationShop
+  size: 'sm' | 'lg'
+}) {
+  const cls = size === 'lg' ? 'h-12 w-12 rounded-xl' : 'h-9 w-9 rounded-lg'
+  return (
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center justify-center overflow-hidden border border-zinc-200 bg-zinc-50 text-zinc-400 dark:border-zinc-700 dark:bg-zinc-900',
+        cls,
+      )}
+    >
+      {src ? (
+        <img src={src} alt="" className="size-full object-cover" loading="lazy" />
+      ) : shop === 'locker' ? (
+        <Lock className="h-4 w-4" aria-hidden />
+      ) : (
+        <ShoppingBag className="h-4 w-4" aria-hidden />
+      )}
+    </span>
+  )
 }
 
 function ShopBadge({ shop, pill = false }: { shop: ReservationShop; pill?: boolean }) {

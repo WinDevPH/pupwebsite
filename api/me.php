@@ -12,11 +12,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
 
 try {
     $user = api_current_user();
-} catch (Throwable) {
-    api_json([
-        'ok' => false,
-        'error' => 'Database unavailable. Import database/schema.sql and start MySQL in XAMPP.',
-    ], 503);
+} catch (Throwable $error) {
+    api_json_db_error($error);
 }
 
 if (!$user) {

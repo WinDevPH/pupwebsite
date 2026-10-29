@@ -1,3 +1,5 @@
+import { unreachableServerMessage } from '@/lib/unreachable-server'
+
 export type AuthUser = {
   id: number
   email: string
@@ -134,7 +136,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<ApiResult<T
   } catch {
     return {
       ok: false,
-      error: 'Cannot reach the login server. Start Apache in XAMPP and try again.',
+      error: unreachableServerMessage(),
       status: 0,
     }
   }

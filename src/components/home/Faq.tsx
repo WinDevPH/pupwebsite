@@ -67,11 +67,13 @@ export function FaqList({ className }: { className?: string }) {
         const panelId = `${baseId}-${item.id}`
         const number = String(index + 1).padStart(2, '0')
         return (
+          <Reveal key={item.id} delay={Math.min(index, 4) * 0.05}>
           <div
-            key={item.id}
             className={cn(
-              'h-fit overflow-hidden rounded-2xl border border-zinc-200 bg-white',
-              open && 'border-brand-100 bg-brand-50/70',
+              'h-fit overflow-hidden rounded-2xl border border-zinc-200 bg-white transition-[border-color,background-color,box-shadow] duration-200 dark:border-zinc-800 dark:bg-zinc-900',
+              open
+                ? 'border-brand-100 bg-brand-50/70 dark:border-brand-500/30 dark:bg-brand-500/10'
+                : 'hover:border-brand-200 dark:hover:border-zinc-700',
             )}
           >
             <h3>
@@ -119,6 +121,7 @@ export function FaqList({ className }: { className?: string }) {
               ) : null}
             </AnimatePresence>
           </div>
+          </Reveal>
         )
       })}
     </div>
@@ -146,9 +149,9 @@ export function Faq() {
           </header>
         </Reveal>
 
-        <Reveal delay={0.06} className="mx-auto mt-[clamp(1.5rem,1rem+1.5vw,2.25rem)] max-w-5xl">
+        <div className="mx-auto mt-[clamp(1.5rem,1rem+1.5vw,2.25rem)] max-w-5xl">
           <FaqList />
-        </Reveal>
+        </div>
       </div>
     </section>
   )

@@ -1,7 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   BookMarked,
-  BookOpen,
   CalendarCheck,
   CircleHelp,
   ClipboardList,
@@ -24,6 +23,8 @@ import {
   projectCategoryFromSlug,
   type ProjectCategory,
 } from '@/lib/project-categories'
+import { DEFAULT_TRANSPARENCY_CATEGORIES } from '@/lib/transparency-categories-api'
+import { transparencyIcon } from '@/lib/transparency-icons'
 
 export { projectCategoryFromSlug }
 
@@ -45,9 +46,19 @@ export const merchGuidelinesUrl =
   'https://drive.google.com/drive/folders/1VPzGaGuRS82JZf1x4Gp_nOaIdiktLdBH?usp=sharing'
 export const lockerGuidelinesUrl =
   'https://drive.google.com/file/d/1-Htb0iYsk0TTFAd2pGiziwfIUqwkpVg9/view?usp=sharing'
+export const grievanceFormUrl =
+  'https://docs.google.com/forms/d/e/1FAIpQLSdRdEa0MJPgriEsmIOKDi9Q70B25wnR3Ll_sjUT0O2rPiRjQg/viewform'
+export const grievanceGuidelinesUrl =
+  'https://drive.google.com/drive/folders/1_A1TJ_jdZXQhWOd5qd4nJmVw8Jr5scMk?usp=sharing'
 
 export const formsPageDescription =
   'A centralized digital library of essential student documents, featuring official academic forms, enrollment guidelines, the Juris Doctor curriculum, and regulatory resources for easy reference.'
+
+export const transparencyPageDescription =
+  'Official board resolutions, commission issuances, memoranda, accomplishment reports, and financial records of the Student Council, arranged for public download.'
+
+export const councilPageDescription =
+  'The highest governing body of PUP College of Law students, their primary voice in administrative and academic affairs, and the body that forms policies for student welfare, rights, and interests.'
 
 export type NavLinkItem = {
   label: string
@@ -142,17 +153,18 @@ export const footerColumns = [
     title: 'The Council',
     links: [
       { label: 'About the Council', to: '/about/the-council' },
-      { label: 'Legislative', to: '/governance/legislative' },
-      { label: 'Executive', to: '/governance/executive' },
+      { label: 'Transparency', to: '/transparency' },
+      { label: 'How It Works', to: '/how-it-works' },
       { label: 'Contact Us', to: '/#contact' },
     ],
   },
   {
     title: 'Student Services',
     links: [
-      { label: 'Student Grievance', to: '/services/grievance' },
+      { label: 'Student Grievance', to: '/portal#grievance' },
       { label: 'Projects', to: '/projects' },
       { label: 'Services Portal', to: '/portal' },
+      { label: 'Locker Reservation', to: '/lockers' },
     ],
   },
   {
@@ -161,6 +173,7 @@ export const footerColumns = [
       { label: 'Student Handbook', to: studentHandbookUrl },
       { label: 'Forms', to: '/forms' },
       { label: 'Announcements', to: '/#bulletin' },
+      { label: 'FAQs', to: '/#faq' },
     ],
   },
 ] as const
@@ -181,6 +194,16 @@ export type ProjectPillar = ProjectCategory
 
 export function projectPillarFromSlug(slug: string | undefined) {
   return projectCategoryFromSlug(slug)
+}
+
+export function transparencyNavLinks(
+  categories: { slug: string; label: string; icon: string }[] = DEFAULT_TRANSPARENCY_CATEGORIES,
+): NavLinkItem[] {
+  return categories.map((item) => ({
+    label: item.label,
+    to: `/transparency#${item.slug}`,
+    icon: transparencyIcon(item.icon),
+  }))
 }
 
 export const navItems: NavItem[] = [
@@ -243,9 +266,15 @@ export const navItems: NavItem[] = [
     },
   },
   {
-    label: 'Governance & Transparency',
-    to: '/transparency',
+    label: 'Governance',
+    title: 'Governance & Transparency',
     icon: Scale,
+    groups: [
+      {
+        title: 'Official documents and issuances',
+        links: transparencyNavLinks(),
+      },
+    ],
   },
   {
     label: 'Projects',
@@ -281,16 +310,6 @@ export const navItems: NavItem[] = [
             to: '/lockers',
             icon: LockKeyhole,
             description: 'Reserve a locker for the semester.',
-          },
-          {
-            label: 'Merch Guidelines',
-            to: merchGuidelinesUrl,
-            icon: BookOpen,
-          },
-          {
-            label: 'Locker Guidelines',
-            to: lockerGuidelinesUrl,
-            icon: BookOpen,
           },
         ],
       },

@@ -27,7 +27,7 @@ export function BackToTop() {
       tabIndex={visible ? 0 : -1}
       onClick={() => scrollPageTo(0, true)}
       className={cn(
-        'fixed right-4 bottom-5 z-40 flex size-10 items-center justify-center rounded-lg bg-brand-700 text-white shadow-sm transition-[opacity,transform] duration-300 ease-out hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 sm:right-6 sm:bottom-6',
+        'fixed right-[max(1rem,calc((100vw-80rem)/2+1rem))] bottom-5 z-40 flex size-10 items-center justify-center rounded-lg bg-brand-700 text-white shadow-sm transition-[opacity,transform] duration-300 ease-out hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 sm:right-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))] sm:bottom-6 lg:right-[max(2rem,calc((100vw-80rem)/2+2rem))]',
         visible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-2 opacity-0',
       )}
     >
