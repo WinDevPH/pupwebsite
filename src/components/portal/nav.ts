@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   Megaphone,
   MessageCircle,
+  MessagesSquare,
   Scale,
   Settings2,
   Shirt,
@@ -67,6 +68,12 @@ export const portalNavGroups: PortalNavGroup[] = [
         label: 'Requests',
         Icon: FileText,
         to: `${adminBase}/requests`,
+      },
+      {
+        id: 'feedback',
+        label: 'Feedbacks',
+        Icon: MessagesSquare,
+        to: `${adminBase}/feedback`,
       },
       {
         id: 'chat',

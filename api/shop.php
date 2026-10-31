@@ -58,6 +58,34 @@ function shop_ensure_tables(PDO $pdo): void
     if ($hasSize) {
         $pdo->exec('ALTER TABLE shop_items DROP COLUMN size');
     }
+    $pdo->exec(
+        "DELETE FROM shop_items
+         WHERE shop = 'merch'
+           AND item_key IN ('college-shirt', 'college-polo', 'lanyard')"
+    );
+    try {
+        $pdo->exec(
+            "UPDATE shop_items i
+             LEFT JOIN shop_reservations r
+               ON r.shop = 'locker'
+              AND LOWER(r.status) <> 'cancelled'
+              AND (
+                    (r.shop_item_id IS NOT NULL AND r.shop_item_id = i.id)
+                 OR (r.item_key <> '' AND LOWER(r.item_key) = LOWER(i.item_key))
+              )
+             SET i.availability = NULL
+             WHERE i.shop = 'locker'
+               AND i.availability IN ('reserved', 'out')
+               AND r.id IS NULL"
+        );
+    } catch (Throwable) {
+        $pdo->exec(
+            "UPDATE shop_items
+             SET availability = NULL
+             WHERE shop = 'locker'
+               AND availability IN ('reserved', 'out')"
+        );
+    }
     $ready = true;
 }
 
@@ -98,9 +126,6 @@ function shop_occupied_lockers(PDO $pdo): array
 function shop_apply_occupancy(array $item, array $occupied): array
 {
     if (($item['shop'] ?? '') !== 'locker') {
-        return $item;
-    }
-    if (($item['availability'] ?? '') === 'out') {
         return $item;
     }
     $id = (int) ($item['id'] ?? 0);

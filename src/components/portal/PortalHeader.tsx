@@ -9,13 +9,15 @@ import {
   Loader2,
   LogOut,
   Menu,
+  MessagesSquare,
   RefreshCw,
   Trash2,
+  UserRound,
 } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { useNotifications } from '@/context/NotificationsContext'
-import { formatNotificationTime } from '@/lib/notifications-api'
+import { formatNotificationTime, type NotificationKind } from '@/lib/notifications-api'
 import { cn } from '@/lib/utils'
 import { SidebarLayoutToggleIcon } from './SidebarLayoutToggleIcon'
 import { breadcrumbsFor } from './nav'
@@ -41,6 +43,27 @@ const ghostToggleCollapse = ghostToggleCore
 const sep =
   'hidden h-6 w-px shrink-0 self-center bg-zinc-200/90 md:block dark:bg-white/[0.08]'
 
+const kindMeta: Record<
+  Exclude<NotificationKind, 'chat'>,
+  { label: string; Icon: typeof FileText; iconCls: string }
+> = {
+  request: {
+    label: 'Request',
+    Icon: FileText,
+    iconCls: 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300',
+  },
+  reservation: {
+    label: 'Reservation',
+    Icon: Bookmark,
+    iconCls: 'bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
+  },
+  feedback: {
+    label: 'Feedback',
+    Icon: MessagesSquare,
+    iconCls: 'bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
+  },
+}
+
 type PortalHeaderProps = {
   onMenuClick: () => void
   desktopSidebarCollapsed: boolean
@@ -50,13 +73,6 @@ type PortalHeaderProps = {
   avatarUrl?: string | null
   role: string
   onLogout: () => void
-}
-
-function initialsFor(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return 'DS'
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
-  return `${parts[0]![0] ?? ''}${parts[1]![0] ?? ''}`.toUpperCase()
 }
 
 export function PortalHeader({
@@ -76,7 +92,6 @@ export function PortalHeader({
     items,
     unread,
     unreadCount,
-    hasUnread,
     markAllRead,
     markRead,
     clearAll,
@@ -227,8 +242,8 @@ export function PortalHeader({
               type="button"
               title="Notifications"
               aria-label={
-                hasUnread
-                  ? `Notifications, ${unreadCount} unread`
+                items.length > 0
+                  ? `Notifications, ${items.length} ${items.length === 1 ? 'alert' : 'alerts'}`
                   : 'Notifications'
               }
               aria-haspopup="menu"
@@ -237,10 +252,12 @@ export function PortalHeader({
               className="relative inline-flex size-10 shrink-0 items-center justify-center rounded-xl border-0 bg-transparent text-zinc-500 outline-none transition-[color] duration-200 hover:text-brand-700 focus-visible:ring-2 focus-visible:ring-brand-500/40 dark:hover:text-brand-300"
             >
               <Bell className="size-[17px]" strokeWidth={2} aria-hidden />
-              {hasUnread ? (
-                <span className="absolute top-1.5 right-1.5 flex size-2.5" aria-hidden>
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-rose-400 opacity-60" />
-                  <span className="relative inline-flex size-2.5 rounded-full bg-rose-500 ring-2 ring-white dark:ring-zinc-950" />
+              {items.length > 0 ? (
+                <span
+                  className="absolute top-1 right-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white dark:ring-zinc-950"
+                  aria-hidden
+                >
+                  {items.length > 9 ? '9+' : items.length}
                 </span>
               ) : null}
             </button>
@@ -261,11 +278,11 @@ export function PortalHeader({
               aria-label={`Account menu · ${displayName}`}
               className="inline-flex size-10 items-center justify-center rounded-xl outline-none transition hover:bg-brand-50/80 focus-visible:ring-2 focus-visible:ring-brand-500/40 dark:hover:bg-brand-500/12"
             >
-              <span className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-brand-100 text-[10px] font-bold text-brand-800 uppercase ring-[1.5px] ring-black/[0.04] ring-inset dark:bg-brand-500/20 dark:text-brand-200">
+              <span className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-brand-100 text-brand-800 ring-[1.5px] ring-black/[0.04] ring-inset dark:bg-brand-500/20 dark:text-brand-200">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="" className="size-full object-cover" />
                 ) : (
-                  initialsFor(displayName)
+                  <UserRound className="size-4" aria-hidden />
                 )}
               </span>
             </button>
@@ -431,14 +448,15 @@ export function PortalHeader({
                       You’re all caught up
                     </p>
                     <p className="mx-auto mt-1 max-w-[16rem] text-[12px] leading-5 text-zinc-500 dark:text-zinc-400">
-                      Open requests and reservations appear here in real time.
+                      Open requests, reservations, and new feedback appear here.
                     </p>
                   </div>
                 ) : (
                   <ul className="divide-y divide-zinc-100 dark:divide-white/[0.06]">
                     {items.map((item) => {
                       const isUnread = unread.some((entry) => entry.id === item.id)
-                      const Icon = item.kind === 'reservation' ? Bookmark : FileText
+                      const meta = kindMeta[item.kind === 'chat' ? 'request' : item.kind]
+                      const Icon = meta.Icon
                       return (
                         <li key={item.id}>
                           <button
@@ -453,9 +471,7 @@ export function PortalHeader({
                             <span
                               className={cn(
                                 'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg',
-                                item.kind === 'reservation'
-                                  ? 'bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300'
-                                  : 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300',
+                                meta.iconCls,
                               )}
                             >
                               <Icon className="size-3.5" aria-hidden />
@@ -477,7 +493,7 @@ export function PortalHeader({
                               </span>
                               <span className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-zinc-400 dark:text-zinc-500">
                                 <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-zinc-500 uppercase dark:bg-white/[0.06] dark:text-zinc-400">
-                                  {item.kind === 'reservation' ? 'Reservation' : 'Request'}
+                                  {meta.label}
                                 </span>
                                 <span aria-hidden>·</span>
                                 <span>{formatNotificationTime(item.createdAt)}</span>
@@ -489,27 +505,6 @@ export function PortalHeader({
                     })}
                   </ul>
                 )}
-              </div>
-
-              <div className="shrink-0 border-t border-zinc-100 px-2 py-1.5 dark:border-white/[0.06]">
-                <div className="grid grid-cols-2 gap-1">
-                  <Link
-                    to="/admin/requests"
-                    role="menuitem"
-                    onClick={() => setNotifOpen(false)}
-                    className="rounded-lg px-2.5 py-2 text-center text-[12px] font-semibold text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10"
-                  >
-                    Requests
-                  </Link>
-                  <Link
-                    to="/admin/reservations"
-                    role="menuitem"
-                    onClick={() => setNotifOpen(false)}
-                    className="rounded-lg px-2.5 py-2 text-center text-[12px] font-semibold text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-500/10"
-                  >
-                    Reservations
-                  </Link>
-                </div>
               </div>
             </div>
           ) : null}

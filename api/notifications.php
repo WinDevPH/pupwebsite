@@ -90,6 +90,47 @@ function notifications_get(): never
 
     try {
         $stmt = $pdo->query(
+            "SELECT id, name, kind, message, status, created_at
+             FROM feedback_items
+             WHERE status = 'new'
+             ORDER BY created_at DESC, id DESC
+             LIMIT 30"
+        );
+        if ($stmt) {
+            $kindLabels = [
+                'suggestion' => 'Suggestion',
+                'concern' => 'Concern',
+                'compliment' => 'Compliment',
+                'other' => 'Something else',
+            ];
+            foreach ($stmt->fetchAll() as $row) {
+                $id = (int) $row['id'];
+                $name = trim((string) $row['name']);
+                $kind = (string) $row['kind'];
+                $kindLabel = $kindLabels[$kind] ?? 'Feedback';
+                $preview = trim(preg_replace('/\s+/', ' ', (string) $row['message']) ?? '');
+                if (function_exists('mb_strlen') && mb_strlen($preview) > 90) {
+                    $preview = mb_substr($preview, 0, 87) . '…';
+                } elseif (strlen($preview) > 90) {
+                    $preview = substr($preview, 0, 87) . '…';
+                }
+                $items[] = [
+                    'id' => 'feedback:' . $id,
+                    'kind' => 'feedback',
+                    'title' => $name !== '' ? $name : 'Feedback',
+                    'body' => trim($kindLabel . ($preview !== '' ? ' · ' . $preview : '')),
+                    'href' => '/admin/feedback?open=' . $id,
+                    'status' => 'new',
+                    'createdAt' => api_iso((string) $row['created_at']) ?? date('c'),
+                ];
+            }
+        }
+    } catch (Throwable) {
+        // Table may not exist yet.
+    }
+
+    try {
+        $stmt = $pdo->query(
             "SELECT t.id, t.preview, t.last_role, t.updated_at
              FROM chat_threads t
              WHERE (
@@ -133,6 +174,7 @@ function notifications_get(): never
         'counts' => [
             'request' => count(array_filter($items, static fn ($i) => $i['kind'] === 'request')),
             'reservation' => count(array_filter($items, static fn ($i) => $i['kind'] === 'reservation')),
+            'feedback' => count(array_filter($items, static fn ($i) => $i['kind'] === 'feedback')),
             'chat' => count(array_filter($items, static fn ($i) => $i['kind'] === 'chat')),
             'total' => count($items),
         ],

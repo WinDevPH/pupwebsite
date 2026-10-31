@@ -131,7 +131,8 @@ export default function Project() {
 }
 
 function OtherProjectsSlider({ items }: { items: ProjectItem[] }) {
-  const count = items.length
+  const visible = items.slice(0, 4)
+  const count = visible.length
   const canSlide = count > 1
 
   if (!count) return null
@@ -147,9 +148,9 @@ function OtherProjectsSlider({ items }: { items: ProjectItem[] }) {
         role="region"
         aria-roledescription="carousel"
         aria-label="Other projects"
-        className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain touch-pan-x [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:auto-rows-fr sm:grid-cols-3 sm:overflow-visible sm:snap-none lg:grid-cols-5"
+        className="mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain touch-pan-x [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:auto-rows-fr sm:grid-cols-2 sm:overflow-visible sm:snap-none lg:grid-cols-4"
       >
-          {items.map((item) => {
+          {visible.map((item) => {
             const Icon = item.icon
             return (
               <li

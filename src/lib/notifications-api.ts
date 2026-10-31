@@ -1,5 +1,5 @@
 import { unreachableServerMessage } from '@/lib/unreachable-server'
-export type NotificationKind = 'request' | 'reservation' | 'chat'
+export type NotificationKind = 'request' | 'reservation' | 'feedback' | 'chat'
 
 export type AdminNotification = {
   id: string
@@ -45,7 +45,7 @@ async function request<T>(path: string): Promise<ApiOk<T> | ApiFailure> {
 export async function listAdminNotifications() {
   return request<{
     items: AdminNotification[]
-    counts: { request: number; reservation: number; chat: number; total: number }
+    counts: { request: number; reservation: number; feedback: number; chat: number; total: number }
   }>('/api/notifications.php')
 }
 

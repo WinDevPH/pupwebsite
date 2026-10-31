@@ -6,6 +6,7 @@ import {
   ChevronsUpDown,
   LogOut,
   Search,
+  UserRound,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -52,13 +53,6 @@ type PortalSidebarProps = {
   onLogout: () => void
 }
 
-function initialsFor(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return 'DS'
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
-  return `${parts[0]![0] ?? ''}${parts[1]![0] ?? ''}`.toUpperCase()
-}
-
 function pathMatchesItem(pathname: string, item: PortalNavItem) {
   if (item.exact) return pathname === item.to
   return pathname === item.to || pathname.startsWith(`${item.to}/`)
@@ -72,11 +66,12 @@ function isMultiGroup(group: (typeof portalNavGroups)[number]) {
   return group.collapsible !== false && group.items.length > 1
 }
 
-type NavAlertFlags = { request: boolean; reservation: boolean; chat: number }
+type NavAlertFlags = { request: boolean; reservation: boolean; feedback: boolean; chat: number }
 
 function alertDotForItem(itemId: string, flags: NavAlertFlags) {
   if (itemId === 'requests') return flags.request
   if (itemId === 'reservations') return flags.reservation
+  if (itemId === 'feedback') return flags.feedback
   if (itemId === 'chat') return flags.chat > 0
   return false
 }
@@ -393,6 +388,7 @@ export function PortalSidebar({
     () => ({
       request: hasUnreadKind('request'),
       reservation: hasUnreadKind('reservation'),
+      feedback: kindCount('feedback') > 0,
       chat: kindCount('chat'),
     }),
     [hasUnreadKind, kindCount],
@@ -766,11 +762,11 @@ export function PortalSidebar({
                 desktopCollapsed && 'xl:justify-center xl:px-2',
               )}
             >
-              <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-100 text-[10px] font-bold text-brand-800 uppercase dark:bg-brand-500/20 dark:text-brand-200">
+              <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-100 text-brand-800 dark:bg-brand-500/20 dark:text-brand-200">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="" className="size-full object-cover" />
                 ) : (
-                  initialsFor(displayName)
+                  <UserRound className="size-4" aria-hidden />
                 )}
               </span>
               <div className={cn('min-w-0 flex-1', desktopCollapsed && 'xl:hidden')}>

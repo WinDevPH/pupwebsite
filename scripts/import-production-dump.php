@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/api/includes/bootstrap.php';
 
-$source = $argv[1] ?? 'C:\\Users\\HomePC\\Downloads\\u785185569_pup_db.sql';
+$source = $argv[1] ?? 'C:\\Users\\HomePC\\Downloads\\u785185569_pup_db (1).sql';
 if (!is_file($source)) {
     fwrite(STDERR, "Dump not found: {$source}\n");
     exit(1);
@@ -141,42 +141,17 @@ $cleared = $pdo->exec(
     "UPDATE shop_items
      SET availability = NULL
      WHERE shop = 'locker'
-       AND availability = 'reserved'"
+       AND availability IN ('reserved', 'out')"
 );
 if ($cleared) {
-    echo "Cleared {$cleared} seed reserved locker flags.\n";
+    echo "Cleared {$cleared} locker flags that were not backed by a reservation.\n";
 }
 
-$merchCount = (int) $pdo->query("SELECT COUNT(*) FROM shop_items WHERE shop = 'merch'")->fetchColumn();
-if ($merchCount === 0) {
-    $items = [
-        ['merch', 'college-shirt', 'College shirt', 450.00, 'each', 18, '/uploads/shop/college-shirt.jpg', 'Sample photo of a violet college shirt', null, null, 70],
-        ['merch', 'college-polo', 'College polo', 550.00, 'each', 12, '/uploads/shop/college-polo.jpg', 'Sample photo of a white college polo', null, null, 80],
-        ['merch', 'lanyard', 'Lanyard', 150.00, 'each', 0, '/uploads/shop/lanyard.jpg', 'Sample photo of a violet lanyard', null, 'out', 90],
-    ];
-    $insert = $pdo->prepare(
-        'INSERT INTO shop_items
-          (shop, item_key, name, price, unit, stock, image_url, alt_text, number_label, availability, sort_order, is_published)
-         VALUES
-          (:shop, :item_key, :name, :price, :unit, :stock, :image_url, :alt_text, :number_label, :availability, :sort_order, 1)'
-    );
-    foreach ($items as [$shop, $key, $name, $price, $unit, $stock, $image, $alt, $number, $availability, $sort]) {
-        $insert->execute([
-            'shop' => $shop,
-            'item_key' => $key,
-            'name' => $name,
-            'price' => $price,
-            'unit' => $unit,
-            'stock' => $stock,
-            'image_url' => $image,
-            'alt_text' => $alt,
-            'number_label' => $number,
-            'availability' => $availability,
-            'sort_order' => $sort,
-        ]);
-    }
-    echo "Seeded merch catalog (not present in production dump).\n";
-}
+$pdo->exec(
+    "DELETE FROM shop_items
+     WHERE shop = 'merch'
+       AND item_key IN ('college-shirt', 'college-polo', 'lanyard')"
+);
 
 $counts = $pdo->query(
     "SELECT

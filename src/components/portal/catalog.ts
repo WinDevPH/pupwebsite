@@ -1,8 +1,5 @@
 import lockerBay from '@/assets/shop/locker-bay.jpg'
-import collegeShirt from '@/assets/shop/college-shirt.jpg'
-import collegePolo from '@/assets/shop/college-polo.jpg'
-import lanyard from '@/assets/shop/lanyard.jpg'
-import { buildShops, listShopItems } from '@/lib/shop-api'
+import { buildShops, listShopItems, SHOP_META } from '@/lib/shop-api'
 
 export type ShopId = 'locker' | 'merch'
 
@@ -89,48 +86,15 @@ export type ShopItem = {
 
 export type ShopCatalog = Record<ShopId, { title: string; kicker: string; items: ShopItem[] }>
 
-/** Bundled fallback used when the shop API is unreachable. Live data comes from `loadShopCatalog`. */
-export const shops: ShopCatalog = {
-  locker: {
-    title: 'Locker Availability',
-    kicker: 'Locker',
-    items: buildLockerGridItems(),
-  },
-  merch: {
-    title: 'Selling of Merch',
-    kicker: 'Income · General',
-    items: [
-      {
-        id: 'college-shirt',
-        name: 'College shirt',
-        price: 450,
-        unit: 'each',
-        stock: 18,
-        image: collegeShirt,
-        alt: 'Sample photo of a violet college shirt',
-      },
-      {
-        id: 'college-polo',
-        name: 'College polo',
-        price: 550,
-        unit: 'each',
-        image: collegePolo,
-        stock: 12,
-        alt: 'Sample photo of a white college polo',
-      },
-      {
-        id: 'lanyard',
-        name: 'Lanyard',
-        price: 150,
-        unit: 'each',
-        image: lanyard,
-        stock: 0,
-        availability: 'out',
-        alt: 'Sample photo of a violet lanyard',
-      },
-    ],
-  },
+/** Empty catalog. Public locker and merch pages only show published CMS rows. */
+export function emptyShopCatalog(): ShopCatalog {
+  return {
+    locker: { ...SHOP_META.locker, items: [] },
+    merch: { ...SHOP_META.merch, items: [] },
+  }
 }
+
+export const shops: ShopCatalog = emptyShopCatalog()
 
 export type ShopLookup = { shop: ShopId; listing: ShopCatalog[ShopId]; item: ShopItem }
 
@@ -150,10 +114,10 @@ export function findShopItem(shop: string | undefined, itemId: string | undefine
   return lookupShopItem(shops, shop, itemId)
 }
 
-/** Load published shop items from the CMS API. Falls back to the bundled catalog on failure. */
+/** Load published shop items from the CMS API. Empty catalogs if the API is unreachable. */
 export async function loadShopCatalog(): Promise<ShopCatalog> {
   const result = await listShopItems()
-  if (!result.ok) return shops
+  if (!result.ok) return emptyShopCatalog()
   return buildShops(result.data.items)
 }
 

@@ -1,6 +1,8 @@
 import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { useLocation } from 'react-router-dom'
-import { ArrowUpRight, CircleAlert, Clock, Ellipsis, Lightbulb, Loader2, Mail, MapPin, MessageSquare, Send, ThumbsUp, User, type LucideIcon } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { ArrowUpRight, CheckCircle2, CircleAlert, Clock, Ellipsis, Lightbulb, Loader2, Mail, MapPin, MessageSquare, Send, ThumbsUp, User, type LucideIcon } from 'lucide-react'
+import { createFeedback, type FeedbackKind } from '@/lib/feedback-api'
 import { Reveal } from '@/components/motion/Reveal'
 import { SectionKicker } from '@/components/ui/SectionKicker'
 import { Button } from '@/components/ui/button'
@@ -103,7 +105,7 @@ export function ContactSection() {
 
         <div className="mt-[clamp(1.5rem,1rem+1.5vw,2.25rem)] grid items-stretch gap-4 lg:grid-cols-2">
           <HelpdeskCard contact={contact} />
-          <FeedbackForm contact={contact} />
+          <FeedbackForm />
         </div>
       </div>
     </section>
@@ -208,14 +210,20 @@ function HelpdeskLink({
   )
 }
 
-function FeedbackForm({ contact }: { contact: SiteContact }) {
+const successEase = [0.22, 1, 0.36, 1] as const
+
+function FeedbackForm() {
   const formId = useId()
+  const reduceMotion = useReducedMotion()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [about, setAbout] = useState('')
   const [message, setMessage] = useState('')
+  const [honeypot, setHoneypot] = useState('')
   const [errors, setErrors] = useState<FeedbackErrors>({})
   const [sending, setSending] = useState(false)
+  const [done, setDone] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const sendingRef = useRef(false)
   const attempted = useRef(false)
   const values: Record<FeedbackField, string> = { name, email, about, message }
@@ -250,10 +258,24 @@ function FeedbackForm({ contact }: { contact: SiteContact }) {
     showField(field, value)
   }
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  function resetForm() {
+    setName('')
+    setEmail('')
+    setAbout('')
+    setMessage('')
+    setHoneypot('')
+    setErrors({})
+    setDone(false)
+    setSubmitError('')
+    attempted.current = false
+    valuesRef.current = { name: '', email: '', about: '', message: '' }
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (sendingRef.current) return
     attempted.current = true
+    setSubmitError('')
     const current = valuesRef.current
     const next: FeedbackErrors = {}
     for (const field of fieldOrder) {
@@ -266,30 +288,101 @@ function FeedbackForm({ contact }: { contact: SiteContact }) {
       document.getElementById(`${formId}-${first}`)?.focus()
       return
     }
-    const kind = feedbackKinds.find((item) => item.id === current.about)
     sendingRef.current = true
     setSending(true)
-    const body = `Name: ${current.name.trim()}\nEmail: ${current.email.trim()}\nAbout: ${kind?.label ?? ''}\n\n${current.message.trim()}`
-    const href = `mailto:${contact.email}?subject=${encodeURIComponent(`Feedback: ${kind?.label ?? 'Feedback'}`)}&body=${encodeURIComponent(body)}`
-    window.setTimeout(() => {
-      window.location.href = href
-      sendingRef.current = false
-      setSending(false)
-    }, 700)
+    const result = await createFeedback({
+      name: current.name.trim(),
+      email: current.email.trim(),
+      kind: current.about as FeedbackKind,
+      message: current.message.trim(),
+      website: honeypot,
+    })
+    sendingRef.current = false
+    setSending(false)
+    if (!result.ok) {
+      setSubmitError(result.error)
+      return
+    }
+    setDone(true)
   }
 
   const aboutErrorId = `${formId}-about-error`
 
   return (
-    <form
-      onSubmit={onSubmit}
-      noValidate
-      className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-6 sm:p-8"
-    >
+    <div className="relative flex h-full min-h-[28rem] flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white sm:min-h-[36rem]">
+      <AnimatePresence mode="wait" initial={false}>
+        {done ? (
+          <motion.div
+            key="success"
+            role="status"
+            initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? undefined : { opacity: 0, y: -12 }}
+            transition={{ duration: 0.45, ease: successEase }}
+            className="flex flex-1 flex-col items-center justify-center px-6 py-10 text-center sm:px-8"
+          >
+            <motion.span
+              initial={reduceMotion ? false : { scale: 0.55, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, ease: successEase, delay: reduceMotion ? 0 : 0.06 }}
+              className="grid size-14 place-items-center rounded-full bg-emerald-50 text-emerald-700"
+            >
+              <CheckCircle2 className="size-7" aria-hidden />
+            </motion.span>
+            <motion.h3
+              initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: successEase, delay: reduceMotion ? 0 : 0.14 }}
+              className="mt-4 text-lg font-semibold text-brand-950"
+            >
+              Feedback received
+            </motion.h3>
+            <motion.p
+              initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.42, ease: successEase, delay: reduceMotion ? 0 : 0.22 }}
+              className="mt-2 max-w-sm text-sm leading-6 text-zinc-500"
+            >
+              Thank you. The Council will read this in the office portal and reply by email if a
+              response is needed.
+            </motion.p>
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: successEase, delay: reduceMotion ? 0 : 0.3 }}
+            >
+              <Button type="button" size="lg" className="mt-6 h-12 rounded-xl px-6" onClick={resetForm}>
+                Send another
+              </Button>
+            </motion.div>
+          </motion.div>
+        ) : (
+          <motion.form
+            key="form"
+            onSubmit={(event) => void onSubmit(event)}
+            noValidate
+            initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? undefined : { opacity: 0, y: -10 }}
+            transition={{ duration: 0.38, ease: successEase }}
+            className="flex h-full flex-1 flex-col p-6 sm:p-8"
+          >
       <h3 className="text-lg font-semibold text-brand-950">Send feedback</h3>
       <p className="mt-1 text-sm leading-6 text-zinc-500">
-        This opens your email app. Nothing is stored on this website.
+        The Council reads every note in the office portal. Use a working email if you want a reply.
       </p>
+      <div className="sr-only" aria-hidden>
+        <label>
+          Company
+          <input
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            value={honeypot}
+            onChange={(event) => setHoneypot(event.target.value)}
+          />
+        </label>
+      </div>
       <div className="mt-6 grid flex-1 content-start gap-4 sm:grid-cols-2">
         <Field
           id={`${formId}-name`}
@@ -374,6 +467,22 @@ function FeedbackForm({ contact }: { contact: SiteContact }) {
         </div>
       </div>
       <div className="mt-auto pt-5">
+        <AnimatePresence initial={false}>
+          {submitError ? (
+            <motion.div
+              key="submit-error"
+              role="alert"
+              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+              transition={{ duration: 0.28, ease: successEase }}
+              className="mb-3 flex items-start gap-2.5 rounded-xl border border-maroon-200 bg-maroon-50 px-3.5 py-3 text-sm leading-5 text-maroon-800"
+            >
+              <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <p>{submitError}</p>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
         <Button
           type="submit"
           size="lg"
@@ -385,7 +494,10 @@ function FeedbackForm({ contact }: { contact: SiteContact }) {
           {sending ? 'Sending…' : 'Send feedback'}
         </Button>
       </div>
-    </form>
+          </motion.form>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 

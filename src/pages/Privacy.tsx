@@ -14,7 +14,7 @@ const points = [
   {
     icon: Mail,
     title: 'Feedback messages',
-    text: 'The feedback form opens your own email app. This website does not keep a copy of that message.',
+    text: 'Feedback sent from the homepage is stored in the Student Council office portal so officers can read and reply. Use a working email if you want a response.',
   },
   {
     icon: ShieldCheck,

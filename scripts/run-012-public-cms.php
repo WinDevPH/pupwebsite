@@ -367,13 +367,6 @@ if ($settingsCount === 0) {
 
 $shopCount = (int) $pdo->query('SELECT COUNT(*) FROM shop_items')->fetchColumn();
 if ($shopCount === 0) {
-    $items = [
-        // Lockers are seeded as the A–E / 01–12 availability grid by run-021-locker-grid.php.
-        ['merch', 'college-shirt', 'College shirt', 450.00, 'each', 18, '/uploads/shop/college-shirt.jpg', 'Sample photo of a violet college shirt', null, null, 70],
-        ['merch', 'college-polo', 'College polo', 550.00, 'each', 12, '/uploads/shop/college-polo.jpg', 'Sample photo of a white college polo', null, null, 80],
-        ['merch', 'lanyard', 'Lanyard', 150.00, 'each', 0, '/uploads/shop/lanyard.jpg', 'Sample photo of a violet lanyard', 'out', 90],
-    ];
-
     $insertShop = $pdo->prepare(
         'INSERT INTO shop_items
           (shop, item_key, name, price, unit, stock, image_url, alt_text, number_label, availability, sort_order, is_published)
@@ -381,21 +374,6 @@ if ($shopCount === 0) {
           (:shop, :item_key, :name, :price, :unit, :stock, :image_url, :alt_text, :number_label, :availability, :sort_order, 1)'
     );
 
-    foreach ($items as [$shop, $key, $name, $price, $unit, $stock, $image, $alt, $number, $availability, $sort]) {
-        $insertShop->execute([
-            'shop' => $shop,
-            'item_key' => $key,
-            'name' => $name,
-            'price' => $price,
-            'unit' => $unit,
-            'stock' => $stock,
-            'image_url' => $image,
-            'alt_text' => $alt,
-            'number_label' => $number,
-            'availability' => $availability,
-            'sort_order' => $sort,
-        ]);
-    }
     $lockerCount = 0;
     foreach (['A', 'B', 'C', 'D', 'E'] as $rowIndex => $row) {
         $lockerPrice = $row === 'D' ? 450.00 : ($row === 'E' ? 350.00 : 600.00);
@@ -417,7 +395,7 @@ if ($shopCount === 0) {
             $lockerCount++;
         }
     }
-    echo 'shop_items seeded: ' . (count($items) + $lockerCount) . "\n";
+    echo "shop_items seeded: {$lockerCount} lockers\n";
 } else {
     echo "shop_items already seeded ({$shopCount} rows)\n";
 }

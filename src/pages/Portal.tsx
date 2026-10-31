@@ -861,15 +861,15 @@ function TrackRequest({
     <form
       onSubmit={onTrack}
       noValidate
-      className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_10px_28px_-18px_rgba(30,5,65,0.45)] sm:rounded-3xl dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[0_10px_28px_-18px_rgba(0,0,0,0.55)]"
+      className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_10px_28px_-18px_rgba(30,5,65,0.45)] sm:rounded-3xl lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)] lg:items-stretch dark:border-zinc-800 dark:bg-zinc-950 dark:shadow-[0_10px_28px_-18px_rgba(0,0,0,0.55)]"
     >
-      <TrackJourneyScene
-        pending={pending}
-        missing={tone === 'missing'}
-        requestStatus={result?.status ?? null}
-        reservationStatus={reservation?.status ?? null}
-      />
-      <div className="grid min-w-0 items-stretch lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
+      <div className="min-w-0">
+        <TrackJourneyScene
+          pending={pending}
+          missing={tone === 'missing'}
+          requestStatus={result?.status ?? null}
+          reservationStatus={reservation?.status ?? null}
+        />
         <section className="flex min-w-0 flex-col p-4 sm:p-6">
           <h2 className="inline-flex items-center gap-2 text-base font-semibold text-zinc-950 dark:text-zinc-50">
             <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
@@ -946,11 +946,12 @@ function TrackRequest({
             </p>
           </div>
         </section>
+      </div>
 
         <section
           key={shake}
           className={cn(
-            'min-w-0 border-t border-zinc-100 bg-[#f7f6fb] p-4 sm:p-6 lg:border-t-0 lg:border-l dark:border-zinc-800 dark:bg-zinc-900/70',
+            'flex min-h-52 min-w-0 flex-col border-t border-zinc-100 bg-[#f7f6fb] p-4 sm:p-6 lg:min-h-full lg:border-t-0 lg:border-l dark:border-zinc-800 dark:bg-zinc-900/70',
             shake > 0 && 'result-shake',
             tone === 'found' &&
               'bg-emerald-50/50 dark:bg-emerald-500/[0.12] dark:border-emerald-500/20',
@@ -966,7 +967,6 @@ function TrackRequest({
             <TrackEmpty missing={tone === 'missing'} code={code.trim()} />
           )}
         </section>
-      </div>
     </form>
   )
 }
@@ -974,7 +974,7 @@ function TrackRequest({
 function TrackEmpty({ missing, code }: { missing: boolean; code: string }) {
   const Icon = missing ? Info : Search
   return (
-    <div className="flex h-full min-h-52 flex-col items-center justify-center px-4 text-center">
+    <div className="flex h-full min-h-52 flex-1 flex-col items-center justify-center px-4 text-center">
       <span className="flex size-11 items-center justify-center rounded-2xl bg-white text-brand-700 shadow-[0_8px_20px_-14px_rgba(30,5,65,0.6)] ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-brand-300 dark:shadow-[0_8px_20px_-14px_rgba(0,0,0,0.65)] dark:ring-zinc-700">
         <Icon className="size-5" aria-hidden />
       </span>

@@ -72,7 +72,7 @@ function pruneToKnown(ids: Set<string>, known: Set<string>) {
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const location = useLocation()
-  const emptyCounts = { request: 0, reservation: 0, chat: 0, total: 0 }
+  const emptyCounts = { request: 0, reservation: 0, feedback: 0, chat: 0, total: 0 }
   const [rawItems, setRawItems] = useState<AdminNotification[]>([])
   const [counts, setCounts] = useState(emptyCounts)
   const [seenIds, setSeenIds] = useState<Set<string>>(() => readIdSet(SEEN_KEY))
@@ -105,6 +105,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     setCounts({
       request: result.data.counts?.request ?? 0,
       reservation: result.data.counts?.reservation ?? 0,
+      feedback: result.data.counts?.feedback ?? 0,
       chat: result.data.counts?.chat ?? 0,
       total: result.data.counts?.total ?? nextItems.length,
     })
@@ -240,7 +241,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       markRead(`reservation:${reservationMatch[1]}`)
       return
     }
-  }, [location.pathname, markRead])
+    const feedbackMatch = path.match(/^\/admin\/feedback\/?$/)
+    if (feedbackMatch) {
+      const openId = new URLSearchParams(location.search).get('open')
+      if (openId) markRead(`feedback:${openId}`)
+    }
+  }, [location.pathname, location.search, markRead])
 
   const hasUnreadKind = useCallback(
     (kind: NotificationKind) =>

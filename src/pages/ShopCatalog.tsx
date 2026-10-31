@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { BookOpen, Hash, LockKeyhole, Search, SearchX, Shirt, type LucideIcon } from 'lucide-react'
+import { BookOpen, Hash, Loader2, LockKeyhole, Search, SearchX, Shirt, type LucideIcon } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import {
+  emptyShopCatalog,
   loadShopCatalog,
   shopCatalogPath,
-  shops,
   type ShopId,
   type ShopItem,
 } from '@/components/portal/catalog'
@@ -62,7 +62,8 @@ function matchesMerch(item: ShopItem, needle: string) {
 
 function ShopCatalogPage({ shop }: { shop: ShopId }) {
   const page = copy[shop]
-  const [catalog, setCatalog] = useState(shops)
+  const [catalog, setCatalog] = useState(emptyShopCatalog)
+  const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
 
   useEffect(() => {
@@ -75,8 +76,11 @@ function ShopCatalogPage({ shop }: { shop: ShopId }) {
 
   useEffect(() => {
     let cancelled = false
+    setLoading(true)
     void loadShopCatalog().then((next) => {
-      if (!cancelled) setCatalog(next)
+      if (cancelled) return
+      setCatalog(next)
+      setLoading(false)
     })
     return () => {
       cancelled = true
@@ -135,7 +139,14 @@ function ShopCatalogPage({ shop }: { shop: ShopId }) {
       {shop === 'locker' ? (
         <main id="main-content" className="min-w-0 overflow-x-hidden bg-white">
           <div className="min-w-0 pt-5 sm:pt-8">
-            <LockerGrid items={listing.items} />
+            {loading ? (
+              <p className="flex items-center justify-center gap-2 py-16 text-sm text-zinc-500">
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                Loading lockers…
+              </p>
+            ) : (
+              <LockerGrid items={listing.items} />
+            )}
             <IgpNote />
           </div>
         </main>
@@ -159,7 +170,12 @@ function ShopCatalogPage({ shop }: { shop: ShopId }) {
             </label>
           </div>
         </div>
-        {listing.items.length === 0 ? (
+        {loading ? (
+          <p className="flex items-center justify-center gap-2 py-16 text-sm text-zinc-500">
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+            Loading merch…
+          </p>
+        ) : listing.items.length === 0 ? (
           <EmptyState
             icon={Shirt}
             title="No merch published yet"

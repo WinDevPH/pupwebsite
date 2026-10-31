@@ -42,6 +42,7 @@ import HeroSlideFormPage from '@/pages/dashboard/HeroSlideFormPage'
 import HeroSlidesAdmin from '@/pages/dashboard/HeroSlidesAdmin'
 import RequestDetailPage from '@/pages/dashboard/RequestDetailPage'
 import ChatAdmin from '@/pages/dashboard/ChatAdmin'
+import FeedbackAdmin from '@/pages/dashboard/FeedbackAdmin'
 import RequestsAdmin from '@/pages/dashboard/RequestsAdmin'
 import PortalPlaceholder from '@/pages/dashboard/PortalPlaceholder'
 import ForgotPassword from '@/pages/ForgotPassword'
@@ -87,6 +88,7 @@ export default function App() {
                 <Route index element={<DashboardHome />} />
                 <Route path="requests" element={<RequestsAdmin />} />
                 <Route path="requests/:id" element={<RequestDetailPage />} />
+                <Route path="feedback" element={<FeedbackAdmin />} />
                 <Route path="chat" element={<ChatAdmin />} />
                 <Route path="announcements" element={<AnnouncementsAdmin />} />
                 <Route path="announcements/new" element={<AnnouncementFormPage />} />
