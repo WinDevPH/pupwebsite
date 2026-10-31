@@ -22,6 +22,7 @@ import {
   Shirt,
   Target,
   UserCog,
+  UserRound,
   Users,
   UserRoundCog,
   Wallet,
@@ -188,6 +189,12 @@ export const portalNavGroups: PortalNavGroup[] = [
         label: 'Reservations',
         Icon: Bookmark,
         to: `${adminBase}/reservations`,
+      },
+      {
+        id: 'customers',
+        label: 'Customers',
+        Icon: UserRound,
+        to: `${adminBase}/customers`,
       },
       {
         id: 'income',
@@ -361,6 +368,13 @@ export function breadcrumbsFor(pathname: string): { label: string; to: string }[
   if (pathname.startsWith(`${projectsBase}/`) && pathname.endsWith('/edit')) {
     crumbs.push({ label: 'Projects', to: projectsBase })
     crumbs.push({ label: 'Edit', to: pathname })
+    return crumbs
+  }
+
+  const customersBase = `${adminBase}/customers`
+  if (pathname.startsWith(`${customersBase}/`) && pathname !== customersBase) {
+    crumbs.push({ label: 'Customers', to: customersBase })
+    crumbs.push({ label: 'Record', to: pathname })
     return crumbs
   }
 

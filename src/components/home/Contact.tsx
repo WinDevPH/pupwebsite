@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { useLocation } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { ArrowUpRight, CheckCircle2, CircleAlert, Clock, Ellipsis, Lightbulb, Loader2, Mail, MapPin, MessageSquare, Send, ThumbsUp, User, type LucideIcon } from 'lucide-react'
@@ -8,6 +8,7 @@ import { SectionKicker } from '@/components/ui/SectionKicker'
 import { Button } from '@/components/ui/button'
 import { useSiteContact } from '@/hooks/useSiteContact'
 import type { SiteContact } from '@/lib/site-settings-api'
+import { Snackbar, type SnackVariant } from '@/components/ui/Snackbar'
 import { cn } from '@/lib/utils'
 
 const fieldClass =
@@ -223,9 +224,30 @@ function FeedbackForm() {
   const [errors, setErrors] = useState<FeedbackErrors>({})
   const [sending, setSending] = useState(false)
   const [done, setDone] = useState(false)
-  const [submitError, setSubmitError] = useState('')
+  const [snack, setSnack] = useState<{ id: number; message: string; variant: SnackVariant } | null>(
+    null,
+  )
   const sendingRef = useRef(false)
   const attempted = useRef(false)
+  const snackTimer = useRef<number | null>(null)
+  const snackId = useRef(0)
+
+  function dismissSnack() {
+    if (snackTimer.current) window.clearTimeout(snackTimer.current)
+    snackTimer.current = null
+    setSnack(null)
+  }
+
+  function showSnackbar(message: string, variant: SnackVariant = 'error') {
+    if (snackTimer.current) window.clearTimeout(snackTimer.current)
+    const id = snackId.current + 1
+    snackId.current = id
+    setSnack({ id, message, variant })
+    snackTimer.current = window.setTimeout(() => {
+      setSnack((current) => (current?.id === id ? null : current))
+      snackTimer.current = null
+    }, message.length > 140 ? 10_000 : 5200)
+  }
   const values: Record<FeedbackField, string> = { name, email, about, message }
   const valuesRef = useRef(values)
   valuesRef.current = values
@@ -266,7 +288,6 @@ function FeedbackForm() {
     setHoneypot('')
     setErrors({})
     setDone(false)
-    setSubmitError('')
     attempted.current = false
     valuesRef.current = { name: '', email: '', about: '', message: '' }
   }
@@ -275,7 +296,6 @@ function FeedbackForm() {
     event.preventDefault()
     if (sendingRef.current) return
     attempted.current = true
-    setSubmitError('')
     const current = valuesRef.current
     const next: FeedbackErrors = {}
     for (const field of fieldOrder) {
@@ -300,13 +320,19 @@ function FeedbackForm() {
     sendingRef.current = false
     setSending(false)
     if (!result.ok) {
-      setSubmitError(result.error)
+      showSnackbar(result.error, 'error')
       return
     }
     setDone(true)
   }
 
   const aboutErrorId = `${formId}-about-error`
+
+  useEffect(() => {
+    return () => {
+      if (snackTimer.current) window.clearTimeout(snackTimer.current)
+    }
+  }, [])
 
   return (
     <div className="relative flex h-full min-h-[28rem] flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white sm:min-h-[36rem]">
@@ -467,22 +493,6 @@ function FeedbackForm() {
         </div>
       </div>
       <div className="mt-auto pt-5">
-        <AnimatePresence initial={false}>
-          {submitError ? (
-            <motion.div
-              key="submit-error"
-              role="alert"
-              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
-              transition={{ duration: 0.28, ease: successEase }}
-              className="mb-3 flex items-start gap-2.5 rounded-xl border border-maroon-200 bg-maroon-50 px-3.5 py-3 text-sm leading-5 text-maroon-800"
-            >
-              <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-              <p>{submitError}</p>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
         <Button
           type="submit"
           size="lg"
@@ -497,6 +507,7 @@ function FeedbackForm() {
           </motion.form>
         )}
       </AnimatePresence>
+      <Snackbar toast={snack} onDismiss={dismissSnack} />
     </div>
   )
 }

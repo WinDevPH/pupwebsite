@@ -1,5 +1,6 @@
 import { unreachableServerMessage } from '@/lib/unreachable-server'
 export type ReservationShop = 'locker' | 'merch'
+export type ReservationRentalType = 'new' | 'renewal'
 
 export type ReservationStatus =
   | 'pending'
@@ -9,6 +10,15 @@ export type ReservationStatus =
   | 'cancelled'
 
 export const RESERVATION_SHOPS: ReservationShop[] = ['locker', 'merch']
+
+export const RESERVATION_RENTAL_TYPES: { value: ReservationRentalType; label: string }[] = [
+  { value: 'new', label: 'New rental' },
+  { value: 'renewal', label: 'Renewal' },
+]
+
+export function reservationRentalLabel(type?: string | null) {
+  return type === 'renewal' ? 'Renewal' : 'New rental'
+}
 
 export const RESERVATION_STATUSES: { value: ReservationStatus; label: string }[] = [
   { value: 'pending', label: 'Pending' },
@@ -25,6 +35,7 @@ export type ReservationRecord = {
   shopItemId: number | null
   itemKey: string
   itemName: string
+  rentalType?: ReservationRentalType
   unitPrice: number
   quantity: number
   totalAmount: number
@@ -50,6 +61,7 @@ export type ReservationInput = {
   shopItemId?: number | null
   itemKey?: string
   itemName: string
+  rentalType?: ReservationRentalType
   unitPrice?: number
   quantity: number
   totalAmount?: number
@@ -140,11 +152,26 @@ export type ReservationMailResult = {
   statusError?: string | null
 }
 
+export async function checkReservationDuplicate(input: ReservationInput) {
+  return request<{
+    duplicate: boolean
+    code?: string
+    itemName?: string
+    shop?: ReservationShop
+    message?: string
+  }>('/api/reservations.php', {
+    method: 'POST',
+    body: JSON.stringify({ ...input, check: true, public: true, source: 'portal' }),
+  })
+}
+
 export async function createReservation(input: ReservationInput) {
   return request<{
     item: ReservationRecord
     mail?: ReservationMailResult
     message?: string
+    duplicate?: boolean
+    code?: string
   }>('/api/reservations.php', {
     method: 'POST',
     body: JSON.stringify(input),

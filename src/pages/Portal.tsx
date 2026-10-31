@@ -11,15 +11,17 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { getDocument } from 'pdfjs-dist'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import {
   AlignLeft,
-  Bookmark,
   CalendarDays,
   Check,
+  CheckCircle2,
   ChevronDown,
   CircleDot,
   CircleHelp,
   CircleUser,
+  Copy,
   Clock,
   Eye,
   FileText,
@@ -38,12 +40,14 @@ import {
   Search,
   Send,
   Shirt,
+  RefreshCw,
   Tag,
   Users,
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { Navigate, useLocation, useNavigate } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
+import { Button } from '@/components/ui/button'
 import { Announcements } from '@/components/home/Announcements'
 import { FaqList } from '@/components/home/Faq'
 import { EventsCalendar } from '@/components/home/EventsCalendar'
@@ -78,6 +82,8 @@ const subjects: { label: string; icon: LucideIcon }[] = [
 ]
 
 const optionalAttachmentSubject = 'Sponsorship & Donations'
+
+const successEase = [0.22, 1, 0.36, 1] as const
 
 const maxFileBytes = 10 * 1024 * 1024
 
@@ -189,7 +195,12 @@ export default function Portal() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
   const [submitted, setSubmitted] = useState(false)
+  const [trackingId, setTrackingId] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [mailNotice, setMailNotice] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const reduceMotion = useReducedMotion()
+  const submittingRef = useRef(false)
   const [tab, setTab] = useState<PortalTab>(() => tabFromHash(hash))
   const [focusId, setFocusId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -275,7 +286,23 @@ export default function Portal() {
     setPreviewOpen(false)
     setErrors({})
     setSubmitted(false)
+    setTrackingId(null)
+    setCopied(false)
+    setMailNotice(null)
     setNotice(null)
+    submittingRef.current = false
+    setSubmitting(false)
+  }
+
+  async function copyTrackingId() {
+    if (!trackingId) return
+    try {
+      await navigator.clipboard.writeText(trackingId)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
+    }
   }
 
   function onFile(next: File | null) {
@@ -309,7 +336,7 @@ export default function Portal() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (submitting) return
+    if (submittingRef.current || submitted) return
     const nextErrors: Errors = {}
     if (name.trim().length < 2) nextErrors.name = 'Enter the name of the sender.'
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
@@ -331,6 +358,7 @@ export default function Portal() {
       return
     }
 
+    submittingRef.current = true
     setSubmitting(true)
     setNotice(null)
     const result = await submitPortalRequest({
@@ -340,21 +368,26 @@ export default function Portal() {
       body: body.trim(),
       file: file ?? undefined,
     })
-    setSubmitting(false)
 
     if (!result.ok) {
-      setNotice(result.error)
+      submittingRef.current = false
+      setSubmitting(false)
       showSnackbar(result.error, 'error')
       return
     }
 
     const id = result.data.item.id
+    setTrackingId(id)
     setSubmitted(true)
-    setNotice(`${result.data.message} Tracking ID ${id}.`)
-    showSnackbar(
-      result.data.mailSent ? 'Your request has been submitted.' : 'Your request has been saved.',
-      result.data.mailSent ? 'success' : 'info',
+    setMailNotice(
+      result.data.confirmationSent
+        ? 'A confirmation email was sent to your inbox.'
+        : result.data.message ||
+            'Your request is saved. Keep this ID — email delivery may be unavailable.',
     )
+    setNotice(`${result.data.message} Tracking ID ${id}.`)
+    submittingRef.current = false
+    setSubmitting(false)
   }
 
   const attachmentRequired = subject !== optionalAttachmentSubject
@@ -511,8 +544,116 @@ export default function Portal() {
           className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22.5rem)]"
         >
           <div className="flex min-w-0 flex-col gap-5">
-            <section className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4 sm:rounded-3xl sm:p-6">
-              <h2 className="text-base font-semibold text-zinc-900">Your request</h2>
+            <section
+              className={cn(
+                'relative min-w-0 rounded-2xl border border-zinc-200 bg-white sm:rounded-3xl',
+                submitted && trackingId
+                  ? 'overflow-x-hidden p-0'
+                  : 'p-4 sm:p-6',
+              )}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                {submitted && trackingId ? (
+                  <motion.div
+                    key="success"
+                    role="status"
+                    initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={reduceMotion ? undefined : { opacity: 0, y: -12 }}
+                    transition={{ duration: 0.45, ease: successEase }}
+                    className="flex w-full min-w-0 flex-col items-center justify-center px-5 py-8 text-center sm:min-h-[32rem] sm:px-8 sm:py-10"
+                  >
+                    <motion.span
+                      initial={reduceMotion ? false : { scale: 0.55, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.5, ease: successEase, delay: reduceMotion ? 0 : 0.06 }}
+                      className="grid size-14 place-items-center rounded-full bg-emerald-50 text-emerald-700"
+                    >
+                      <CheckCircle2 className="size-7" aria-hidden />
+                    </motion.span>
+                    <motion.h2
+                      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, ease: successEase, delay: reduceMotion ? 0 : 0.14 }}
+                      className="mt-4 text-lg font-semibold text-zinc-950"
+                    >
+                      Request received
+                    </motion.h2>
+                    <motion.p
+                      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.42, ease: successEase, delay: reduceMotion ? 0 : 0.22 }}
+                      className="mt-2 max-w-sm text-sm leading-6 text-zinc-500"
+                    >
+                      Thank you. The Council has this on file and will confirm by email. Keep your
+                      tracking ID.
+                    </motion.p>
+                    <motion.div
+                      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, ease: successEase, delay: reduceMotion ? 0 : 0.28 }}
+                      className="mt-5 w-full min-w-0 max-w-sm"
+                    >
+                      <p className="text-[11px] font-semibold tracking-[0.14em] text-zinc-400 uppercase">
+                        Tracking ID
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void copyTrackingId()}
+                        className="mt-1.5 inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-xl border border-brand-100 bg-brand-50 px-3 py-2.5 text-sm font-semibold tracking-wide text-brand-800 transition-colors hover:bg-brand-100"
+                      >
+                        <span className="min-w-0 break-all font-mono">{trackingId}</span>
+                        {copied ? (
+                          <Check className="size-3.5" aria-hidden />
+                        ) : (
+                          <Copy className="size-3.5" aria-hidden />
+                        )}
+                        <span className="sr-only">{copied ? 'Copied' : 'Copy tracking ID'}</span>
+                      </button>
+                      {mailNotice ? (
+                        <p className="mt-3 text-sm leading-5 text-zinc-500">{mailNotice}</p>
+                      ) : null}
+                    </motion.div>
+                    <motion.div
+                      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, ease: successEase, delay: reduceMotion ? 0 : 0.36 }}
+                      className="mt-6 flex w-full min-w-0 flex-col gap-3"
+                    >
+                      <Link
+                        to="/portal#tracking"
+                        className="inline-flex h-12 w-full items-center justify-center rounded-full bg-brand-700 px-5 text-[15px] font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+                      >
+                        Track request
+                      </Link>
+                      <button
+                        type="button"
+                        className="inline-flex h-12 w-full items-center justify-center rounded-full border border-zinc-200 bg-white px-5 text-[15px] font-semibold text-zinc-800 transition-colors hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+                        onClick={clearForm}
+                      >
+                        Submit another
+                      </button>
+                    </motion.div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="form"
+                    initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={reduceMotion ? undefined : { opacity: 0, y: -10 }}
+                    transition={{ duration: 0.38, ease: successEase }}
+                  >
+              <div>
+                <h2 className="inline-flex items-center gap-2 text-base font-semibold text-zinc-900">
+                  <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700">
+                    <FileText className="size-3.5" aria-hidden />
+                  </span>
+                  Your request
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500">
+                  The Council confirms this by email. Keep your tracking ID after you submit.
+                </p>
+              </div>
               <div className="mt-5 grid min-w-0 gap-5">
                 <Field
                   label="Name of the sender"
@@ -683,10 +824,18 @@ export default function Portal() {
                   <FilePreview file={file} onClose={() => setPreviewOpen(false)} />
                 ) : null}
               </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </section>
           </div>
 
-          <aside className="flex min-w-0 flex-col gap-5 lg:sticky lg:top-28 lg:max-h-[calc(100svh-8rem)] lg:overflow-y-auto">
+          <aside
+            className={cn(
+              'min-w-0 flex-col gap-5 lg:sticky lg:top-28 lg:max-h-[calc(100svh-8rem)] lg:overflow-y-auto',
+              submitted && trackingId ? 'hidden lg:flex' : 'flex',
+            )}
+          >
             <section className="rounded-2xl border border-zinc-200 bg-white p-4 sm:rounded-3xl sm:p-6">
               <h2 className="text-base font-semibold text-zinc-900">Request summary</h2>
               <dl className="mt-4 grid min-w-0 gap-4">
@@ -694,6 +843,7 @@ export default function Portal() {
                 <SummaryRow icon={Mail} label="Email" value={email.trim()} />
                 <SummaryRow icon={Info} label="Subject" value={subject} />
                 <SummaryRow icon={Paperclip} label="Attachment" value={file?.name ?? ''} />
+                {trackingId ? <SummaryRow icon={Hash} label="Tracking ID" value={trackingId} /> : null}
                 <div className="flex min-w-0 items-start justify-between gap-3">
                   <dt className="inline-flex shrink-0 items-center gap-2.5 text-sm text-zinc-500">
                     <CircleDot className="size-4 text-zinc-400" aria-hidden />
@@ -736,6 +886,26 @@ export default function Portal() {
             </div>
 
             <div className="grid gap-3">
+              {submitted && trackingId ? (
+                <>
+                  <Button asChild size="lg" className="h-10 rounded-full sm:h-12">
+                    <Link to="/portal#tracking">Track request</Link>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="h-10 rounded-full sm:h-12"
+                    onClick={clearForm}
+                  >
+                    Submit another
+                  </Button>
+                  <p className="text-center text-xs leading-relaxed text-zinc-500" role="status">
+                    {mailNotice ?? notice ?? `Keep tracking ID ${trackingId} for updates.`}
+                  </p>
+                </>
+              ) : (
+                <>
               <button
                 type="submit"
                 disabled={submitting}
@@ -760,6 +930,8 @@ export default function Portal() {
                     ? `Submit sends your request and attachment to ${contact.email}. A tracking ID and confirmation go to your email.`
                     : `Submit sends your request to ${contact.email}. A tracking ID and confirmation go to your email.`)}
               </p>
+                </>
+              )}
             </div>
           </aside>
         </form>
@@ -951,12 +1123,12 @@ function TrackRequest({
         <section
           key={shake}
           className={cn(
-            'flex min-h-52 min-w-0 flex-col border-t border-zinc-100 bg-[#f7f6fb] p-4 sm:p-6 lg:min-h-full lg:border-t-0 lg:border-l dark:border-zinc-800 dark:bg-zinc-900/70',
+            'flex min-h-64 min-w-0 flex-col border-t border-zinc-100 bg-[#f7f6fb] p-4 sm:min-h-80 sm:p-6 lg:min-h-full lg:border-t-0 lg:border-l dark:border-zinc-800 dark:bg-zinc-900/70',
             shake > 0 && 'result-shake',
             tone === 'found' &&
-              'bg-emerald-50/50 dark:bg-emerald-500/[0.12] dark:border-emerald-500/20',
+              'bg-emerald-50/70 dark:bg-emerald-500/[0.12] dark:border-emerald-500/20',
             tone === 'missing' &&
-              'bg-maroon-50/50 dark:bg-maroon-500/[0.12] dark:border-maroon-500/20',
+              'bg-maroon-50/70 dark:bg-maroon-500/[0.12] dark:border-maroon-500/20',
           )}
         >
           {reservation ? (
@@ -974,18 +1146,96 @@ function TrackRequest({
 function TrackEmpty({ missing, code }: { missing: boolean; code: string }) {
   const Icon = missing ? Info : Search
   return (
-    <div className="flex h-full min-h-52 flex-1 flex-col items-center justify-center px-4 text-center">
-      <span className="flex size-11 items-center justify-center rounded-2xl bg-white text-brand-700 shadow-[0_8px_20px_-14px_rgba(30,5,65,0.6)] ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-brand-300 dark:shadow-[0_8px_20px_-14px_rgba(0,0,0,0.65)] dark:ring-zinc-700">
+    <div className="flex h-full min-h-52 flex-1 flex-col items-center justify-center rounded-2xl border border-zinc-200/80 bg-white px-5 py-8 text-center shadow-[0_10px_24px_-20px_rgba(30,5,65,0.45)] dark:border-zinc-700 dark:bg-zinc-950">
+      <span className="flex size-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
         <Icon className="size-5" aria-hidden />
       </span>
-      <h2 className="mt-3 text-base font-semibold text-zinc-950 dark:text-zinc-50">
+      <h2 className="mt-3 text-lg font-semibold text-zinc-950 dark:text-zinc-50">
         {missing ? 'No match' : 'Result'}
       </h2>
-      <p className="mt-1 max-w-xs text-sm leading-5 text-zinc-500 dark:text-zinc-400">
+      <p className="mt-1.5 max-w-xs text-sm leading-6 text-zinc-500 dark:text-zinc-400">
         {missing
           ? `Nothing is filed under ${code}.`
           : 'Enter a tracking ID or reservation ID. The match shows here.'}
       </p>
+    </div>
+  )
+}
+
+function ResultStatus({
+  label,
+  tone,
+}: {
+  label: string
+  tone: 'ok' | 'warn' | 'bad'
+}) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold',
+        tone === 'ok' && 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
+        tone === 'warn' && 'bg-amber-50 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300',
+        tone === 'bad' && 'bg-maroon-100 text-maroon-800 dark:bg-maroon-500/15 dark:text-maroon-300',
+      )}
+    >
+      <span
+        className={cn(
+          'size-1.5 rounded-full',
+          tone === 'ok' && 'bg-emerald-500',
+          tone === 'warn' && 'bg-amber-500',
+          tone === 'bad' && 'bg-maroon-700 dark:bg-maroon-400',
+        )}
+        aria-hidden
+      />
+      {label}
+    </span>
+  )
+}
+
+function CopyRefButton({ value, label }: { value: string; label: string }) {
+  const [copied, setCopied] = useState(false)
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => void copy()}
+      className="mt-1.5 inline-flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-brand-100 bg-brand-50 px-3.5 py-3 text-left text-sm font-semibold tracking-wide text-brand-800 transition-colors hover:bg-brand-100 dark:border-brand-500/25 dark:bg-brand-500/15 dark:text-brand-200 dark:hover:bg-brand-500/25"
+    >
+      <span className="min-w-0 break-all font-mono">{value}</span>
+      {copied ? <Check className="size-4 shrink-0" aria-hidden /> : <Copy className="size-4 shrink-0" aria-hidden />}
+      <span className="sr-only">{copied ? 'Copied' : `Copy ${label}`}</span>
+    </button>
+  )
+}
+
+function ResultField({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon
+  label: string
+  value: string
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1 border-b border-zinc-100 py-3.5 last:border-b-0 dark:border-zinc-800">
+      <dt className="inline-flex items-center gap-2 text-[11px] font-semibold tracking-[0.12em] text-zinc-400 uppercase">
+        <Icon className="size-3.5 shrink-0" aria-hidden />
+        {label}
+      </dt>
+      <dd className="min-w-0 text-sm font-semibold break-words text-zinc-950 dark:text-zinc-50">
+        {value || <span className="font-medium text-zinc-400 dark:text-zinc-500">—</span>}
+      </dd>
     </div>
   )
 }
@@ -1000,177 +1250,81 @@ function ReservationResult({
   const statusKey = (reservation?.status ?? '').trim().toLowerCase()
   const cancelled = statusKey === 'cancelled' || reservation?.status === 'Not sent'
   const pending = statusKey === 'pending'
-  const blank = <span className="font-medium text-zinc-400 dark:text-zinc-500">—</span>
   const ItemIcon = reservation?.shop === 'locker' ? LockKeyhole : Shirt
   return (
-    <>
-      <h2 className="inline-flex items-center gap-2 text-base font-semibold text-zinc-950 dark:text-zinc-50">
-        <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-          <Bookmark className="size-3.5" aria-hidden />
-        </span>
-        Reservation
-      </h2>
-      <dl className="mt-4 grid min-w-0">
-        <div className="flex min-h-9 min-w-0 items-center justify-between gap-3 border-b border-zinc-100 pb-3 dark:border-zinc-800">
-          <dt className="inline-flex shrink-0 items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-            <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-              <Hash className="size-3.5" aria-hidden />
-            </span>
-            Reservation ID
-          </dt>
-          <dd
-            className={cn(
-              'min-w-0 text-right text-sm font-semibold tracking-wide break-all',
-              reservation
-                ? 'text-brand-800 dark:text-brand-300'
-                : 'text-zinc-400 dark:text-zinc-500',
-            )}
-          >
-            {reservation ? reservation.id : blank}
-          </dd>
+    <div className="flex h-full min-h-52 flex-1 flex-col rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-[0_10px_24px_-20px_rgba(30,5,65,0.45)] sm:p-5 dark:border-zinc-700 dark:bg-zinc-950">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold tracking-[0.14em] text-zinc-400 uppercase">
+            Reservation
+          </p>
+          <h2 className="mt-1 text-lg font-semibold text-zinc-950 dark:text-zinc-50">Found</h2>
         </div>
-        <TrackDetail icon={ItemIcon} label="Item" value={reservation?.item ?? ''} />
-        {!reservation || reservation.shop === 'merch' ? (
-          <TrackDetail
-            icon={Tag}
-            label="Quantity"
-            value={reservation ? String(reservation.quantity) : ''}
+        {reservation ? (
+          <ResultStatus
+            label={reservation.status}
+            tone={cancelled ? 'bad' : pending ? 'warn' : 'ok'}
           />
         ) : null}
-        <TrackDetail icon={Info} label="Total" value={reservation?.total ?? ''} />
-        <TrackDetail icon={CircleUser} label="Name" value={reservation?.name ?? ''} />
-        <TrackDetail icon={GraduationCap} label="Year level" value={reservation?.year ?? ''} />
-        <TrackDetail icon={Clock} label="Filed" value={filed} />
-        <div className="flex min-h-9 min-w-0 items-center justify-between gap-3 pt-3">
-          <dt className="inline-flex shrink-0 items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-            <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-              <CircleDot className="size-3.5" aria-hidden />
-            </span>
-            Status
-          </dt>
-          <dd>
-            {reservation ? (
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
-                  cancelled
-                    ? 'bg-maroon-100 text-maroon-800 dark:bg-maroon-500/15 dark:text-maroon-300'
-                    : pending
-                      ? 'bg-amber-50 text-amber-900 dark:bg-amber-500/15 dark:text-amber-300'
-                      : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
-                )}
-              >
-                <span
-                  className={cn(
-                    'size-1.5 rounded-full',
-                    cancelled
-                      ? 'bg-maroon-700 dark:bg-maroon-400'
-                      : pending
-                        ? 'bg-amber-500'
-                        : 'bg-emerald-500',
-                  )}
-                  aria-hidden
-                />
-                {reservation.status}
-              </span>
-            ) : (
-              blank
-            )}
-          </dd>
+      </div>
+      {reservation ? (
+        <div className="mt-4">
+          <p className="text-[11px] font-semibold tracking-[0.14em] text-zinc-400 uppercase">
+            Reservation ID
+          </p>
+          <CopyRefButton value={reservation.id} label="reservation ID" />
         </div>
+      ) : null}
+      <dl className="mt-2 grid min-w-0">
+        <ResultField icon={ItemIcon} label="Item" value={reservation?.item ?? ''} />
+        {reservation?.shop === 'locker' ? (
+          <ResultField
+            icon={RefreshCw}
+            label="Transaction"
+            value={reservation.rentalType === 'renewal' ? 'Renewal' : 'New rental'}
+          />
+        ) : null}
+        {!reservation || reservation.shop === 'merch' ? (
+          <ResultField icon={Tag} label="Quantity" value={reservation ? String(reservation.quantity) : ''} />
+        ) : null}
+        <ResultField icon={Info} label="Total" value={reservation?.total ?? ''} />
+        <ResultField icon={CircleUser} label="Name" value={reservation?.name ?? ''} />
+        <ResultField icon={GraduationCap} label="Year level" value={reservation?.year ?? ''} />
+        <ResultField icon={Clock} label="Filed" value={filed} />
       </dl>
-    </>
+    </div>
   )
 }
 
 function TrackResult({ result, filed }: { result: StoredRequest | null; filed: string }) {
   const sent = result?.status === 'Submitted' || result?.status === 'Received'
-  const blank = <span className="font-medium text-zinc-400 dark:text-zinc-500">—</span>
+  const documentName = result?.attachment?.split(/[\\/]/).pop() ?? ''
   return (
-    <>
-      <h2 className="inline-flex items-center gap-2 text-base font-semibold text-zinc-950 dark:text-zinc-50">
-        <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-          <Send className="size-3.5" aria-hidden />
-        </span>
-        Request
-      </h2>
-      <dl className="mt-4 grid min-w-0">
-        <div className="flex min-h-9 min-w-0 items-center justify-between gap-3 border-b border-zinc-100 pb-3 dark:border-zinc-800">
-          <dt className="inline-flex shrink-0 items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-            <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-              <Hash className="size-3.5" aria-hidden />
-            </span>
+    <div className="flex h-full min-h-52 flex-1 flex-col rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-[0_10px_24px_-20px_rgba(30,5,65,0.45)] sm:p-5 dark:border-zinc-700 dark:bg-zinc-950">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold tracking-[0.14em] text-zinc-400 uppercase">
+            Request
+          </p>
+          <h2 className="mt-1 text-lg font-semibold text-zinc-950 dark:text-zinc-50">Found</h2>
+        </div>
+        {result ? <ResultStatus label={result.status} tone={sent ? 'ok' : 'bad'} /> : null}
+      </div>
+      {result ? (
+        <div className="mt-4">
+          <p className="text-[11px] font-semibold tracking-[0.14em] text-zinc-400 uppercase">
             Tracking ID
-          </dt>
-          <dd
-            className={cn(
-              'min-w-0 text-right text-sm font-semibold tracking-wide break-all',
-              result ? 'text-brand-800 dark:text-brand-300' : 'text-zinc-400 dark:text-zinc-500',
-            )}
-          >
-            {result ? result.id : blank}
-          </dd>
+          </p>
+          <CopyRefButton value={result.id} label="tracking ID" />
         </div>
-        <TrackDetail icon={Info} label="Subject" value={result?.subject ?? ''} />
-        <TrackDetail icon={Paperclip} label="Document" value={result?.attachment ?? ''} />
-        <TrackDetail icon={CircleUser} label="Sender" value={result?.name ?? ''} />
-        <TrackDetail icon={Clock} label="Filed" value={filed} />
-        <div className="flex min-h-9 min-w-0 items-center justify-between gap-3 pt-3">
-          <dt className="inline-flex shrink-0 items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-            <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-              <CircleDot className="size-3.5" aria-hidden />
-            </span>
-            Status
-          </dt>
-          <dd>
-            {result ? (
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
-                  sent
-                    ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-                    : 'bg-maroon-100 text-maroon-800 dark:bg-maroon-500/15 dark:text-maroon-300',
-                )}
-              >
-                <span
-                  className={cn(
-                    'size-1.5 rounded-full',
-                    sent ? 'bg-emerald-500' : 'bg-maroon-700 dark:bg-maroon-400',
-                  )}
-                  aria-hidden
-                />
-                {result.status}
-              </span>
-            ) : (
-              blank
-            )}
-          </dd>
-        </div>
+      ) : null}
+      <dl className="mt-2 grid min-w-0">
+        <ResultField icon={Info} label="Subject" value={result?.subject ?? ''} />
+        <ResultField icon={Paperclip} label="Document" value={documentName} />
+        <ResultField icon={CircleUser} label="Sender" value={result?.name ?? ''} />
+        <ResultField icon={Mail} label="Email" value={result?.email ?? ''} />
+        <ResultField icon={Clock} label="Filed" value={filed} />
       </dl>
-    </>
-  )
-}
-
-function TrackDetail({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: LucideIcon
-  label: string
-  value: string
-}) {
-  return (
-    <div className="flex min-h-12 min-w-0 items-start justify-between gap-3 border-b border-zinc-100 py-3 dark:border-zinc-800">
-      <dt className="inline-flex shrink-0 items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-        <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
-          <Icon className="size-3.5" aria-hidden />
-        </span>
-        {label}
-      </dt>
-      <dd className="min-w-0 pt-0.5 text-right text-sm font-semibold break-words text-zinc-900 dark:text-zinc-100">
-        {value || <span className="font-medium text-zinc-400 dark:text-zinc-500">—</span>}
-      </dd>
     </div>
   )
 }

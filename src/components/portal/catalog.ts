@@ -30,6 +30,10 @@ export function lockerRenewalPrice(row: string) {
   return 500
 }
 
+export function lockerFeeForType(row: string, type: 'new' | 'renewal') {
+  return type === 'renewal' ? lockerRenewalPrice(row) : lockerNewRentalPrice(row)
+}
+
 export const LOCKER_RATES = [
   { transaction: 'New rental', location: 'Rows A, B and C (top rows)', fee: 600 },
   { transaction: 'New rental', location: 'Row D (bottom row)', fee: 450 },

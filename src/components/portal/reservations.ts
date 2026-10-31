@@ -11,6 +11,7 @@ export type StoredReservation = {
   year: string
   submittedAt: string
   status: string
+  rentalType?: 'new' | 'renewal'
 }
 
 const reservationStoreKey = 'pup-col-sc-reservations'
@@ -37,6 +38,7 @@ export function reservationFromApi(record: ReservationRecord): StoredReservation
     year: record.year || record.yearLevel,
     submittedAt: record.submittedAt,
     status: reservationStatusLabel(record.status),
+    rentalType: record.shop === 'locker' && record.rentalType === 'renewal' ? 'renewal' : 'new',
   }
 }
 

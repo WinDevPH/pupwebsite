@@ -47,6 +47,7 @@ function reservations_ensure_tables(PDO $pdo): void
           shop_item_id INT UNSIGNED NULL,
           item_key VARCHAR(64) NOT NULL DEFAULT '',
           item_name VARCHAR(255) NOT NULL,
+          rental_type VARCHAR(16) NOT NULL DEFAULT 'new',
           unit_price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
           quantity INT UNSIGNED NOT NULL DEFAULT 1,
           total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
@@ -67,7 +68,55 @@ function reservations_ensure_tables(PDO $pdo): void
           KEY idx_shop_reservations_item (shop_item_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
+    $column = $pdo->query("SHOW COLUMNS FROM shop_reservations LIKE 'rental_type'");
+    if ($column && !$column->fetch()) {
+        $pdo->exec(
+            "ALTER TABLE shop_reservations
+             ADD COLUMN rental_type VARCHAR(16) NOT NULL DEFAULT 'new' AFTER item_name"
+        );
+    }
     $ready = true;
+}
+
+/** @return list<string> */
+function reservations_rental_types(): array
+{
+    return ['new', 'renewal'];
+}
+
+function reservations_rental_label(string $type): string
+{
+    return $type === 'renewal' ? 'Renewal' : 'New rental';
+}
+
+function reservations_locker_row(array $data): string
+{
+    $raw = strtoupper(trim((string) ($data['item_key'] ?? '') . ' ' . (string) ($data['item_name'] ?? '')));
+    if (preg_match('/([A-E])/', $raw, $match)) {
+        return $match[1];
+    }
+    return 'A';
+}
+
+function reservations_locker_fee(string $row, string $type): float
+{
+    $row = strtoupper($row);
+    if ($type === 'renewal') {
+        if ($row === 'D') {
+            return 450.0;
+        }
+        if ($row === 'E') {
+            return 350.0;
+        }
+        return 500.0;
+    }
+    if ($row === 'D') {
+        return 450.0;
+    }
+    if ($row === 'E') {
+        return 350.0;
+    }
+    return 600.0;
 }
 
 function reservations_row(array $row): array
@@ -84,6 +133,9 @@ function reservations_row(array $row): array
         'shopItemId' => $row['shop_item_id'] !== null ? (int) $row['shop_item_id'] : null,
         'itemKey' => (string) ($row['item_key'] ?? ''),
         'itemName' => (string) $row['item_name'],
+        'rentalType' => ($row['shop'] ?? '') === 'locker' && ($row['rental_type'] ?? '') === 'renewal'
+            ? 'renewal'
+            : 'new',
         'unitPrice' => (float) ($row['unit_price'] ?? 0),
         'quantity' => (int) ($row['quantity'] ?? 1),
         'totalAmount' => (float) ($row['total_amount'] ?? 0),
@@ -110,13 +162,17 @@ function reservations_from_sql(): string
             LEFT JOIN shop_items si ON si.id = r.shop_item_id';
 }
 
-function reservations_locker_occupied(PDO $pdo, array $data, int $exceptId = 0): bool
+/**
+ * @param array<string, mixed> $data
+ * @return array<string, mixed>|null
+ */
+function reservations_locker_occupant(PDO $pdo, array $data, int $exceptId = 0): ?array
 {
     if (($data['shop'] ?? '') !== 'locker') {
-        return false;
+        return null;
     }
     if (strtolower((string) ($data['status'] ?? '')) === 'cancelled') {
-        return false;
+        return null;
     }
 
     $parts = [];
@@ -132,20 +188,270 @@ function reservations_locker_occupied(PDO $pdo, array $data, int $exceptId = 0):
         $params['key'] = $itemKey;
     }
     if ($parts === []) {
-        return false;
+        return null;
     }
 
-    $sql = 'SELECT id FROM shop_reservations
+    $sql = 'SELECT * FROM shop_reservations
             WHERE shop = \'locker\' AND LOWER(status) <> \'cancelled\'
               AND (' . implode(' OR ', $parts) . ')';
     if ($exceptId > 0) {
         $sql .= ' AND id <> :except';
         $params['except'] = $exceptId;
     }
-    $sql .= ' LIMIT 1';
+    $sql .= ' ORDER BY id DESC LIMIT 1';
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
-    return (bool) $stmt->fetch();
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+function reservations_locker_occupied(PDO $pdo, array $data, int $exceptId = 0): bool
+{
+    return reservations_locker_occupant($pdo, $data, $exceptId) !== null;
+}
+
+/** @param array<string, mixed> $row */
+function reservations_identity_matches(array $row, array $data): bool
+{
+    $email = strtolower(trim((string) ($data['email'] ?? '')));
+    $studentId = strtolower(trim((string) ($data['student_id'] ?? '')));
+    $rowEmail = strtolower(trim((string) ($row['email'] ?? '')));
+    $rowStudentId = strtolower(trim((string) ($row['student_id'] ?? '')));
+    if ($email !== '' && $rowEmail !== '' && $email === $rowEmail) {
+        return true;
+    }
+    if ($studentId !== '' && $rowStudentId !== '' && $studentId === $rowStudentId) {
+        return true;
+    }
+    return false;
+}
+
+/** @param array<string, mixed> $existing */
+function reservations_same_locker(array $existing, array $data): bool
+{
+    $idA = (int) ($existing['shop_item_id'] ?? 0);
+    $idB = (int) ($data['shop_item_id'] ?? 0);
+    if ($idA > 0 && $idB > 0 && $idA === $idB) {
+        return true;
+    }
+    $keyA = strtolower(trim((string) ($existing['item_key'] ?? '')));
+    $keyB = strtolower(trim((string) ($data['item_key'] ?? '')));
+    return $keyA !== '' && $keyA === $keyB;
+}
+
+/**
+ * Latest non-cancelled reservation for this locker by this student.
+ *
+ * @param array<string, mixed> $data
+ * @return array<string, mixed>|null
+ */
+function reservations_prior_locker(PDO $pdo, array $data, int $exceptId = 0): ?array
+{
+    if (($data['shop'] ?? '') !== 'locker') {
+        return null;
+    }
+
+    $email = strtolower(trim((string) ($data['email'] ?? '')));
+    $studentId = strtolower(trim((string) ($data['student_id'] ?? '')));
+    if ($email === '' && $studentId === '') {
+        return null;
+    }
+
+    $identity = [];
+    $params = [];
+    if ($email !== '') {
+        $identity[] = 'LOWER(email) = :email';
+        $params['email'] = $email;
+    }
+    if ($studentId !== '') {
+        $identity[] = 'LOWER(student_id) = :student_id';
+        $params['student_id'] = $studentId;
+    }
+
+    $parts = [];
+    $itemId = (int) ($data['shop_item_id'] ?? 0);
+    $itemKey = strtolower(trim((string) ($data['item_key'] ?? '')));
+    if ($itemId > 0) {
+        $parts[] = 'shop_item_id = :sid';
+        $params['sid'] = $itemId;
+    }
+    if ($itemKey !== '') {
+        $parts[] = 'LOWER(item_key) = :key';
+        $params['key'] = $itemKey;
+    }
+    if ($parts === []) {
+        return null;
+    }
+
+    $sql = 'SELECT * FROM shop_reservations
+            WHERE shop = \'locker\' AND LOWER(status) <> \'cancelled\'
+              AND (' . implode(' OR ', $identity) . ')
+              AND (' . implode(' OR ', $parts) . ')';
+    if ($exceptId > 0) {
+        $sql .= ' AND id <> :except';
+        $params['except'] = $exceptId;
+    }
+    $sql .= ' ORDER BY id DESC LIMIT 1';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+/**
+ * @param array<string, mixed> $data
+ * @return array{error:string,code:string}|null
+ */
+function reservations_create_conflict(PDO $pdo, array $data, bool $public): ?array
+{
+    $isRenewal = ($data['shop'] ?? '') === 'locker' && ($data['rental_type'] ?? 'new') === 'renewal';
+    $occupant = reservations_locker_occupant($pdo, $data);
+    $identity = reservations_identity_duplicate($pdo, $data);
+
+    if ($isRenewal) {
+        $prior = reservations_prior_locker($pdo, $data);
+        if ($public && !$prior) {
+            return [
+                'error' => 'Renewal is only for students who already reserved this locker. Use the same email or student ID, or choose New rental.',
+                'code' => '',
+            ];
+        }
+        if ($occupant && !reservations_identity_matches($occupant, $data)) {
+            return [
+                'error' => 'That locker already has an active reservation.',
+                'code' => (string) ($occupant['code'] ?? ''),
+            ];
+        }
+        if ($identity && !reservations_same_locker($identity, $data)) {
+            return [
+                'error' => reservations_duplicate_message($identity, $data),
+                'code' => (string) ($identity['code'] ?? ''),
+            ];
+        }
+        return null;
+    }
+
+    if ($identity) {
+        return [
+            'error' => reservations_duplicate_message($identity, $data),
+            'code' => (string) ($identity['code'] ?? ''),
+        ];
+    }
+    if ($occupant) {
+        return [
+            'error' => 'That locker already has an active reservation.',
+            'code' => (string) ($occupant['code'] ?? ''),
+        ];
+    }
+    return null;
+}
+
+function reservations_fulfill_prior_locker(PDO $pdo, array $data, int $keepId): void
+{
+    if (($data['shop'] ?? '') !== 'locker' || ($data['rental_type'] ?? '') !== 'renewal') {
+        return;
+    }
+
+    $prior = reservations_prior_locker($pdo, $data, $keepId);
+    if (!$prior) {
+        return;
+    }
+
+    $stmt = $pdo->prepare(
+        "UPDATE shop_reservations
+         SET status = 'fulfilled'
+         WHERE id = :id AND LOWER(status) <> 'cancelled' AND LOWER(status) <> 'fulfilled'"
+    );
+    $stmt->execute(['id' => (int) $prior['id']]);
+}
+
+/**
+ * Active reservation already filed by this student (email or student ID).
+ * Lockers: one active reservation per student. Merch: one active reservation per item.
+ *
+ * @param array<string, mixed> $data
+ * @return array<string, mixed>|null
+ */
+function reservations_identity_duplicate(PDO $pdo, array $data, int $exceptId = 0): ?array
+{
+    if (strtolower((string) ($data['status'] ?? '')) === 'cancelled') {
+        return null;
+    }
+
+    $email = strtolower(trim((string) ($data['email'] ?? '')));
+    $studentId = strtolower(trim((string) ($data['student_id'] ?? '')));
+    if ($email === '' && $studentId === '') {
+        return null;
+    }
+
+    $identity = [];
+    $params = [];
+    if ($email !== '') {
+        $identity[] = 'LOWER(email) = :email';
+        $params['email'] = $email;
+    }
+    if ($studentId !== '') {
+        $identity[] = 'LOWER(student_id) = :student_id';
+        $params['student_id'] = $studentId;
+    }
+
+    $shop = strtolower(trim((string) ($data['shop'] ?? '')));
+    $sql = 'SELECT * FROM shop_reservations
+            WHERE LOWER(status) <> \'cancelled\'
+              AND (' . implode(' OR ', $identity) . ')';
+
+    if ($shop === 'locker') {
+        $sql .= ' AND shop = \'locker\'';
+    } else {
+        if ($shop === '') {
+            return null;
+        }
+        $sql .= ' AND shop = :shop';
+        $params['shop'] = $shop;
+        $itemParts = [];
+        $itemId = (int) ($data['shop_item_id'] ?? 0);
+        $itemKey = strtolower(trim((string) ($data['item_key'] ?? '')));
+        if ($itemId > 0) {
+            $itemParts[] = 'shop_item_id = :item_id';
+            $params['item_id'] = $itemId;
+        }
+        if ($itemKey !== '') {
+            $itemParts[] = 'LOWER(item_key) = :item_key';
+            $params['item_key'] = $itemKey;
+        }
+        if ($itemParts === []) {
+            return null;
+        }
+        $sql .= ' AND (' . implode(' OR ', $itemParts) . ')';
+    }
+
+    if ($exceptId > 0) {
+        $sql .= ' AND id <> :except';
+        $params['except'] = $exceptId;
+    }
+
+    $sql .= ' ORDER BY id DESC LIMIT 1';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+/** @param array<string, mixed> $existing */
+function reservations_duplicate_message(array $existing, array $data): string
+{
+    $code = strtoupper(trim((string) ($existing['code'] ?? '')));
+    $itemName = trim((string) ($existing['item_name'] ?? ''));
+    $shop = strtolower((string) ($existing['shop'] ?? $data['shop'] ?? ''));
+    $suffix = $code !== '' ? ' Track ' . $code . ' in the portal instead of submitting again.' : ' Track it in the portal instead of submitting again.';
+
+    if ($shop === 'locker') {
+        $label = $itemName !== '' ? $itemName : 'a locker';
+        return 'You already have an active locker reservation for ' . $label . '.' . $suffix;
+    }
+
+    $label = $itemName !== '' ? $itemName : 'this item';
+    return 'You already have an active reservation for ' . $label . '.' . $suffix;
 }
 
 function reservations_make_code(PDO $pdo): string
@@ -181,6 +487,7 @@ function reservations_send_created_mail(array $row): array
         'email' => $email,
         'shop' => (string) ($row['shop'] ?? 'merch'),
         'itemName' => (string) ($row['item_name'] ?? ''),
+        'rentalType' => (string) ($row['rental_type'] ?? 'new'),
         'quantity' => (int) ($row['quantity'] ?? 1),
         'unitPrice' => (float) ($row['unit_price'] ?? 0),
         'totalAmount' => (float) ($row['total_amount'] ?? 0),
@@ -196,9 +503,12 @@ function reservations_send_created_mail(array $row): array
     if ($councilTo !== '') {
         $councilTpl = api_mail_template_council_reservation($payload);
         $shopLabel = api_mail_reservation_shop_label($payload['shop']);
+        $kind = ($payload['shop'] === 'locker' && ($payload['rentalType'] ?? '') === 'renewal')
+            ? 'renewal'
+            : 'reservation';
         $councilResult = api_send_mail(
             $councilTo,
-            '[' . $code . '] ' . $shopLabel . ' reservation: ' . $payload['itemName'],
+            '[' . $code . '] ' . $shopLabel . ' ' . $kind . ': ' . $payload['itemName'],
             $councilTpl['text'],
             filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null,
             [],
@@ -317,13 +627,31 @@ function reservations_payload(?array $body = null, bool $public = false): array
     if ($shop === 'locker') {
         $quantity = 1;
     }
+
+    $rentalType = strtolower(trim((string) ($body['rentalType'] ?? $body['rental_type'] ?? 'new')));
+    if ($shop !== 'locker' || !in_array($rentalType, reservations_rental_types(), true)) {
+        $rentalType = 'new';
+    }
+
     $unitPrice = (float) ($body['unitPrice'] ?? $body['unit_price'] ?? $body['price'] ?? 0);
     if ($unitPrice < 0) {
         $unitPrice = 0.0;
     }
+    if ($shop === 'locker') {
+        $official = reservations_locker_fee(reservations_locker_row([
+            'item_key' => (string) ($body['itemKey'] ?? $body['item_key'] ?? ''),
+            'item_name' => (string) ($body['itemName'] ?? $body['item_name'] ?? $body['item'] ?? ''),
+        ]), $rentalType);
+        if ($public || $unitPrice <= 0) {
+            $unitPrice = $official;
+        }
+    }
     $totalAmount = isset($body['totalAmount']) || isset($body['total_amount'])
         ? (float) ($body['totalAmount'] ?? $body['total_amount'])
         : round($unitPrice * $quantity, 2);
+    if ($shop === 'locker' && $public) {
+        $totalAmount = round($unitPrice * $quantity, 2);
+    }
     if ($totalAmount < 0) {
         $totalAmount = 0.0;
     }
@@ -362,6 +690,7 @@ function reservations_payload(?array $body = null, bool $public = false): array
         'shop_item_id' => $shopItemId,
         'item_key' => mb_substr($itemKey !== '' ? api_slugify($itemKey) : '', 0, 64),
         'item_name' => mb_substr($itemName, 0, 255),
+        'rental_type' => $rentalType,
         'unit_price' => round($unitPrice, 2),
         'quantity' => $quantity,
         'total_amount' => round($totalAmount, 2),
@@ -468,8 +797,34 @@ function reservations_create(): never
     }
 
     $data = reservations_payload($body, $public);
-    if (reservations_locker_occupied($pdo, $data)) {
-        api_json(['ok' => false, 'error' => 'That locker already has an active reservation.'], 409);
+    $checkOnly = $public && (
+        ($body['check'] ?? false) === true
+        || (string) ($body['check'] ?? '') === '1'
+    );
+
+    if ($checkOnly) {
+        $conflict = reservations_create_conflict($pdo, $data, true);
+        if ($conflict) {
+            api_json([
+                'ok' => true,
+                'duplicate' => true,
+                'code' => $conflict['code'],
+                'itemName' => (string) ($data['item_name'] ?? ''),
+                'shop' => (string) ($data['shop'] ?? ''),
+                'message' => $conflict['error'],
+            ]);
+        }
+        api_json(['ok' => true, 'duplicate' => false]);
+    }
+
+    $conflict = reservations_create_conflict($pdo, $data, $public);
+    if ($conflict) {
+        api_json([
+            'ok' => false,
+            'error' => $conflict['error'],
+            'duplicate' => true,
+            'code' => $conflict['code'],
+        ], 409);
     }
     $code = trim((string) ($body['code'] ?? ''));
     if ($code === '' || $public) {
@@ -484,10 +839,10 @@ function reservations_create(): never
     try {
         $stmt = $pdo->prepare(
             'INSERT INTO shop_reservations
-              (code, shop, shop_item_id, item_key, item_name, unit_price, quantity, total_amount,
+              (code, shop, shop_item_id, item_key, item_name, rental_type, unit_price, quantity, total_amount,
                customer_name, email, mobile, student_id, year_level, remarks, status, submitted_at)
              VALUES
-              (:code, :shop, :shop_item_id, :item_key, :item_name, :unit_price, :quantity, :total_amount,
+              (:code, :shop, :shop_item_id, :item_key, :item_name, :rental_type, :unit_price, :quantity, :total_amount,
                :customer_name, :email, :mobile, :student_id, :year_level, :remarks, :status, :submitted_at)'
         );
         $stmt->execute([
@@ -502,6 +857,7 @@ function reservations_create(): never
     }
 
     $id = (int) $pdo->lastInsertId();
+    reservations_fulfill_prior_locker($pdo, $data, $id);
     $fetch = $pdo->prepare('SELECT * FROM shop_reservations WHERE id = :id LIMIT 1');
     $fetch->execute(['id' => $id]);
     $row = $fetch->fetch() ?: [];
@@ -579,6 +935,7 @@ function reservations_update(): never
                 shop_item_id = :shop_item_id,
                 item_key = :item_key,
                 item_name = :item_name,
+                rental_type = :rental_type,
                 unit_price = :unit_price,
                 quantity = :quantity,
                 total_amount = :total_amount,

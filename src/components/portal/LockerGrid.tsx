@@ -69,7 +69,7 @@ export function LockerGrid({
     )
 
     if (picker) {
-      const canPick = Boolean(item) && (!assigned || selected) && !disabled
+      const canPick = Boolean(item) && !disabled
       if (canPick && item) {
         return (
           <button

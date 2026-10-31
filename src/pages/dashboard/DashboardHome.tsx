@@ -16,6 +16,7 @@ import {
   Settings2,
   Shirt,
   UserCog,
+  UserRound,
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
@@ -55,6 +56,7 @@ const QUICK_LINKS: { to: string; label: string; hint: string; Icon: LucideIcon }
   { to: `${ADMIN}/feedback`, label: 'Feedbacks', hint: 'Homepage notes', Icon: MessagesSquare },
   { to: `${ADMIN}/chat`, label: 'Chat', hint: 'Landing-page messages', Icon: MessageCircle },
   { to: `${ADMIN}/reservations`, label: 'Reservations', hint: 'Locker & merch', Icon: Bookmark },
+  { to: `${ADMIN}/customers`, label: 'Customers', hint: 'Purchase records', Icon: UserRound },
   { to: `${ADMIN}/income`, label: 'Income reports', hint: 'Fees & filters', Icon: Wallet },
   { to: `${ADMIN}/announcements`, label: 'Announcements', hint: 'Public posts', Icon: Megaphone },
   { to: `${ADMIN}/calendar`, label: 'Calendar', hint: 'Campus dates', Icon: CalendarDays },

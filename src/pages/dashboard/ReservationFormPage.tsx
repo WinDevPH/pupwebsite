@@ -21,7 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { lockerCodeFromItem } from '@/components/portal/catalog'
+import { lockerCodeFromItem, lockerFeeForType } from '@/components/portal/catalog'
 import { LockerGrid } from '@/components/portal/LockerGrid'
 import { RequireLoginRedirect } from '@/components/portal/RequireLoginRedirect'
 import {
@@ -53,14 +53,17 @@ import { Button } from '@/components/ui/button'
 import { CatalogSelect } from '@/components/ui/CatalogSelect'
 import { Snackbar, type SnackToast } from '@/components/ui/Snackbar'
 import {
+  RESERVATION_RENTAL_TYPES,
   RESERVATION_SHOPS,
   RESERVATION_STATUSES,
   createReservation,
   formatReservationMoney,
   getReservationById,
+  reservationRentalLabel,
   updateReservation,
   type ReservationInput,
   type ReservationRecord,
+  type ReservationRentalType,
   type ReservationShop,
   type ReservationStatus,
 } from '@/lib/reservations-api'
@@ -104,6 +107,7 @@ const YEAR_OPTIONS = [
 type FormState = {
   shop: ReservationShop
   itemName: string
+  rentalType: ReservationRentalType
   quantity: string
   unitPrice: string
   status: ReservationStatus
@@ -141,6 +145,7 @@ function emptyForm(): FormState {
   return {
     shop: 'merch',
     itemName: '',
+    rentalType: 'new',
     quantity: '1',
     unitPrice: '0',
     status: 'submitted',
@@ -161,6 +166,7 @@ function recordToForm(record: ReservationRecord): FormState {
   return {
     shop: record.shop,
     itemName: record.itemName,
+    rentalType: record.shop === 'locker' && record.rentalType === 'renewal' ? 'renewal' : 'new',
     quantity: String(record.quantity),
     unitPrice: String(record.unitPrice),
     status: record.status,
@@ -220,6 +226,7 @@ function formToInput(form: FormState): ReservationInput {
     shop: form.shop,
     code: form.code.trim() || undefined,
     itemName: form.itemName.trim(),
+    rentalType: form.shop === 'locker' ? form.rentalType : 'new',
     itemKey: form.itemKey.trim() || undefined,
     shopItemId: Number.isFinite(shopItemId) && shopItemId > 0 ? shopItemId : null,
     quantity,
@@ -249,9 +256,18 @@ function availabilityLabel(item: ShopItemRecord) {
 }
 
 function itemSelectable(item: ShopItemRecord) {
-  if (item.availability === 'out' || item.availability === 'reserved') return false
+  if (item.availability === 'out') return false
   if (item.shop === 'locker') return true
+  if (item.availability === 'reserved') return false
   return item.stock > 0
+}
+
+function lockerPriceFromForm(
+  rentalType: ReservationRentalType,
+  item?: { name?: string; itemKey?: string; number?: string | null } | null,
+) {
+  const row = lockerCodeFromItem(item ?? {}).charAt(0) || 'A'
+  return String(lockerFeeForType(row, rentalType))
 }
 
 function matchesSelected(item: ShopItemRecord, form: FormState) {
@@ -359,6 +375,7 @@ export default function ReservationFormPage() {
       itemName: '',
       itemKey: '',
       shopItemId: '',
+      rentalType: 'new',
       unitPrice: '0',
       quantity: '1',
     }))
@@ -392,10 +409,21 @@ export default function ReservationFormPage() {
       itemName: item.name,
       itemKey: item.itemKey || '',
       shopItemId: String(item.id),
-      unitPrice: String(item.price),
+      unitPrice: isLocker ? lockerPriceFromForm(prev.rentalType, item) : String(item.price),
       quantity: isLocker
         ? '1'
         : String(clampQuantity(prev.quantity, merchQtyMax(item))),
+    }))
+  }
+
+  function setRentalType(type: ReservationRentalType) {
+    setForm((prev) => ({
+      ...prev,
+      rentalType: type,
+      unitPrice:
+        prev.shop === 'locker' && prev.itemName
+          ? lockerPriceFromForm(type, { name: prev.itemName })
+          : prev.unitPrice,
     }))
   }
 
@@ -614,7 +642,7 @@ export default function ReservationFormPage() {
                       title="Reserve an item"
                       body={
                         form.shop === 'locker'
-                          ? 'Choose a locker from the availability grid. Assigned units stay filled in maroon.'
+                          ? 'Choose a locker and New rental or Renewal. Assigned units stay filled in maroon; pick one to file a renewal.'
                           : 'Choose Merch or Locker, then select a product from the catalog.'
                       }
                     />
@@ -669,6 +697,7 @@ export default function ReservationFormPage() {
                             onBump={bumpQuantity}
                             onQuantityChange={setQuantity}
                             onPriceChange={(value) => set('unitPrice', value)}
+                            onRentalTypeChange={setRentalType}
                             onStatusChange={(value) => set('status', value)}
                             onClear={clearSelection}
                           />
@@ -998,6 +1027,7 @@ function SelectedItemCard({
   onBump,
   onQuantityChange,
   onPriceChange,
+  onRentalTypeChange,
   onStatusChange,
   onClear,
 }: {
@@ -1011,6 +1041,7 @@ function SelectedItemCard({
   onBump: (delta: number) => void
   onQuantityChange: (value: string) => void
   onPriceChange: (value: string) => void
+  onRentalTypeChange: (value: ReservationRentalType) => void
   onStatusChange: (value: ReservationStatus) => void
   onClear: () => void
 }) {
@@ -1019,7 +1050,19 @@ function SelectedItemCard({
   const ShopIcon = form.shop === 'locker' ? Lock : Shirt
 
   const fields = (
-    <div className={cn('grid min-w-0 gap-2', sidebar ? 'grid-cols-1' : form.shop === 'locker' ? 'sm:grid-cols-2' : 'sm:grid-cols-3')}>
+    <div className={cn('grid min-w-0 gap-2', sidebar ? 'grid-cols-1' : form.shop === 'locker' ? 'sm:grid-cols-3' : 'sm:grid-cols-3')}>
+      {form.shop === 'locker' ? (
+        <div className="min-w-0">
+          <p className="mb-1 text-[10px] font-semibold tracking-wide text-zinc-400 uppercase">Type</p>
+          <CatalogSelect
+            aria-label="Rental type"
+            disabled={disabled || empty}
+            value={form.rentalType}
+            options={RESERVATION_RENTAL_TYPES}
+            onChange={(value) => onRentalTypeChange(value as ReservationRentalType)}
+          />
+        </div>
+      ) : null}
       {form.shop === 'merch' ? (
         <div className="min-w-0">
           <p className="mb-1 text-[10px] font-semibold tracking-wide text-zinc-400 uppercase">Qty</p>
@@ -1188,7 +1231,7 @@ function SelectedItemCard({
       <div className="flex items-center justify-between gap-3 border-t border-zinc-100 bg-zinc-50/90 px-3 py-2.5 sm:px-4 dark:border-zinc-800 dark:bg-zinc-900/60">
         <p className="text-[12px] text-zinc-500 dark:text-zinc-400">
           {form.shop === 'locker'
-            ? 'One locker reservation'
+            ? reservationRentalLabel(form.rentalType)
             : `${qty} × ${formatReservationMoney(parseUnitPrice(form.unitPrice))}`}
         </p>
         <p className="text-[14px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">

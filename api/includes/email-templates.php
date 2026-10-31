@@ -328,6 +328,8 @@ function api_mail_template_council_reservation(array $data): array
     $email = (string) $data['email'];
     $shop = api_mail_reservation_shop_label((string) $data['shop']);
     $itemName = (string) $data['itemName'];
+    $rentalType = strtolower(trim((string) ($data['rentalType'] ?? 'new')));
+    $rentalLabel = $rentalType === 'renewal' ? 'Renewal' : 'New rental';
     $quantity = max(1, (int) ($data['quantity'] ?? 1));
     $unitPrice = (float) ($data['unitPrice'] ?? 0);
     $totalAmount = (float) ($data['totalAmount'] ?? 0);
@@ -344,12 +346,17 @@ function api_mail_template_council_reservation(array $data): array
         ['Filed', $filed],
         ['Shop', $shop],
         ['Item', $itemName],
+    ];
+    if ((string) ($data['shop'] ?? '') === 'locker') {
+        $meta[] = ['Transaction', $rentalLabel];
+    }
+    $meta = array_merge($meta, [
         ['Quantity', (string) $quantity],
         ['Unit price', api_mail_format_pesos($unitPrice)],
         ['Total', api_mail_format_pesos($totalAmount)],
         ['Name', $name],
         ['Email', $email],
-    ];
+    ]);
     if ($mobile !== '') {
         $meta[] = ['Mobile', $mobile];
     }
@@ -368,6 +375,7 @@ function api_mail_template_council_reservation(array $data): array
         'Filed: ' . $filed,
         'Shop: ' . $shop,
         'Item: ' . $itemName,
+        ...( (string) ($data['shop'] ?? '') === 'locker' ? ['Transaction: ' . $rentalLabel] : [] ),
         'Quantity: ' . $quantity,
         'Total: ' . api_mail_format_pesos($totalAmount),
         'Name: ' . $name,
@@ -432,6 +440,8 @@ function api_mail_template_reservation_confirmation(array $data): array
     $name = (string) $data['name'];
     $shop = api_mail_reservation_shop_label((string) $data['shop']);
     $itemName = (string) $data['itemName'];
+    $rentalType = strtolower(trim((string) ($data['rentalType'] ?? 'new')));
+    $rentalLabel = $rentalType === 'renewal' ? 'Renewal' : 'New rental';
     $quantity = max(1, (int) ($data['quantity'] ?? 1));
     $totalAmount = (float) ($data['totalAmount'] ?? 0);
     $status = api_mail_reservation_status_label((string) ($data['status'] ?? 'submitted'));
@@ -444,10 +454,11 @@ function api_mail_template_reservation_confirmation(array $data): array
         '',
         'Hello ' . $name . ',',
         '',
-        'We received your ' . strtolower($shop) . ' reservation.',
+        'We received your ' . strtolower($shop) . ($rentalType === 'renewal' ? ' renewal.' : ' reservation.'),
         '',
         'Reservation ID: ' . $code,
         'Item: ' . $itemName,
+        ...( (string) ($data['shop'] ?? '') === 'locker' ? ['Transaction: ' . $rentalLabel] : [] ),
         'Quantity: ' . $quantity,
         'Total: ' . api_mail_format_pesos($totalAmount),
         'Status: ' . $status,
@@ -466,14 +477,15 @@ function api_mail_template_reservation_confirmation(array $data): array
         'title' => 'Reservation received',
         'intro' => 'Hello ' . $name . ', your ' . strtolower($shop) . ' reservation is on file with the Student Council.',
         'bodyHtml' => api_mail_section_label('Reservation details')
-            . api_mail_meta_table([
+            . api_mail_meta_table(array_values(array_filter([
                 ['Reservation ID', $code],
                 ['Shop', $shop],
                 ['Item', $itemName],
+                (string) ($data['shop'] ?? '') === 'locker' ? ['Transaction', $rentalLabel] : null,
                 ['Quantity', (string) $quantity],
                 ['Total', api_mail_format_pesos($totalAmount)],
                 ['Status', $status],
-            ])
+            ])))
             . '<div style="height:24px;line-height:24px;font-size:24px;">&nbsp;</div>'
             . api_mail_section_label('What happens next')
             . api_mail_message_block(

@@ -7,9 +7,11 @@ import {
   Lock,
   Plus,
   RefreshCw,
+  Repeat,
   Search,
   ShoppingBag,
   Table2,
+  UserRound,
   Wallet,
 } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -54,6 +56,7 @@ import {
   deleteReservation,
   formatReservationMoney,
   listReservations,
+  reservationRentalLabel,
   type ReservationRecord,
   type ReservationShop,
   type ReservationStatus,
@@ -62,7 +65,7 @@ import { formatPhDateTime } from '@/lib/datetime'
 import { cn } from '@/lib/utils'
 import { ConfirmDeleteDialog } from '@/components/portal/ConfirmDeleteDialog'
 
-type SegFilter = 'all' | ReservationShop
+type SegFilter = 'all' | ReservationShop | 'renewal'
 
 const PAGE_SIZE_KEY = 'pup-admin-reservations-page-size'
 const VIEW_KEY = 'pup-admin-reservations-view'
@@ -73,7 +76,18 @@ const SEG_OPTIONS: { key: SegFilter; icon: typeof Layers; label: string }[] = [
   { key: 'all', icon: Layers, label: 'All' },
   { key: 'merch', icon: ShoppingBag, label: 'Merch' },
   { key: 'locker', icon: Lock, label: 'Locker' },
+  { key: 'renewal', icon: Repeat, label: 'Renewals' },
 ]
+
+function isLockerRenewal(item: ReservationRecord) {
+  return item.shop === 'locker' && item.rentalType === 'renewal'
+}
+
+function matchesSeg(item: ReservationRecord, seg: SegFilter) {
+  if (seg === 'all') return true
+  if (seg === 'renewal') return isLockerRenewal(item)
+  return item.shop === seg
+}
 
 const SHOP_LABEL: Record<ReservationShop, string> = {
   merch: 'Merch',
@@ -169,6 +183,7 @@ export default function ReservationsAdmin() {
       all: items.length,
       merch: items.filter((i) => i.shop === 'merch').length,
       locker: items.filter((i) => i.shop === 'locker').length,
+      renewal: items.filter(isLockerRenewal).length,
     }),
     [items],
   )
@@ -177,10 +192,10 @@ export default function ReservationsAdmin() {
     const needle = query.trim().toLowerCase()
     return items
       .filter((item) => {
-        if (segFilter !== 'all' && item.shop !== segFilter) return false
+        if (!matchesSeg(item, segFilter)) return false
         if (!needle) return true
         const haystack =
-          `${item.code} ${item.name} ${item.email} ${item.itemName} ${item.studentId} ${item.status} ${statusLabel(item.status)}`.toLowerCase()
+          `${item.code} ${item.name} ${item.email} ${item.itemName} ${item.studentId} ${item.status} ${statusLabel(item.status)} ${item.shop === 'locker' ? reservationRentalLabel(item.rentalType) : ''}`.toLowerCase()
         return haystack.includes(needle)
       })
       .sort(
@@ -290,10 +305,17 @@ export default function ReservationsAdmin() {
             Reservations
           </h1>
           <p className="max-w-xl text-[13px] leading-6 text-zinc-500 dark:text-zinc-400">
-            Locker and merch reservations from the portal.
+            Locker, merch, and locker-renewal reservations from the portal.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <Link
+            to="/admin/customers"
+            className="inline-flex size-10 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white text-zinc-700 transition hover:border-brand-200 hover:text-brand-800 sm:h-10 sm:w-auto sm:px-3 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+          >
+            <UserRound className="h-4 w-4" aria-hidden />
+            <span className="sr-only sm:not-sr-only text-[13px] font-semibold">Customers</span>
+          </Link>
           <Link
             to="/admin/income"
             className="inline-flex size-10 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white text-zinc-700 transition hover:border-brand-200 hover:text-brand-800 sm:h-10 sm:w-auto sm:px-3 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
@@ -340,7 +362,7 @@ export default function ReservationsAdmin() {
 
                 <div
                   role="radiogroup"
-                  aria-label="Shop filter"
+                  aria-label="Reservation type"
                   className={workspaceCatalogSegTrackInlineCls}
                 >
                   {SEG_OPTIONS.map(({ key, icon: Icon, label }) => (
@@ -433,12 +455,18 @@ export default function ReservationsAdmin() {
                   aria-hidden
                 />
                 <p className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-50">
-                  {items.length === 0 ? 'No reservations yet' : 'No matching reservations'}
+                  {items.length === 0
+                    ? 'No reservations yet'
+                    : segFilter === 'renewal' && !query.trim()
+                      ? 'No locker renewals yet'
+                      : 'No matching reservations'}
                 </p>
                 <p className="mx-auto mt-2 max-w-md text-[12px] leading-relaxed text-zinc-600 dark:text-zinc-400">
                   {items.length === 0
                     ? 'Reservations submitted from the portal will appear here.'
-                    : 'Adjust search, shop filter, or reload.'}
+                    : segFilter === 'renewal'
+                      ? 'No locker renewals match this search. Try All or Locker, or reload.'
+                      : 'Adjust search, type filter, or reload.'}
                 </p>
               </div>
             </div>
@@ -536,6 +564,7 @@ export default function ReservationsAdmin() {
                             </p>
                             <p className="mt-0.5 truncate font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
                               {item.code || '—'}
+                              {item.shop === 'locker' ? ` · ${reservationRentalLabel(item.rentalType)}` : ''}
                             </p>
                           </div>
                         </div>
@@ -627,6 +656,7 @@ export default function ReservationsAdmin() {
                         </h3>
                         <p className="mt-0.5 truncate font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
                           {item.code || '—'}
+                          {item.shop === 'locker' ? ` · ${reservationRentalLabel(item.rentalType)}` : ''}
                         </p>
                         <p className="mt-1 truncate text-[12px] text-zinc-600 dark:text-zinc-400">
                           {item.name || '—'}

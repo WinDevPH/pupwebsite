@@ -30,6 +30,8 @@ import MerchAdmin from '@/pages/dashboard/MerchAdmin'
 import MerchFormPage from '@/pages/dashboard/MerchFormPage'
 import OrganizationFormPage from '@/pages/dashboard/OrganizationFormPage'
 import IncomeReportsAdmin from '@/pages/dashboard/IncomeReportsAdmin'
+import CustomerRecordPage from '@/pages/dashboard/CustomerRecordPage'
+import CustomersAdmin from '@/pages/dashboard/CustomersAdmin'
 import ReservationFormPage from '@/pages/dashboard/ReservationFormPage'
 import ReservationsAdmin from '@/pages/dashboard/ReservationsAdmin'
 import OrganizationsAdmin from '@/pages/dashboard/OrganizationsAdmin'
@@ -202,6 +204,8 @@ export default function App() {
                 <Route path="reservations" element={<ReservationsAdmin />} />
                 <Route path="reservations/new" element={<ReservationFormPage />} />
                 <Route path="reservations/:id/edit" element={<ReservationFormPage />} />
+                <Route path="customers" element={<CustomersAdmin />} />
+                <Route path="customers/:customerKey" element={<CustomerRecordPage />} />
                 <Route path="income" element={<IncomeReportsAdmin />} />
                 <Route path="faq" element={<FaqAdmin />} />
                 <Route path="faq/new" element={<FaqFormPage />} />

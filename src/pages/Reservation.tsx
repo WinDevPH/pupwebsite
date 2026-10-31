@@ -1,12 +1,16 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import {
   Ban,
   Bookmark,
   Check,
+  CheckCircle2,
   ChevronDown,
   ChevronLeft,
+  CircleAlert,
   CircleUser,
+  Copy,
   GraduationCap,
   IdCard,
   Loader2,
@@ -14,7 +18,6 @@ import {
   Mail,
   MessageSquare,
   Minus,
-  Package,
   Phone,
   Plus,
   Shirt,
@@ -25,17 +28,35 @@ import {
 import {
   findShopItemAsync,
   lockerCodeFromItem,
+  lockerFeeForType,
   lockerRenewalPrice,
   shopCatalogPath,
   type ShopLookup,
 } from '@/components/portal/catalog'
 import { reservationFromApi, saveReservation } from '@/components/portal/reservations'
 import { siteName } from '@/components/layout/nav-data'
-import { createReservation } from '@/lib/reservations-api'
+import {
+  checkReservationDuplicate,
+  createReservation,
+  type ReservationRentalType,
+} from '@/lib/reservations-api'
+import { Snackbar, type SnackToast, type SnackVariant } from '@/components/ui/Snackbar'
 import { cn } from '@/lib/utils'
+
+const lockerTakenMessage = 'That locker already has an active reservation.'
+
+function isLockerTakenError(message: string) {
+  return /already has an active reservation/i.test(message)
+}
+
+function isServerError(message: string) {
+  return /cannot reach the server|something went wrong|please try again/i.test(message)
+}
 
 const fieldClass =
   'h-10 w-full min-w-0 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-brand-400 focus:bg-white focus:ring-4 focus:ring-brand-100 aria-invalid:border-maroon-600 aria-invalid:focus:ring-maroon-100 sm:h-12 sm:px-3.5'
+
+const successEase = [0.22, 1, 0.36, 1] as const
 
 type FieldErrors = {
   name?: string
@@ -44,10 +65,6 @@ type FieldErrors = {
   studentId?: string
   year?: string
   form?: string
-}
-
-function wait(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms))
 }
 
 function Field({
@@ -284,11 +301,36 @@ export default function Reservation() {
   const [studentId, setStudentId] = useState('')
   const [year, setYear] = useState('')
   const [quantity, setQuantity] = useState('1')
+  const [rentalType, setRentalType] = useState<ReservationRentalType>('new')
   const [remarks, setRemarks] = useState('')
   const [errors, setErrors] = useState<FieldErrors>({})
   const [reserved, setReserved] = useState<string | null>(null)
   const [mailNotice, setMailNotice] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [existingCode, setExistingCode] = useState<string | null>(null)
+  const [snack, setSnack] = useState<SnackToast | null>(null)
+  const reduceMotion = useReducedMotion()
+  const submittingRef = useRef(false)
+  const snackTimer = useRef<number | null>(null)
+  const snackId = useRef(0)
+
+  function dismissSnack() {
+    if (snackTimer.current) window.clearTimeout(snackTimer.current)
+    snackTimer.current = null
+    setSnack(null)
+  }
+
+  function showSnackbar(message: string, variant: SnackVariant = 'error') {
+    if (snackTimer.current) window.clearTimeout(snackTimer.current)
+    const id = snackId.current + 1
+    snackId.current = id
+    setSnack({ id, message, variant })
+    snackTimer.current = window.setTimeout(() => {
+      setSnack((current) => (current?.id === id ? null : current))
+      snackTimer.current = null
+    }, message.length > 140 ? 10_000 : 5200)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -310,6 +352,17 @@ export default function Reservation() {
       document.title = previous
     }
   }, [found])
+
+  useEffect(() => {
+    if (found?.shop !== 'locker') return
+    setRentalType(found.item.availability === 'reserved' ? 'renewal' : 'new')
+  }, [found])
+
+  useEffect(() => {
+    return () => {
+      if (snackTimer.current) window.clearTimeout(snackTimer.current)
+    }
+  }, [])
 
   if (found === undefined) {
     return (
@@ -338,11 +391,46 @@ export default function Reservation() {
 
   const { listing, item, shop } = found
   const count = shop === 'locker' ? 1 : Math.max(1, Number.parseInt(quantity, 10) || 1)
-  const total = item.price * count
+  const lockerRow = shop === 'locker' ? lockerCodeFromItem(item).charAt(0) || 'A' : ''
+  const renewalFee = shop === 'locker' ? lockerRenewalPrice(lockerRow) : 0
+  const unitPrice = shop === 'locker' ? lockerFeeForType(lockerRow, rentalType) : item.price
+  const total = unitPrice * count
+  const lockerHeld = shop === 'locker' && item.availability === 'reserved'
+  const statusLabel =
+    shop === 'locker'
+      ? item.availability === 'reserved'
+        ? 'Reserved'
+        : item.availability === 'out'
+          ? 'Unavailable'
+          : 'Available'
+      : `${item.stock} in stock`
+  const blocked = Boolean(item.availability) && !reserved && !lockerHeld
+  const lockerTaken = lockerHeld
+
+  async function copyReservationId() {
+    if (!reserved) return
+    try {
+      await navigator.clipboard.writeText(reserved)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
+    }
+  }
+
+  function resetForm() {
+    setReserved(null)
+    setMailNotice(null)
+    setCopied(false)
+    setExistingCode(null)
+    setErrors({})
+    submittingRef.current = false
+    setSubmitting(false)
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (submitting) return
+    if (submittingRef.current) return
     const next: FieldErrors = {}
     if (name.trim().length < 2) next.name = 'Enter your full name.'
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) next.email = 'Enter a valid email address.'
@@ -350,7 +438,7 @@ export default function Reservation() {
     if (mobileDigits.length < 10 || mobileDigits.length > 13) next.mobile = 'Enter a valid mobile number.'
     if (!/^[A-Za-z0-9-]{4,20}$/.test(studentId.trim())) next.studentId = 'Enter a valid student ID.'
     if (!year) next.year = 'Select your year level.'
-    if (item.availability === 'reserved') next.form = 'This item is reserved.'
+    if (shop === 'merch' && item.availability === 'reserved') next.form = 'This item is reserved.'
     else if (item.availability === 'out') {
       next.form = shop === 'locker' ? 'This locker is unavailable.' : 'This item is out of stock.'
     } else if (shop !== 'locker' && count > item.stock) {
@@ -363,18 +451,19 @@ export default function Reservation() {
       return
     }
     if (next.form) return
+    submittingRef.current = true
     setSubmitting(true)
-    await wait(280)
+    setExistingCode(null)
 
     const numericId = Number.parseInt(item.id, 10)
     const shopItemId = Number.isFinite(numericId) && String(numericId) === item.id ? numericId : null
-
-    const created = await createReservation({
+    const payload = {
       shop,
       shopItemId,
       itemKey: item.id,
       itemName: item.name,
-      unitPrice: item.price,
+      rentalType: shop === 'locker' ? rentalType : 'new',
+      unitPrice,
       quantity: count,
       totalAmount: total,
       name: name.trim(),
@@ -383,13 +472,44 @@ export default function Reservation() {
       studentId: studentId.trim(),
       year,
       remarks: remarks.trim(),
-      status: 'submitted',
+      status: 'submitted' as const,
       public: true,
-      source: 'portal',
-    })
+      source: 'portal' as const,
+    }
+
+    const existing = await checkReservationDuplicate(payload)
+    if (!existing.ok) {
+      submittingRef.current = false
+      setSubmitting(false)
+      showSnackbar(isLockerTakenError(existing.error) ? lockerTakenMessage : existing.error)
+      return
+    }
+    if (existing.data.duplicate) {
+      const message =
+        existing.data.message ||
+        'You already have an active reservation. Track it in the portal instead of submitting again.'
+      submittingRef.current = false
+      setSubmitting(false)
+      if (isLockerTakenError(message) || isServerError(message)) {
+        showSnackbar(isLockerTakenError(message) ? lockerTakenMessage : message)
+        return
+      }
+      setExistingCode(existing.data.code?.trim() || null)
+      setErrors({ form: message })
+      return
+    }
+
+    const created = await createReservation(payload)
 
     if (!created.ok) {
+      submittingRef.current = false
       setSubmitting(false)
+      if (isLockerTakenError(created.error) || isServerError(created.error)) {
+        showSnackbar(isLockerTakenError(created.error) ? lockerTakenMessage : created.error)
+        return
+      }
+      const codeMatch = created.error.match(/\bRSV-[A-Z0-9]+\b/i)
+      setExistingCode(codeMatch ? codeMatch[0].toUpperCase() : null)
       setErrors({ form: created.error })
       return
     }
@@ -404,6 +524,7 @@ export default function Reservation() {
             'Your reservation is saved. Keep this ID — email delivery may be unavailable.',
     )
     saveReservation(reservationFromApi(record))
+    submittingRef.current = false
     setSubmitting(false)
   }
 
@@ -418,8 +539,14 @@ export default function Reservation() {
           {listing.title}
         </Link>
 
-        <div className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)]">
-          <article className="overflow-hidden rounded-2xl bg-white shadow-[0_10px_28px_-18px_rgba(30,5,65,0.45)]">
+        <div
+          className={cn(
+            'mt-4 grid min-w-0 items-start gap-4',
+            !reserved && 'lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]',
+          )}
+        >
+          {reserved ? null : (
+          <article className="order-2 overflow-hidden rounded-2xl bg-white shadow-[0_10px_28px_-18px_rgba(30,5,65,0.45)]">
             <div className="relative bg-[#f6f6f8] px-6 py-5">
               <span
                 className={cn(
@@ -446,69 +573,249 @@ export default function Reservation() {
               </span>
               <img src={item.image} alt={item.alt} className="mx-auto h-40 w-full object-contain sm:h-48" />
             </div>
-            <div className="px-4 py-4">
-              <p className="text-xs text-zinc-500">
-                {listing.kicker}
-              </p>
-              <h1 className="mt-1 text-lg font-semibold text-zinc-950">
-                {item.number ? `No. ${item.number}` : item.name}
-              </h1>
-              <p className="mt-2 text-base font-semibold text-zinc-950">
-                {pesos(item.price)}{' '}
-                <span className="text-sm font-normal text-zinc-400">
-                  {found.shop === 'locker' ? `new rental · ${item.unit}` : item.unit}
-                </span>
-              </p>
-              {found.shop === 'locker' ? (
-                <p className="mt-1 text-xs text-zinc-500">
-                  Renewal: {pesos(lockerRenewalPrice(lockerCodeFromItem(item).charAt(0) || 'A'))} {item.unit}
-                </p>
-              ) : null}
-              <dl className="mt-4 divide-y divide-zinc-100 border-t border-zinc-100 text-sm">
-                <div className="flex items-center justify-between gap-3 py-2.5">
-                  <dt className="inline-flex items-center gap-2 text-zinc-500">
-                    <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700">
-                      <Package className="size-3.5" aria-hidden />
-                    </span>
-                    {found.shop === 'locker' ? 'Status' : 'In stock'}
-                  </dt>
-                  <dd className="font-semibold text-zinc-950">
-                    {found.shop === 'locker'
-                      ? item.availability === 'reserved'
-                        ? 'Reserved'
-                        : item.availability === 'out'
-                          ? 'Unavailable'
-                          : 'Available'
-                      : item.stock}
-                  </dd>
+            <div className="px-5 py-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                    {listing.kicker}
+                  </p>
+                  <h1 className="mt-1 text-xl font-semibold tracking-tight text-zinc-950">
+                    {item.number ?? item.name}
+                  </h1>
                 </div>
-                {found.shop === 'merch' ? (
-                  <div className="flex items-center justify-between gap-3 py-2.5">
-                    <dt className="inline-flex items-center gap-2 text-zinc-500">
-                      <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700">
-                        <Tag className="size-3.5" aria-hidden />
-                      </span>
-                      Quantity
-                    </dt>
-                    <dd className="font-semibold text-zinc-950">{count}</dd>
+                <span
+                  className={cn(
+                    'mt-0.5 inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                    item.availability === 'reserved'
+                      ? 'bg-zinc-100 text-zinc-700'
+                      : item.availability === 'out'
+                        ? 'bg-maroon-50 text-maroon-700'
+                        : 'bg-emerald-50 text-emerald-800',
+                  )}
+                >
+                  {statusLabel}
+                </span>
+              </div>
+
+              {shop === 'locker' ? (
+                <div className="mt-5 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Rental type">
+                  {(
+                    [
+                      { value: 'new' as const, label: 'New rental', fee: item.price },
+                      { value: 'renewal' as const, label: 'Renewal', fee: renewalFee },
+                    ] as const
+                  ).map((option) => {
+                    const selected = rentalType === option.value
+                    const locked = lockerHeld && option.value === 'new'
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        disabled={locked}
+                        onClick={() => setRentalType(option.value)}
+                        className={cn(
+                          'rounded-xl px-3 py-3 text-left transition-colors',
+                          selected
+                            ? 'bg-brand-50 ring-2 ring-brand-500/30'
+                            : 'bg-zinc-50 hover:bg-zinc-100',
+                          locked && 'cursor-not-allowed opacity-45 hover:bg-zinc-50',
+                        )}
+                      >
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                          {option.label}
+                        </p>
+                        <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-950">
+                          {pesos(option.fee)}
+                        </p>
+                        <p className="mt-0.5 text-[11px] leading-4 text-zinc-500">{item.unit}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="mt-5">
+                  <p className="text-2xl font-semibold tabular-nums tracking-tight text-zinc-950">
+                    {pesos(item.price)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-zinc-500">{item.unit}</p>
+                </div>
+              )}
+
+              <dl className="mt-5 space-y-2.5 border-t border-zinc-100 pt-4 text-sm">
+                {shop === 'merch' ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-zinc-500">Quantity</dt>
+                    <dd className="font-semibold tabular-nums text-zinc-950">{count}</dd>
                   </div>
                 ) : null}
-                <div className="flex items-center justify-between gap-3 py-2.5">
-                  <dt className="inline-flex items-center gap-2 text-zinc-500">
-                    <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700">
-                      <Wallet className="size-3.5" aria-hidden />
-                    </span>
-                    Total
-                  </dt>
-                  <dd className="font-semibold text-brand-700">{pesos(total)}</dd>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-zinc-500">{shop === 'locker' ? 'Due now' : 'Total'}</dt>
+                  <dd className="text-base font-semibold tabular-nums text-brand-700">{pesos(total)}</dd>
                 </div>
               </dl>
             </div>
           </article>
+          )}
 
-          <form onSubmit={onSubmit} noValidate className="rounded-2xl bg-white p-4 shadow-[0_10px_28px_-18px_rgba(30,5,65,0.45)] sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
+          <div
+            className={cn(
+              'relative order-1 min-w-0 rounded-2xl bg-white shadow-[0_10px_28px_-18px_rgba(30,5,65,0.45)]',
+              reserved && 'overflow-x-hidden sm:min-h-[32rem]',
+              blocked && 'lg:min-h-[32rem]',
+              !reserved && !blocked && 'min-h-[28rem] sm:min-h-[32rem]',
+            )}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {reserved ? (
+                <motion.div
+                  key="success"
+                  role="status"
+                  initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduceMotion ? undefined : { opacity: 0, y: -12 }}
+                  transition={{ duration: 0.45, ease: successEase }}
+                  className="flex h-full w-full min-w-0 flex-col items-center justify-center px-5 py-8 text-center sm:min-h-[32rem] sm:px-8 sm:py-10"
+                >
+                  <motion.span
+                    initial={reduceMotion ? false : { scale: 0.55, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.5, ease: successEase, delay: reduceMotion ? 0 : 0.06 }}
+                    className="grid size-14 place-items-center rounded-full bg-emerald-50 text-emerald-700"
+                  >
+                    <CheckCircle2 className="size-7" aria-hidden />
+                  </motion.span>
+                  <motion.h2
+                    initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, ease: successEase, delay: reduceMotion ? 0 : 0.14 }}
+                    className="mt-4 text-lg font-semibold text-zinc-950"
+                  >
+                    {shop === 'locker' && rentalType === 'renewal'
+                      ? 'Renewal received'
+                      : 'Reservation received'}
+                  </motion.h2>
+                  <motion.p
+                    initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.42, ease: successEase, delay: reduceMotion ? 0 : 0.22 }}
+                    className="mt-2 max-w-sm text-sm leading-6 text-zinc-500"
+                  >
+                    {shop === 'locker' && rentalType === 'renewal'
+                      ? 'Thank you. The Council has your locker renewal on file and will confirm by email. Keep your reservation ID.'
+                      : 'Thank you. The Council has this on file and will confirm by email. Keep your reservation ID.'}
+                  </motion.p>
+                  <motion.div
+                    initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, ease: successEase, delay: reduceMotion ? 0 : 0.28 }}
+                    className="mt-5 w-full min-w-0 max-w-sm"
+                  >
+                    <p className="text-[11px] font-semibold tracking-[0.14em] text-zinc-400 uppercase">
+                      Reservation ID
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void copyReservationId()}
+                      className="mt-1.5 inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-xl border border-brand-100 bg-brand-50 px-3 py-2.5 text-sm font-semibold tracking-wide text-brand-800 transition-colors hover:bg-brand-100"
+                    >
+                      <span className="min-w-0 break-all font-mono">{reserved}</span>
+                      {copied ? (
+                        <Check className="size-3.5" aria-hidden />
+                      ) : (
+                        <Copy className="size-3.5" aria-hidden />
+                      )}
+                      <span className="sr-only">{copied ? 'Copied' : 'Copy reservation ID'}</span>
+                    </button>
+                    {mailNotice ? (
+                      <p className="mt-3 text-sm leading-5 text-zinc-500">{mailNotice}</p>
+                    ) : null}
+                  </motion.div>
+                  <motion.div
+                    initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, ease: successEase, delay: reduceMotion ? 0 : 0.36 }}
+                    className="mt-6 flex w-full min-w-0 flex-col gap-3"
+                  >
+                    <Link
+                      to="/portal#tracking"
+                      className="inline-flex h-12 w-full items-center justify-center rounded-full bg-brand-700 px-5 text-[15px] font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+                    >
+                      Track reservation
+                    </Link>
+                    {shop === 'merch' ? (
+                      <button
+                        type="button"
+                        className="inline-flex h-12 w-full items-center justify-center rounded-full border border-zinc-200 bg-white px-5 text-[15px] font-semibold text-zinc-800 transition-colors hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+                        onClick={resetForm}
+                      >
+                        Reserve another
+                      </button>
+                    ) : (
+                      <Link
+                        to={shopCatalogPath(shop)}
+                        className="inline-flex h-12 w-full items-center justify-center rounded-full border border-zinc-200 bg-white px-5 text-[15px] font-semibold text-zinc-800 transition-colors hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+                      >
+                        Back to lockers
+                      </Link>
+                    )}
+                  </motion.div>
+                </motion.div>
+              ) : blocked ? (
+                <motion.div
+                  key="unavailable"
+                  role="status"
+                  initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduceMotion ? undefined : { opacity: 0, y: -12 }}
+                  transition={{ duration: 0.45, ease: successEase }}
+                  className="flex h-full w-full min-w-0 flex-col items-center justify-center px-5 py-8 text-center lg:min-h-[32rem] sm:px-8 sm:py-10"
+                >
+                  <span className="grid size-14 place-items-center rounded-full bg-zinc-100 text-zinc-700">
+                    {item.availability === 'out' ? (
+                      <Ban className="size-7" aria-hidden />
+                    ) : (
+                      <Bookmark className="size-7" aria-hidden />
+                    )}
+                  </span>
+                  <h2 className="mt-4 text-lg font-semibold text-zinc-950">
+                    {shop === 'locker'
+                      ? item.availability === 'out'
+                        ? 'This locker is unavailable'
+                        : 'This locker is reserved'
+                      : item.availability === 'out'
+                        ? 'This item is out of stock'
+                        : 'This item is reserved'}
+                  </h2>
+                  <p className="mt-2 max-w-sm text-sm leading-6 text-zinc-500">
+                    {lockerTaken
+                      ? lockerTakenMessage
+                      : shop === 'locker'
+                        ? 'This locker cannot be reserved right now. Choose another from the catalog.'
+                        : item.availability === 'out'
+                          ? 'This item is out of stock. Choose another from the catalog.'
+                          : 'This item already has an active reservation.'}
+                  </p>
+                  <Link
+                    to={shopCatalogPath(shop)}
+                    className="mt-6 inline-flex h-12 w-full max-w-sm items-center justify-center rounded-full bg-brand-700 px-5 text-[15px] font-semibold text-white transition-colors hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+                  >
+                    {shop === 'locker' ? 'Back to lockers' : 'Back to merch'}
+                  </Link>
+                </motion.div>
+              ) : (
+                <motion.form
+                  key="form"
+                  onSubmit={(event) => void onSubmit(event)}
+                  noValidate
+                  initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduceMotion ? undefined : { opacity: 0, y: -10 }}
+                  transition={{ duration: 0.38, ease: successEase }}
+                  className="h-full p-4 sm:p-6"
+                >
+            <div>
                 <h2 className="inline-flex items-center gap-2 text-base font-semibold text-zinc-950">
                   <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700">
                     <Bookmark className="size-3.5" aria-hidden />
@@ -516,22 +823,58 @@ export default function Reservation() {
                   Reservation details
                 </h2>
                 <p className="mt-1 text-sm text-zinc-500">The Council confirms this by email. No payment is taken here.</p>
-              </div>
-              {reserved ? (
-                <div className="max-w-sm text-sm text-zinc-600">
-                  <p>
-                    Reservation ID{' '}
-                    <span className="font-semibold tracking-wide text-brand-800">{reserved}</span>.{' '}
-                    <Link to="/portal#tracking" className="font-semibold text-brand-700">
-                      Track it
-                    </Link>
-                  </p>
-                  {mailNotice ? (
-                    <p className="mt-1.5 text-[13px] leading-5 text-zinc-500">{mailNotice}</p>
-                  ) : null}
-                </div>
-              ) : null}
             </div>
+
+            {shop === 'locker' ? (
+              <div className="mt-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                  Transaction
+                </p>
+                <div
+                  role="radiogroup"
+                  aria-label="Rental type"
+                  className="mt-2 grid grid-cols-2 gap-2"
+                >
+                  {(
+                    [
+                      { value: 'new' as const, label: 'New rental' },
+                      { value: 'renewal' as const, label: 'Renewal' },
+                    ] as const
+                  ).map((option) => {
+                    const selected = rentalType === option.value
+                    const locked = lockerHeld && option.value === 'new'
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        disabled={locked}
+                        onClick={() => setRentalType(option.value)}
+                        className={cn(
+                          'inline-flex h-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition-colors',
+                          selected
+                            ? 'bg-brand-700 text-white'
+                            : 'border border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100',
+                          locked && 'cursor-not-allowed opacity-45 hover:bg-zinc-50',
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                {lockerHeld ? (
+                  <p className="mt-2 text-sm leading-5 text-zinc-500">
+                    This locker is reserved. Submit a renewal with the same email or student ID used before.
+                  </p>
+                ) : rentalType === 'renewal' ? (
+                  <p className="mt-2 text-sm leading-5 text-zinc-500">
+                    Renewal is for students who already hold this locker. The renewal fee applies.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <Field label="Full name" icon={CircleUser} htmlFor={`${formId}-name`} error={errors.name}>
@@ -559,7 +902,8 @@ export default function Reservation() {
                   aria-describedby={errors.email ? `${formId}-email-error` : undefined}
                   onChange={(event) => {
                     setEmail(event.target.value)
-                    setErrors((current) => ({ ...current, email: undefined }))
+                    setExistingCode(null)
+                    setErrors((current) => ({ ...current, email: undefined, form: undefined }))
                   }}
                   placeholder="name@example.com"
                   className={fieldClass}
@@ -591,7 +935,8 @@ export default function Reservation() {
                   aria-describedby={errors.studentId ? `${formId}-student-id-error` : undefined}
                   onChange={(event) => {
                     setStudentId(event.target.value)
-                    setErrors((current) => ({ ...current, studentId: undefined }))
+                    setExistingCode(null)
+                    setErrors((current) => ({ ...current, studentId: undefined, form: undefined }))
                   }}
                   placeholder="Student ID"
                   className={fieldClass}
@@ -637,8 +982,34 @@ export default function Reservation() {
                 />
               </Field>
             </div>
-            {errors.form ? <p className="mt-3 text-xs text-maroon-700">{errors.form}</p> : null}
-            <div className="mt-4 flex flex-col gap-3 border-t border-zinc-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-4 border-t border-zinc-100 pt-4">
+              <AnimatePresence initial={false}>
+                {errors.form ? (
+                  <motion.div
+                    key="submit-error"
+                    role="alert"
+                    initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+                    transition={{ duration: 0.28, ease: successEase }}
+                    className="mb-3 flex items-start gap-2.5 rounded-xl border border-maroon-200 bg-maroon-50 px-3.5 py-3 text-sm leading-5 text-maroon-800"
+                  >
+                    <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                    <div className="min-w-0">
+                      <p>{errors.form}</p>
+                      {existingCode ? (
+                        <Link
+                          to="/portal#tracking"
+                          className="mt-1.5 inline-flex font-semibold text-maroon-900 underline-offset-2 hover:underline"
+                        >
+                          Track {existingCode}
+                        </Link>
+                      ) : null}
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="inline-flex items-center gap-2 text-sm text-zinc-500">
                 <span className="flex size-6 items-center justify-center rounded-md bg-brand-50 text-brand-700">
                   <Wallet className="size-3.5" aria-hidden />
@@ -647,22 +1018,31 @@ export default function Reservation() {
               </p>
               <button
                 type="submit"
-                disabled={submitting || Boolean(item.availability)}
+                disabled={submitting || item.availability === 'out'}
                 aria-busy={submitting}
                 className={cn(
                   'inline-flex h-10 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition-colors sm:h-12 sm:w-auto',
-                  item.availability
+                  item.availability === 'out'
                     ? 'cursor-not-allowed bg-zinc-200 text-zinc-500'
                     : 'bg-brand-700 text-white hover:bg-brand-800 disabled:cursor-wait disabled:opacity-80',
                 )}
               >
                 {submitting ? <Loader2 className="size-4 animate-spin" strokeWidth={2.25} aria-hidden /> : null}
-                {submitting ? 'Submitting…' : 'Submit reservation'}
+                {submitting
+                  ? 'Submitting…'
+                  : shop === 'locker' && rentalType === 'renewal'
+                    ? 'Submit renewal'
+                    : 'Submit reservation'}
               </button>
+              </div>
             </div>
-          </form>
+                </motion.form>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
+      <Snackbar toast={snack} onDismiss={dismissSnack} />
     </main>
   )
 }
