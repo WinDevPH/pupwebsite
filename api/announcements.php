@@ -133,14 +133,22 @@ function announcements_payload(): array
     }
 
     if ($dateRaw === '') {
-        $publishedAt = strtotime(date('Y-m-d') . ' 00:00:00');
+        $publishedAt = time();
     } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateRaw) === 1) {
-        $publishedAt = strtotime($dateRaw . ' 00:00:00');
+        // Date-only legacy payloads keep noon Manila so the calendar day is stable.
+        $publishedAt = strtotime($dateRaw . ' 12:00:00');
+    } elseif (preg_match('/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?$/', $dateRaw) === 1) {
+        // datetime-local / MySQL wall time — already Asia/Manila in this API.
+        $normalized = str_replace('T', ' ', $dateRaw);
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $normalized) === 1) {
+            $normalized .= ':00';
+        }
+        $publishedAt = strtotime($normalized);
     } else {
         $publishedAt = strtotime($dateRaw);
     }
     if ($publishedAt === false) {
-        api_json(['ok' => false, 'error' => 'Enter a valid publish date.'], 422);
+        api_json(['ok' => false, 'error' => 'Enter a valid publish date and time.'], 422);
     }
 
     return [
@@ -153,7 +161,7 @@ function announcements_payload(): array
         'link_url' => $link !== '' ? $link : null,
         'is_external' => $external ? 1 : 0,
         'source' => $source !== '' ? $source : null,
-        'published_at' => date('Y-m-d 00:00:00', $publishedAt),
+        'published_at' => date('Y-m-d H:i:s', $publishedAt),
         'is_published' => $published ? 1 : 0,
     ];
 }

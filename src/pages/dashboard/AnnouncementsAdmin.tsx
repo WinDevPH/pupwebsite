@@ -73,7 +73,7 @@ import {
   type AnnouncementKind,
   type AnnouncementRecord,
 } from '@/lib/announcements-api'
-import { formatPhDate } from '@/lib/datetime'
+import { formatPhDateTime } from '@/lib/datetime'
 import { cn } from '@/lib/utils'
 import { ConfirmDeleteDialog } from '@/components/portal/ConfirmDeleteDialog'
 
@@ -695,7 +695,7 @@ export default function AnnouncementsAdmin() {
                               /{item.slug}
                             </td>
                             <td className="whitespace-nowrap px-1.5 py-2 font-mono text-[11px] tabular-nums text-zinc-600 sm:px-2 dark:text-zinc-400">
-                              {formatPhDate(item.date)}
+                              {formatPhDateTime(item.date)}
                             </td>
                             <td className="whitespace-nowrap px-1.5 py-2 sm:px-2">
                               <StatusBadge published={item.published} />
@@ -835,7 +835,7 @@ export default function AnnouncementsAdmin() {
                                   Published
                                 </p>
                                 <p className="mt-0.5 truncate font-mono text-[11px] tabular-nums text-zinc-700 dark:text-zinc-300">
-                                  {formatPhDate(item.date)}
+                                  {formatPhDateTime(item.date)}
                                 </p>
                               </div>
                               <div className="min-w-0 rounded-xl border border-zinc-200/70 bg-white px-2.5 py-2 dark:border-zinc-800 dark:bg-zinc-950">
@@ -977,7 +977,7 @@ function AnnouncementDetailsModal({
               </h2>
               <p className="mt-2 flex items-center gap-1.5 text-[14px] text-zinc-600 dark:text-zinc-300">
                 <Clock className="size-3.5 shrink-0 text-brand-700 dark:text-brand-300" aria-hidden />
-                {formatPhDate(item.date)}
+                {formatPhDateTime(item.date)}
               </p>
             </div>
           </div>

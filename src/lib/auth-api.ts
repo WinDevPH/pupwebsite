@@ -11,6 +11,7 @@ export type AuthUser = {
 }
 
 const AUTH_USER_KEY = 'pup-col-sc-user'
+const AUTH_REMEMBER_KEY = 'pup-col-sc-remember'
 export const AUTH_USER_EVENT = 'pup-auth-user'
 
 export function isManagerRole(role: string | null | undefined) {
@@ -18,10 +19,9 @@ export function isManagerRole(role: string | null | undefined) {
   return normalized === 'admin' || normalized === 'officer'
 }
 
-export function readStoredAuthUser(): AuthUser | null {
+function parseStoredAuthUser(raw: string | null): AuthUser | null {
+  if (!raw) return null
   try {
-    const raw = sessionStorage.getItem(AUTH_USER_KEY)
-    if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<AuthUser>
     if (!parsed || typeof parsed.email !== 'string' || typeof parsed.fullName !== 'string') {
       return null
@@ -44,12 +44,55 @@ export function readStoredAuthUser(): AuthUser | null {
   }
 }
 
-export function writeStoredAuthUser(user: AuthUser) {
+export function readAuthRememberPref(): boolean {
   try {
-    sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(user))
+    const raw = localStorage.getItem(AUTH_REMEMBER_KEY)
+    if (raw === '0') return false
+    if (raw === '1') return true
   } catch {
     /* ignore */
   }
+  // Prefer durable cache if present (older sessions before this flag existed).
+  try {
+    if (localStorage.getItem(AUTH_USER_KEY)) return true
+  } catch {
+    /* ignore */
+  }
+  return false
+}
+
+export function readStoredAuthUser(): AuthUser | null {
+  try {
+    const remember = readAuthRememberPref()
+    if (remember) {
+      const fromLocal = parseStoredAuthUser(localStorage.getItem(AUTH_USER_KEY))
+      if (fromLocal) return fromLocal
+    }
+    return parseStoredAuthUser(sessionStorage.getItem(AUTH_USER_KEY))
+  } catch {
+    return null
+  }
+}
+
+export function writeStoredAuthUser(user: AuthUser, remember = readAuthRememberPref()) {
+  try {
+    localStorage.setItem(AUTH_REMEMBER_KEY, remember ? '1' : '0')
+  } catch {
+    /* ignore */
+  }
+
+  try {
+    if (remember) {
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user))
+      sessionStorage.removeItem(AUTH_USER_KEY)
+    } else {
+      sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(user))
+      localStorage.removeItem(AUTH_USER_KEY)
+    }
+  } catch {
+    /* ignore */
+  }
+
   try {
     window.dispatchEvent(new CustomEvent(AUTH_USER_EVENT, { detail: user }))
   } catch {
@@ -70,11 +113,17 @@ export function patchStoredAuthUser(patch: Partial<AuthUser>) {
           ? patch.avatarUrl.trim()
           : null,
   }
-  writeStoredAuthUser(next)
+  writeStoredAuthUser(next, readAuthRememberPref())
   return next
 }
 
 export function clearStoredAuthUser() {
+  try {
+    localStorage.removeItem(AUTH_USER_KEY)
+    localStorage.removeItem(AUTH_REMEMBER_KEY)
+  } catch {
+    /* ignore */
+  }
   try {
     sessionStorage.removeItem(AUTH_USER_KEY)
   } catch {
@@ -147,7 +196,7 @@ export async function loginRequest(input: {
   password: string
   remember: boolean
 }) {
-  return request<{ user: AuthUser }>('/api/login.php', {
+  return request<{ user: AuthUser; remember?: boolean }>('/api/login.php', {
     method: 'POST',
     body: JSON.stringify(input),
   })
@@ -158,5 +207,5 @@ export async function logoutRequest() {
 }
 
 export async function meRequest() {
-  return request<{ user: AuthUser }>('/api/me.php')
+  return request<{ user: AuthUser; remember?: boolean }>('/api/me.php')
 }

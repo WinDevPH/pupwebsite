@@ -63,29 +63,8 @@ function shop_ensure_tables(PDO $pdo): void
          WHERE shop = 'merch'
            AND item_key IN ('college-shirt', 'college-polo', 'lanyard')"
     );
-    try {
-        $pdo->exec(
-            "UPDATE shop_items i
-             LEFT JOIN shop_reservations r
-               ON r.shop = 'locker'
-              AND LOWER(r.status) <> 'cancelled'
-              AND (
-                    (r.shop_item_id IS NOT NULL AND r.shop_item_id = i.id)
-                 OR (r.item_key <> '' AND LOWER(r.item_key) = LOWER(i.item_key))
-              )
-             SET i.availability = NULL
-             WHERE i.shop = 'locker'
-               AND i.availability IN ('reserved', 'out')
-               AND r.id IS NULL"
-        );
-    } catch (Throwable) {
-        $pdo->exec(
-            "UPDATE shop_items
-             SET availability = NULL
-             WHERE shop = 'locker'
-               AND availability IN ('reserved', 'out')"
-        );
-    }
+    // Keep admin-set locker availability (reserved / unavailable). Occupancy from
+    // active reservations is applied on read in shop_apply_occupancy().
     $ready = true;
 }
 
@@ -128,11 +107,20 @@ function shop_apply_occupancy(array $item, array $occupied): array
     if (($item['shop'] ?? '') !== 'locker') {
         return $item;
     }
+    $current = $item['availability'] ?? null;
+    // Manual unavailable always disables the bay (no new rental or renewal).
+    if ($current === 'out') {
+        return $item;
+    }
     $id = (int) ($item['id'] ?? 0);
     $key = strtolower(trim((string) ($item['itemKey'] ?? $item['key'] ?? '')));
     $taken = ($id > 0 && isset($occupied['ids'][$id]))
         || ($key !== '' && isset($occupied['keys'][$key]));
-    $item['availability'] = $taken ? 'reserved' : null;
+    if ($taken || $current === 'reserved') {
+        $item['availability'] = 'reserved';
+        return $item;
+    }
+    $item['availability'] = null;
     return $item;
 }
 

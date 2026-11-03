@@ -14,7 +14,12 @@ import { Button } from '@/components/ui/button'
 import { Snackbar, type SnackToast, type SnackVariant } from '@/components/ui/Snackbar'
 import { siteName } from '@/components/layout/nav-data'
 import { setPageScrollLocked } from '@/hooks/useLenis'
-import { isManagerRole, loginRequest, writeStoredAuthUser } from '@/lib/auth-api'
+import {
+  isManagerRole,
+  loginRequest,
+  meRequest,
+  writeStoredAuthUser,
+} from '@/lib/auth-api'
 import { cn } from '@/lib/utils'
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -235,6 +240,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const [submitting, setSubmitting] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(true)
   const [lockSeconds, setLockSeconds] = useState(0)
   const [lockTotal, setLockTotal] = useState(0)
   const [lockDialogOpen, setLockDialogOpen] = useState(false)
@@ -243,6 +249,11 @@ export default function Login() {
   const snackId = useRef(0)
 
   const locked = lockSeconds > 0
+
+  function safeNextPath() {
+    const nextRaw = searchParams.get('next')
+    return nextRaw && nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/admin'
+  }
 
   function dismissSnack() {
     if (snackTimer.current) window.clearTimeout(snackTimer.current)
@@ -269,6 +280,26 @@ export default function Login() {
       if (snackTimer.current) window.clearTimeout(snackTimer.current)
     }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const nextRaw = searchParams.get('next')
+    const next =
+      nextRaw && nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/admin'
+
+    void meRequest().then((result) => {
+      if (cancelled) return
+      if (result.ok && isManagerRole(result.data.user.role)) {
+        writeStoredAuthUser(result.data.user, result.data.remember ?? true)
+        navigate(next, { replace: true })
+        return
+      }
+      setCheckingSession(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [navigate, searchParams])
 
   useEffect(() => {
     if (!locked) {
@@ -330,16 +361,14 @@ export default function Login() {
       return
     }
 
-    writeStoredAuthUser(result.data.user)
+    writeStoredAuthUser(result.data.user, result.data.remember ?? remember)
 
     if (!isManagerRole(result.data.user.role)) {
       showSnackbar('This account cannot access the admin portal. Use an admin or officer account.', 'error')
       return
     }
 
-    const nextRaw = searchParams.get('next')
-    const next =
-      nextRaw && nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/admin'
+    const next = safeNextPath()
 
     showSnackbar(`Welcome, ${result.data.user.fullName}.`, 'success')
     window.setTimeout(() => {
@@ -348,6 +377,20 @@ export default function Login() {
   }
 
   const lockProgressValue = lockProgress(lockSeconds, lockTotal || lockSeconds)
+
+  if (checkingSession) {
+    return (
+      <main
+        id="main-content"
+        className="relative isolate flex min-h-[calc(100dvh-8.5rem)] items-center justify-center bg-white px-4 py-10 sm:px-6 dark:bg-zinc-950"
+      >
+        <div className="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 dark:text-zinc-400">
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+          Checking sign-in…
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main

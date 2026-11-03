@@ -379,27 +379,98 @@ function api_read_json(): array
     return is_array($data) ? $data : [];
 }
 
-function api_start_session(bool $remember = false): void
+/**
+ * Persistent “Keep me signed in” cookie lifetime in seconds.
+ * Browser-session logins use lifetime 0 (cleared when the browser closes).
+ */
+function api_session_lifetime_seconds(bool $remember = true): int
 {
-    if (session_status() === PHP_SESSION_ACTIVE) {
+    if (!$remember) {
+        return 0;
+    }
+    $config = api_config();
+    $days = (int) ($config['remember_lifetime_days'] ?? 365);
+    if ($days <= 0) {
+        $hours = (int) ($config['session_lifetime_hours'] ?? 24 * 365);
+        return max(86400, $hours * 3600);
+    }
+    return max(86400, $days * 86400);
+}
+
+function api_refresh_session_cookie(int $lifetime): void
+{
+    if (session_status() !== PHP_SESSION_ACTIVE || !session_id()) {
         return;
     }
-
-    $config = api_config();
-    $name = (string) ($config['session_name'] ?? 'pup_col_sc_session');
-    $hours = (int) ($config['session_lifetime_hours'] ?? 12);
-    $days = (int) ($config['remember_lifetime_days'] ?? 30);
-    $lifetime = $remember ? $days * 86400 : $hours * 3600;
-
-    session_name($name);
-    session_set_cookie_params([
-        'lifetime' => $lifetime,
-        'path' => '/',
-        'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
-        'httponly' => true,
-        'samesite' => 'Lax',
+    $params = session_get_cookie_params();
+    setcookie(session_name(), session_id(), [
+        // 0 = session cookie (ends when the browser closes).
+        'expires' => $lifetime > 0 ? time() + $lifetime : 0,
+        'path' => $params['path'] ?: '/',
+        'domain' => $params['domain'] ?? '',
+        'secure' => (bool) $params['secure'],
+        'httponly' => (bool) $params['httponly'],
+        'samesite' => $params['samesite'] ?? 'Lax',
     ]);
-    session_start();
+}
+
+/** Extend DB session row for remembered logins (sliding expiry). */
+function api_touch_auth_session(): void
+{
+    $token = $_SESSION['session_token'] ?? null;
+    if (!is_string($token) || $token === '') {
+        return;
+    }
+    // Browser-session logins are not extended past the open browser.
+    if (empty($_SESSION['remember'])) {
+        return;
+    }
+    $days = max(1, (int) (api_config()['remember_lifetime_days'] ?? 365));
+    try {
+        $stmt = api_pdo()->prepare(
+            'UPDATE auth_sessions
+             SET expires_at = DATE_ADD(NOW(), INTERVAL :days DAY)
+             WHERE id = :id'
+        );
+        $stmt->execute(['days' => $days, 'id' => $token]);
+    } catch (Throwable) {
+        // Cookie session remains valid even if the audit row cannot be updated.
+    }
+}
+
+/**
+ * @param bool|null $remember Explicit choice on login; otherwise reuse $_SESSION['remember'].
+ */
+function api_start_session(?bool $remember = null): void
+{
+    // Keep PHP GC above idle browser use so unchecked sessions are not wiped mid-day.
+    $persistSeconds = api_session_lifetime_seconds(true);
+    ini_set('session.gc_maxlifetime', (string) $persistSeconds);
+
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        $config = api_config();
+        $name = (string) ($config['session_name'] ?? 'pup_col_sc_session');
+        // Cookie params are finalized after start once we know remember.
+        $cookieLifetime = $remember === null ? 0 : api_session_lifetime_seconds($remember);
+        session_name($name);
+        session_set_cookie_params([
+            'lifetime' => $cookieLifetime,
+            'path' => '/',
+            'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+        session_start();
+    }
+
+    if ($remember !== null) {
+        $_SESSION['remember'] = $remember ? 1 : 0;
+    }
+
+    $isRemember = $remember ?? !empty($_SESSION['remember']);
+    if (!empty($_SESSION['user_id'])) {
+        api_refresh_session_cookie(api_session_lifetime_seconds((bool) $isRemember));
+    }
 }
 
 function api_ensure_users_avatar_column(?PDO $pdo = null): void
@@ -458,6 +529,7 @@ function api_current_user(): ?array
         return null;
     }
 
+    api_touch_auth_session();
     return $user;
 }
 

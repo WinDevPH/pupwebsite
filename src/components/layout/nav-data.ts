@@ -180,7 +180,7 @@ export const footerColumns = [
 
 export const primaryCta: NavLinkItem = {
   label: 'Admin Panel',
-  to: '/login',
+  to: '/admin',
 }
 
 export const portalCta: NavLinkItem = {

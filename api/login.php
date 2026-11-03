@@ -103,17 +103,17 @@ try {
 api_start_session($remember);
 session_regenerate_id(true);
 $_SESSION['user_id'] = (int) $user['id'];
-$_SESSION['remember'] = $remember;
+$_SESSION['remember'] = $remember ? 1 : 0;
 
 $update = api_pdo()->prepare('UPDATE users SET last_login_at = NOW() WHERE id = :id');
 $update->execute(['id' => (int) $user['id']]);
 
 $token = bin2hex(random_bytes(32));
-$hours = (int) (api_config()['session_lifetime_hours'] ?? 12);
-$days = (int) (api_config()['remember_lifetime_days'] ?? 30);
+$days = max(1, (int) (api_config()['remember_lifetime_days'] ?? 365));
+// Remembered: long-lived. Browser-session: soft 1-day row; cookie dies when the browser closes.
 $expiresSql = $remember
-    ? sprintf('DATE_ADD(NOW(), INTERVAL %d DAY)', max(1, $days))
-    : sprintf('DATE_ADD(NOW(), INTERVAL %d HOUR)', max(1, $hours));
+    ? sprintf('DATE_ADD(NOW(), INTERVAL %d DAY)', $days)
+    : 'DATE_ADD(NOW(), INTERVAL 1 DAY)';
 
 $sessionInsert = api_pdo()->prepare(
     "INSERT INTO auth_sessions (id, user_id, remember, ip_address, user_agent, expires_at)
@@ -128,8 +128,10 @@ $sessionInsert->execute([
 ]);
 
 $_SESSION['session_token'] = $token;
+api_refresh_session_cookie(api_session_lifetime_seconds($remember));
 
 api_json([
     'ok' => true,
     'user' => api_public_user($user),
+    'remember' => $remember,
 ]);

@@ -54,7 +54,7 @@ export function PortalShell() {
         setAuthState('denied')
         return
       }
-      writeStoredAuthUser(result.data.user)
+      writeStoredAuthUser(result.data.user, result.data.remember ?? true)
       setUser(result.data.user)
       setAuthState('ok')
     })

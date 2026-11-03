@@ -594,6 +594,12 @@ export default function MerchFormPage() {
                             set('availability', value as FormState['availability'])
                           }
                         />
+                        {isLocker ? (
+                          <p className="mt-1.5 text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
+                            Available keeps the bay open. Reserved holds it for renewal. Unavailable
+                            disables the locker on the public grid.
+                          </p>
+                        ) : null}
                       </Field>
                       <Field label="Item key" optional>
                         <input

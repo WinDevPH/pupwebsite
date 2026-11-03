@@ -61,6 +61,7 @@ import {
   type AnnouncementKind,
   type AnnouncementRecord,
 } from '@/lib/announcements-api'
+import { parseApiDate, PH_TIMEZONE } from '@/lib/datetime'
 
 type EditorTab = 'content' | 'details' | 'media' | 'publish'
 
@@ -106,14 +107,25 @@ const emptyForm = (): FormState => ({
   href: '',
   external: false,
   source: '',
-  date: toLocalDateInput(new Date()),
+  date: toLocalDateTimeInput(new Date()),
   published: true,
 })
 
-function toLocalDateInput(date: Date) {
+function toLocalDateTimeInput(value: string | Date | null | undefined) {
+  const date = value instanceof Date ? value : parseApiDate(value ?? null) ?? new Date()
   if (Number.isNaN(date.getTime())) return ''
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: PH_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date)
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? '00'
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`
 }
 
 function recordToForm(item: AnnouncementRecord): FormState {
@@ -127,7 +139,7 @@ function recordToForm(item: AnnouncementRecord): FormState {
     href: item.external || item.href.startsWith('http') ? item.href : '',
     external: item.external,
     source: item.source ?? '',
-    date: toLocalDateInput(new Date(item.date)),
+    date: toLocalDateTimeInput(item.date),
     published: item.published,
   }
 }
@@ -147,7 +159,7 @@ function formToInput(form: FormState, id?: number): AnnouncementInput & { id?: n
     href: form.href.trim() || null,
     external: form.external,
     source: form.source.trim() || null,
-    date: form.date.trim() || toLocalDateInput(new Date()),
+    date: form.date.trim() || toLocalDateTimeInput(new Date()),
     published: form.published,
   }
 }
@@ -264,7 +276,7 @@ export default function AnnouncementFormPage() {
     }
     if (!form.date.trim()) {
       setTab('details')
-      showToast('Publish date is required.', 'error')
+      showToast('Publish date and time are required.', 'error')
       return
     }
     if (!form.image.trim()) {
@@ -494,9 +506,9 @@ export default function AnnouncementFormPage() {
                           onChange={(value) => set('kind', value as AnnouncementKind)}
                         />
                       </Field>
-                      <Field label="Publish date" required>
+                      <Field label="Publish date & time" required>
                         <input
-                          type="date"
+                          type="datetime-local"
                           value={form.date}
                           onChange={(e) => set('date', e.target.value)}
                           className={catalogInput}

@@ -20,8 +20,9 @@ return [
         'https://www.pupcolsc.com',
     ],
     'session_name' => 'pup_col_sc_session',
-    'session_lifetime_hours' => 12,
-    'remember_lifetime_days' => 30,
+    // Persist until explicit logout (cookie + PHP GC + auth_sessions row).
+    'session_lifetime_hours' => 24 * 365,
+    'remember_lifetime_days' => 365,
     'rate_limit' => [
         'max_attempts' => 5,
         'window_minutes' => 15,

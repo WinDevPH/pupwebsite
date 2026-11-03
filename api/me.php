@@ -23,4 +23,5 @@ if (!$user) {
 api_json([
     'ok' => true,
     'user' => api_public_user($user),
+    'remember' => !empty($_SESSION['remember']),
 ]);
