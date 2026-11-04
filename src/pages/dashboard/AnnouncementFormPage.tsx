@@ -61,7 +61,6 @@ import {
   type AnnouncementKind,
   type AnnouncementRecord,
 } from '@/lib/announcements-api'
-import { parseApiDate, PH_TIMEZONE } from '@/lib/datetime'
 
 type EditorTab = 'content' | 'details' | 'media' | 'publish'
 
@@ -93,7 +92,6 @@ type FormState = {
   href: string
   external: boolean
   source: string
-  date: string
   published: boolean
 }
 
@@ -107,26 +105,8 @@ const emptyForm = (): FormState => ({
   href: '',
   external: false,
   source: '',
-  date: toLocalDateTimeInput(new Date()),
   published: true,
 })
-
-function toLocalDateTimeInput(value: string | Date | null | undefined) {
-  const date = value instanceof Date ? value : parseApiDate(value ?? null) ?? new Date()
-  if (Number.isNaN(date.getTime())) return ''
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: PH_TIMEZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).formatToParts(date)
-  const get = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((part) => part.type === type)?.value ?? '00'
-  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`
-}
 
 function recordToForm(item: AnnouncementRecord): FormState {
   return {
@@ -139,7 +119,6 @@ function recordToForm(item: AnnouncementRecord): FormState {
     href: item.external || item.href.startsWith('http') ? item.href : '',
     external: item.external,
     source: item.source ?? '',
-    date: toLocalDateTimeInput(item.date),
     published: item.published,
   }
 }
@@ -159,7 +138,6 @@ function formToInput(form: FormState, id?: number): AnnouncementInput & { id?: n
     href: form.href.trim() || null,
     external: form.external,
     source: form.source.trim() || null,
-    date: form.date.trim() || toLocalDateTimeInput(new Date()),
     published: form.published,
   }
 }
@@ -242,7 +220,7 @@ export default function AnnouncementFormPage() {
 
   const tabAlert = {
     content: !form.title.trim() || !form.summary.trim(),
-    details: !form.date.trim(),
+    details: false,
     media: !form.image.trim(),
     publish: false,
   } as const
@@ -272,11 +250,6 @@ export default function AnnouncementFormPage() {
     if (!form.title.trim() || !form.summary.trim()) {
       setTab('content')
       showToast('Title and summary are required.', 'error')
-      return
-    }
-    if (!form.date.trim()) {
-      setTab('details')
-      showToast('Publish date and time are required.', 'error')
       return
     }
     if (!form.image.trim()) {
@@ -314,7 +287,6 @@ export default function AnnouncementFormPage() {
     !loading &&
     form.title.trim() !== '' &&
     form.summary.trim() !== '' &&
-    form.date.trim() !== '' &&
     form.image.trim() !== ''
 
   if (loading) {
@@ -488,7 +460,8 @@ export default function AnnouncementFormPage() {
                       <div className="min-w-0">
                         <h4 className={formSectionHeadingCls}>Details</h4>
                         <p className={formSectionIntroCls}>
-                          Type, date, and URL slug for bulletin filtering and deep links.
+                          Type and URL slug for bulletin filtering and deep links. Posted time is
+                          captured automatically when you save.
                         </p>
                       </div>
                     </div>
@@ -506,16 +479,7 @@ export default function AnnouncementFormPage() {
                           onChange={(value) => set('kind', value as AnnouncementKind)}
                         />
                       </Field>
-                      <Field label="Publish date & time" required>
-                        <input
-                          type="datetime-local"
-                          value={form.date}
-                          onChange={(e) => set('date', e.target.value)}
-                          className={catalogInput}
-                          disabled={saving || uploading}
-                        />
-                      </Field>
-                      <div className="sm:col-span-2">
+                      <div>
                         <Field label="Slug" optional>
                           <input
                             value={form.slug}

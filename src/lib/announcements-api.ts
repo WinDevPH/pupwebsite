@@ -83,7 +83,8 @@ export type AnnouncementInput = {
   href?: string | null
   external?: boolean
   source?: string | null
-  date: string
+  /** Optional; server stamps posted time on create. */
+  date?: string
   published?: boolean
 }
 

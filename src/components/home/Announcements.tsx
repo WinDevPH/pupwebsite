@@ -45,13 +45,19 @@ const filters = [
 
 type FilterId = (typeof filters)[number]['id']
 
+function postedAt(item: AnnouncementRecord) {
+  // Legacy midnight stamps — prefer createdAt for the real submit time.
+  if (/T00:00:00/.test(item.date) && item.createdAt) return item.createdAt
+  return item.date
+}
+
 export function mapAnnouncementRecord(item: AnnouncementRecord): Announcement {
   return {
     id: item.slug,
     kind: item.kind,
     title: item.title,
     summary: item.summary,
-    date: item.date,
+    date: postedAt(item),
     image: item.image,
     href: item.href,
     external: item.external,

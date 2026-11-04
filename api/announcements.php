@@ -20,6 +20,20 @@ try {
     api_json_db_error($error);
 }
 
+function announcements_posted_at(array $row): string
+{
+    $publishedAt = trim((string) ($row['published_at'] ?? ''));
+    $createdAt = trim((string) ($row['created_at'] ?? ''));
+    // Legacy date-only saves were stored as midnight — prefer created_at for real wall time.
+    if (
+        $createdAt !== ''
+        && preg_match('/^\d{4}-\d{2}-\d{2}(?:[ T]00:00:00)?$/', $publishedAt) === 1
+    ) {
+        return $createdAt;
+    }
+    return $publishedAt !== '' ? $publishedAt : $createdAt;
+}
+
 function announcements_row(array $row): array
 {
     $slug = (string) $row['slug'];
@@ -39,7 +53,7 @@ function announcements_row(array $row): array
         'href' => $link,
         'external' => $external,
         'source' => $row['source'] !== null ? (string) $row['source'] : null,
-        'date' => api_iso((string) $row['published_at']),
+        'date' => api_iso(announcements_posted_at($row)),
         'published' => (int) $row['is_published'] === 1,
         'createdAt' => api_iso((string) $row['created_at']),
         'updatedAt' => api_iso((string) $row['updated_at']),
@@ -111,7 +125,6 @@ function announcements_payload(): array
     $published = array_key_exists('published', $body)
         ? (bool) $body['published']
         : (array_key_exists('isPublished', $body) ? (bool) $body['isPublished'] : true);
-    $dateRaw = trim((string) ($body['date'] ?? $body['publishedAt'] ?? ''));
 
     if ($title === '') {
         api_json(['ok' => false, 'error' => 'Title is required.'], 422);
@@ -132,25 +145,6 @@ function announcements_payload(): array
         $slug = api_slugify($slug);
     }
 
-    if ($dateRaw === '') {
-        $publishedAt = time();
-    } elseif (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateRaw) === 1) {
-        // Date-only legacy payloads keep noon Manila so the calendar day is stable.
-        $publishedAt = strtotime($dateRaw . ' 12:00:00');
-    } elseif (preg_match('/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?$/', $dateRaw) === 1) {
-        // datetime-local / MySQL wall time — already Asia/Manila in this API.
-        $normalized = str_replace('T', ' ', $dateRaw);
-        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $normalized) === 1) {
-            $normalized .= ':00';
-        }
-        $publishedAt = strtotime($normalized);
-    } else {
-        $publishedAt = strtotime($dateRaw);
-    }
-    if ($publishedAt === false) {
-        api_json(['ok' => false, 'error' => 'Enter a valid publish date and time.'], 422);
-    }
-
     return [
         'slug' => $slug,
         'kind' => $kind,
@@ -161,7 +155,8 @@ function announcements_payload(): array
         'link_url' => $link !== '' ? $link : null,
         'is_external' => $external ? 1 : 0,
         'source' => $source !== '' ? $source : null,
-        'published_at' => date('Y-m-d H:i:s', $publishedAt),
+        // Posted time is always captured on the server at submit — no manual date field.
+        'published_at' => api_now(),
         'is_published' => $published ? 1 : 0,
     ];
 }
@@ -211,6 +206,8 @@ function announcements_update(): never
     }
 
     $data = announcements_payload();
+    // Keep original posted time on edits — only create stamps published_at.
+    unset($data['published_at']);
     $data['id'] = $id;
 
     try {
@@ -225,7 +222,6 @@ function announcements_update(): never
                  link_url = :link_url,
                  is_external = :is_external,
                  source = :source,
-                 published_at = :published_at,
                  is_published = :is_published
              WHERE id = :id'
         );
