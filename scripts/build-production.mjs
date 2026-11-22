@@ -50,9 +50,14 @@ for (const bucket of [
   mkdirSync(resolve(release, 'uploads', bucket), { recursive: true })
 }
 mkdirSync(resolve(release, 'storage/requests'), { recursive: true })
+mkdirSync(resolve(release, 'storage/appointments'), { recursive: true })
 if (existsSync(resolve(root, 'storage/.htaccess'))) {
   copyFileSync(resolve(root, 'storage/.htaccess'), resolve(release, 'storage/.htaccess'))
 }
+writeFileSync(
+  resolve(release, 'storage/appointments/.gitkeep'),
+  '# Keep payment proof uploads outside deploys. Do not wipe this folder on Hostinger.\n',
+)
 
 writeFileSync(
   resolve(release, '.htaccess'),

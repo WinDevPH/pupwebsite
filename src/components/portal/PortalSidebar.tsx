@@ -66,18 +66,30 @@ function isMultiGroup(group: (typeof portalNavGroups)[number]) {
   return group.collapsible !== false && group.items.length > 1
 }
 
-type NavAlertFlags = { request: boolean; reservation: boolean; feedback: boolean; chat: number }
+type NavAlertFlags = {
+  request: boolean
+  reservation: boolean
+  feedback: boolean
+  chat: number
+  appointment: number
+  schedule: number
+}
 
 function alertDotForItem(itemId: string, flags: NavAlertFlags) {
   if (itemId === 'requests') return flags.request
   if (itemId === 'reservations') return flags.reservation
   if (itemId === 'feedback') return flags.feedback
   if (itemId === 'chat') return flags.chat > 0
+  if (itemId === 'eh-appointments') return flags.appointment > 0
+  if (itemId === 'eh-schedules') return flags.schedule > 0
   return false
 }
 
 function alertCountForItem(itemId: string, flags: NavAlertFlags) {
-  return itemId === 'chat' && flags.chat > 0 ? flags.chat : 0
+  if (itemId === 'chat' && flags.chat > 0) return flags.chat
+  if (itemId === 'eh-appointments' && flags.appointment > 0) return flags.appointment
+  if (itemId === 'eh-schedules' && flags.schedule > 0) return flags.schedule
+  return 0
 }
 
 function normalizeSearch(value: string) {
@@ -323,15 +335,9 @@ function CollapsibleNavGroup({
           strokeWidth={1.9}
           aria-hidden
         />
-        {groupAlert && !open ? (
-          <span
-            className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-rose-500 ring-2 ring-zinc-50 dark:ring-zinc-950"
-            aria-hidden
-          />
-        ) : null}
       </span>
       <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-      {groupAlert && !open ? (
+      {groupAlert ? (
         <span className="size-2 shrink-0 rounded-full bg-rose-500" aria-label="New alerts" />
       ) : null}
       <ChevronDown
@@ -383,15 +389,18 @@ export function PortalSidebar({
   onLogout,
 }: PortalSidebarProps) {
   const { pathname } = useLocation()
-  const { hasUnread, hasUnreadKind, kindCount } = useNotifications()
+  const { hasUnreadKind, kindCount, unreadKindCount } = useNotifications()
   const alertFlags = useMemo(
     () => ({
       request: hasUnreadKind('request'),
       reservation: hasUnreadKind('reservation'),
       feedback: kindCount('feedback') > 0,
       chat: kindCount('chat'),
+      // Clear once viewed (list, detail, or notifications panel).
+      appointment: unreadKindCount('appointment'),
+      schedule: unreadKindCount('schedule'),
     }),
-    [hasUnreadKind, kindCount],
+    [hasUnreadKind, kindCount, unreadKindCount],
   )
   const [menuOpen, setMenuOpen] = useState(false)
   const [openGroupId, setOpenGroupId] = useState<string | null>(null)
@@ -610,16 +619,6 @@ export function PortalSidebar({
               {siteName.short}
               <span className="text-brand-600 dark:text-brand-400"> SC</span>
             </span>
-            {hasUnread ? (
-              <span
-                className={cn(
-                  'ms-auto size-2 shrink-0 rounded-full bg-rose-500',
-                  desktopCollapsed && 'xl:absolute xl:top-1 xl:right-1 xl:ms-0',
-                )}
-                title="New alerts"
-                aria-label="New alerts"
-              />
-            ) : null}
           </Link>
 
           <button

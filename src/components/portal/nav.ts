@@ -4,6 +4,8 @@ import {
   Bookmark,
   CalendarDays,
   CircleHelp,
+  ClipboardCheck,
+  ClipboardList,
   Compass,
   FileText,
   FolderKanban,
@@ -12,12 +14,14 @@ import {
   ImagePlay,
   Images,
   Landmark,
+  LayoutGrid,
   Library,
   LayoutDashboard,
   Megaphone,
   MessageCircle,
   MessagesSquare,
   Scale,
+  ScrollText,
   Settings2,
   Shirt,
   Target,
@@ -223,6 +227,48 @@ export const portalNavGroups: PortalNavGroup[] = [
     ],
   },
   {
+    id: 'enrollment-hub',
+    heading: 'Enrollment Hub',
+    items: [
+      {
+        id: 'eh-guidelines',
+        label: 'Guidelines',
+        Icon: ClipboardList,
+        to: `${adminBase}/enrollment/guidelines`,
+      },
+      {
+        id: 'eh-routing',
+        label: 'Routing Config',
+        Icon: ScrollText,
+        to: `${adminBase}/enrollment/routing`,
+      },
+      {
+        id: 'eh-batches',
+        label: 'Appointment Batches',
+        Icon: CalendarDays,
+        to: `${adminBase}/enrollment/batches`,
+      },
+      {
+        id: 'eh-appointments',
+        label: 'Appointments',
+        Icon: ClipboardCheck,
+        to: `${adminBase}/enrollment/appointments`,
+      },
+      {
+        id: 'eh-offerings',
+        label: 'Class Offerings',
+        Icon: LayoutGrid,
+        to: `${adminBase}/enrollment/offerings`,
+      },
+      {
+        id: 'eh-schedules',
+        label: 'Class Schedules',
+        Icon: BookOpen,
+        to: `${adminBase}/enrollment/schedules`,
+      },
+    ],
+  },
+  {
     id: 'transparency',
     heading: 'Transparency',
     items: TRANSPARENCY_ARCHIVES.map((item) => ({
@@ -368,6 +414,80 @@ export function breadcrumbsFor(pathname: string): { label: string; to: string }[
   if (pathname.startsWith(`${projectsBase}/`) && pathname.endsWith('/edit')) {
     crumbs.push({ label: 'Projects', to: projectsBase })
     crumbs.push({ label: 'Edit', to: pathname })
+    return crumbs
+  }
+
+  const enrollmentGuides = `${adminBase}/enrollment/guidelines`
+  if (pathname.startsWith(`${enrollmentGuides}/`)) {
+    crumbs.push({ label: 'Guidelines', to: enrollmentGuides })
+    if (pathname.endsWith('/new')) crumbs.push({ label: 'New', to: pathname })
+    else if (pathname.endsWith('/edit')) crumbs.push({ label: 'Edit', to: pathname })
+    return crumbs
+  }
+  const enrollmentRouting = `${adminBase}/enrollment/routing`
+  if (pathname.startsWith(`${enrollmentRouting}/`)) {
+    crumbs.push({ label: 'Routing Config', to: enrollmentRouting })
+    if (pathname.endsWith('/new')) crumbs.push({ label: 'New', to: pathname })
+    else if (pathname.endsWith('/edit')) crumbs.push({ label: 'Edit', to: pathname })
+    return crumbs
+  }
+  const enrollmentBatches = `${adminBase}/enrollment/batches`
+  if (pathname === `${enrollmentBatches}/new`) {
+    crumbs.push({ label: 'Appointment Batches', to: enrollmentBatches })
+    crumbs.push({ label: 'New', to: pathname })
+    return crumbs
+  }
+  if (pathname.startsWith(`${enrollmentBatches}/`) && pathname.endsWith('/edit')) {
+    crumbs.push({ label: 'Appointment Batches', to: enrollmentBatches })
+    crumbs.push({ label: 'Edit', to: pathname })
+    return crumbs
+  }
+  if (pathname.startsWith(`${enrollmentBatches}/`)) {
+    crumbs.push({ label: 'Appointment Batches', to: enrollmentBatches })
+    crumbs.push({ label: 'Students', to: pathname })
+    return crumbs
+  }
+  const enrollmentOfferings = `${adminBase}/enrollment/offerings`
+  if (pathname === `${enrollmentOfferings}/new`) {
+    crumbs.push({ label: 'Class Offerings', to: enrollmentOfferings })
+    crumbs.push({ label: 'New', to: pathname })
+    return crumbs
+  }
+  if (pathname.startsWith(`${enrollmentOfferings}/`) && pathname.endsWith('/edit')) {
+    crumbs.push({ label: 'Class Offerings', to: enrollmentOfferings })
+    crumbs.push({ label: 'Edit', to: pathname })
+    return crumbs
+  }
+  const enrollmentAppointments = `${adminBase}/enrollment/appointments`
+  if (pathname === `${enrollmentAppointments}/new`) {
+    crumbs.push({ label: 'Appointments', to: enrollmentAppointments })
+    crumbs.push({ label: 'New', to: pathname })
+    return crumbs
+  }
+  if (pathname.startsWith(`${enrollmentAppointments}/`) && pathname.endsWith('/edit')) {
+    crumbs.push({ label: 'Appointments', to: enrollmentAppointments })
+    crumbs.push({ label: 'Edit', to: pathname })
+    return crumbs
+  }
+  if (pathname.startsWith(`${enrollmentAppointments}/`) && pathname !== enrollmentAppointments) {
+    crumbs.push({ label: 'Appointments', to: enrollmentAppointments })
+    crumbs.push({ label: 'Details', to: pathname })
+    return crumbs
+  }
+  const enrollmentSchedules = `${adminBase}/enrollment/schedules`
+  if (pathname === `${enrollmentSchedules}/new`) {
+    crumbs.push({ label: 'Class Schedules', to: enrollmentSchedules })
+    crumbs.push({ label: 'New', to: pathname })
+    return crumbs
+  }
+  if (pathname.startsWith(`${enrollmentSchedules}/`) && pathname.endsWith('/edit')) {
+    crumbs.push({ label: 'Class Schedules', to: enrollmentSchedules })
+    crumbs.push({ label: 'Edit', to: pathname })
+    return crumbs
+  }
+  if (pathname.startsWith(`${enrollmentSchedules}/`) && pathname !== enrollmentSchedules) {
+    crumbs.push({ label: 'Class Schedules', to: enrollmentSchedules })
+    crumbs.push({ label: 'Details', to: pathname })
     return crumbs
   }
 

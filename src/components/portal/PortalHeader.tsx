@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Bell,
+  BookOpen,
   Bookmark,
   CheckCheck,
   ChevronRight,
+  ClipboardCheck,
   FileText,
   Inbox,
   Loader2,
@@ -61,6 +63,16 @@ const kindMeta: Record<
     label: 'Feedback',
     Icon: MessagesSquare,
     iconCls: 'bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
+  },
+  appointment: {
+    label: 'Appointment',
+    Icon: ClipboardCheck,
+    iconCls: 'bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200',
+  },
+  schedule: {
+    label: 'Schedule',
+    Icon: BookOpen,
+    iconCls: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200',
   },
 }
 
@@ -448,7 +460,7 @@ export function PortalHeader({
                       You’re all caught up
                     </p>
                     <p className="mx-auto mt-1 max-w-[16rem] text-[12px] leading-5 text-zinc-500 dark:text-zinc-400">
-                      Open requests, reservations, and new feedback appear here.
+                      Open requests, reservations, enrollment queues, and new feedback appear here.
                     </p>
                   </div>
                 ) : (

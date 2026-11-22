@@ -4,6 +4,7 @@ import {
   CalendarCheck,
   CircleHelp,
   ClipboardList,
+  ClipboardPen,
   FileText,
   FolderKanban,
   FolderOpen,
@@ -170,6 +171,7 @@ export const footerColumns = [
   {
     title: 'Resources',
     links: [
+      { label: 'Enrollment Hub', to: '/enrollment-hub' },
       { label: 'Student Handbook', to: studentHandbookUrl },
       { label: 'Forms', to: '/forms' },
       { label: 'Announcements', to: '/#bulletin' },
@@ -323,6 +325,11 @@ export const navItems: NavItem[] = [
       {
         title: 'Documents',
         links: [
+          {
+            label: 'Enrollment Hub',
+            to: '/enrollment-hub',
+            icon: ClipboardPen,
+          },
           {
             slug: 'student-handbook',
             label: 'Student Handbook',

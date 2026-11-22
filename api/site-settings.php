@@ -81,7 +81,29 @@ function site_settings_contact_defaults(): array
 function site_settings_normalize_key(string $key): string
 {
     $key = strtolower(trim($key));
-    return $key === 'contact' ? 'contact' : '';
+    return match ($key) {
+        'contact' => 'contact',
+        'enrollment' => 'enrollment',
+        default => '',
+    };
+}
+
+function site_settings_enrollment_defaults(): array
+{
+    return [
+        'bankName' => 'LandBank',
+        'accountName' => 'PUP COL SC, Inc.',
+        'accountNumber' => '',
+    ];
+}
+
+function site_settings_validate_enrollment(array $payload): array
+{
+    return [
+        'bankName' => trim((string) ($payload['bankName'] ?? $payload['bank_name'] ?? '')),
+        'accountName' => trim((string) ($payload['accountName'] ?? $payload['account_name'] ?? '')),
+        'accountNumber' => trim((string) ($payload['accountNumber'] ?? $payload['account_number'] ?? '')),
+    ];
 }
 
 /**
@@ -169,8 +191,10 @@ function site_settings_load(PDO $pdo, string $key): array
     );
     $stmt->execute(['key' => $key]);
     $row = $stmt->fetch();
+    $defaults = $key === 'enrollment'
+        ? site_settings_enrollment_defaults()
+        : site_settings_contact_defaults();
     if (!$row) {
-        $defaults = site_settings_contact_defaults();
         return [
             'payload' => $defaults,
             'updatedAt' => null,
@@ -179,7 +203,7 @@ function site_settings_load(PDO $pdo, string $key): array
 
     $decoded = json_decode((string) $row['payload_json'], true);
     if (!is_array($decoded)) {
-        $decoded = site_settings_contact_defaults();
+        $decoded = $defaults;
     }
 
     return [
@@ -204,6 +228,7 @@ function site_settings_get(): never
         'key' => $key,
         'payload' => $loaded['payload'],
         'contact' => $key === 'contact' ? $loaded['payload'] : null,
+        'enrollment' => $key === 'enrollment' ? $loaded['payload'] : null,
         'updatedAt' => $loaded['updatedAt'],
     ]);
 }
@@ -229,6 +254,8 @@ function site_settings_put(): never
 
     if ($key === 'contact') {
         $payload = site_settings_validate_contact($payload);
+    } elseif ($key === 'enrollment') {
+        $payload = site_settings_validate_enrollment($payload);
     }
 
     $stmt = $pdo->prepare(
@@ -247,6 +274,7 @@ function site_settings_put(): never
         'key' => $key,
         'payload' => $loaded['payload'],
         'contact' => $key === 'contact' ? $loaded['payload'] : null,
+        'enrollment' => $key === 'enrollment' ? $loaded['payload'] : null,
         'updatedAt' => $loaded['updatedAt'],
     ]);
 }

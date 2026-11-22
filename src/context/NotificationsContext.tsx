@@ -28,7 +28,10 @@ type NotificationsContextValue = {
   unreadCount: number
   hasUnread: boolean
   hasUnreadKind: (kind: NotificationKind) => boolean
+  /** Total items of a kind still in the feed (or unread chats). */
   kindCount: (kind: NotificationKind) => number
+  /** Unread items of a kind — used for sidebar dots that clear after viewing. */
+  unreadKindCount: (kind: NotificationKind) => number
   loading: boolean
   refreshing: boolean
   error: string | null
@@ -36,6 +39,7 @@ type NotificationsContextValue = {
   refresh: () => Promise<void>
   markAllRead: () => void
   markRead: (id: string) => void
+  markKindRead: (kind: NotificationKind) => void
   clearAll: () => void
   setPanelOpen: (open: boolean) => void
 }
@@ -72,7 +76,15 @@ function pruneToKnown(ids: Set<string>, known: Set<string>) {
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const location = useLocation()
-  const emptyCounts = { request: 0, reservation: 0, feedback: 0, chat: 0, total: 0 }
+  const emptyCounts = {
+    request: 0,
+    reservation: 0,
+    feedback: 0,
+    chat: 0,
+    appointment: 0,
+    schedule: 0,
+    total: 0,
+  }
   const [rawItems, setRawItems] = useState<AdminNotification[]>([])
   const [counts, setCounts] = useState(emptyCounts)
   const [seenIds, setSeenIds] = useState<Set<string>>(() => readIdSet(SEEN_KEY))
@@ -107,6 +119,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       reservation: result.data.counts?.reservation ?? 0,
       feedback: result.data.counts?.feedback ?? 0,
       chat: result.data.counts?.chat ?? 0,
+      appointment: result.data.counts?.appointment ?? 0,
+      schedule: result.data.counts?.schedule ?? 0,
       total: result.data.counts?.total ?? nextItems.length,
     })
     setError(null)
@@ -199,6 +213,26 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     })
   }, [items])
 
+  const markKindRead = useCallback(
+    (kind: NotificationKind) => {
+      setSeenIds((prev) => {
+        let changed = false
+        const next = new Set(prev)
+        for (const item of items) {
+          if (item.kind !== kind) continue
+          if (!next.has(item.id)) {
+            next.add(item.id)
+            changed = true
+          }
+        }
+        if (!changed) return prev
+        writeIdSet(SEEN_KEY, next)
+        return next
+      })
+    },
+    [items],
+  )
+
   const clearAll = useCallback(() => {
     setClearedIds((prev) => {
       const next = new Set(prev)
@@ -228,7 +262,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     wasPanelOpenRef.current = panelOpen
   }, [panelOpen, items, markAllRead])
 
-  // Visiting a request/reservation detail marks that alert read.
+  // Visiting detail/list pages marks related alerts as read.
   useEffect(() => {
     const path = location.pathname
     const requestMatch = path.match(/^\/admin\/requests\/(\d+)\/?$/)
@@ -241,12 +275,30 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       markRead(`reservation:${reservationMatch[1]}`)
       return
     }
+    const appointmentMatch = path.match(/^\/admin\/enrollment\/appointments\/(\d+)(?:\/edit)?\/?$/)
+    if (appointmentMatch?.[1]) {
+      markRead(`appointment:${appointmentMatch[1]}`)
+      return
+    }
+    const scheduleMatch = path.match(/^\/admin\/enrollment\/schedules\/(\d+)(?:\/edit)?\/?$/)
+    if (scheduleMatch?.[1]) {
+      markRead(`schedule:${scheduleMatch[1]}`)
+      return
+    }
+    if (path === '/admin/enrollment/appointments' || path === '/admin/enrollment/appointments/') {
+      markKindRead('appointment')
+      return
+    }
+    if (path === '/admin/enrollment/schedules' || path === '/admin/enrollment/schedules/') {
+      markKindRead('schedule')
+      return
+    }
     const feedbackMatch = path.match(/^\/admin\/feedback\/?$/)
     if (feedbackMatch) {
       const openId = new URLSearchParams(location.search).get('open')
       if (openId) markRead(`feedback:${openId}`)
     }
-  }, [location.pathname, location.search, markRead])
+  }, [location.pathname, location.search, markRead, markKindRead])
 
   const hasUnreadKind = useCallback(
     (kind: NotificationKind) =>
@@ -261,6 +313,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     [counts, unreadChat],
   )
 
+  const unreadKindCount = useCallback(
+    (kind: NotificationKind) =>
+      kind === 'chat'
+        ? unreadChat.length
+        : unread.reduce((sum, item) => (item.kind === kind ? sum + 1 : sum), 0),
+    [unread, unreadChat],
+  )
+
   const value = useMemo<NotificationsContextValue>(
     () => ({
       items,
@@ -269,6 +329,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       hasUnread: unread.length > 0,
       hasUnreadKind,
       kindCount,
+      unreadKindCount,
       loading,
       refreshing,
       error,
@@ -276,6 +337,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       refresh,
       markAllRead,
       markRead,
+      markKindRead,
       clearAll,
       setPanelOpen,
     }),
@@ -284,6 +346,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       unread,
       hasUnreadKind,
       kindCount,
+      unreadKindCount,
       loading,
       refreshing,
       error,
@@ -291,6 +354,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       refresh,
       markAllRead,
       markRead,
+      markKindRead,
       clearAll,
     ],
   )

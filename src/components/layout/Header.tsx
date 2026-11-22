@@ -269,25 +269,25 @@ function DesktopNav({ items }: { items: NavItem[] }) {
 
 function MegaMenu({ item, stacked = false }: { item: MenuItem; stacked?: boolean }) {
   return (
-    <div className={cn('flex flex-col gap-4', stacked ? 'px-2 py-4' : 'px-5 py-5')}>
+    <div className={cn('flex flex-col gap-2', stacked ? 'px-2 py-3' : 'px-5 py-3.5')}>
       {item.title ? (
         <p className="px-3 text-[11px] font-semibold tracking-[0.16em] text-brand-600 uppercase">
           {item.title}
         </p>
       ) : null}
       <div
-        className={cn('flex', stacked ? 'flex-col gap-5' : 'items-stretch')}
+        className={cn('flex', stacked ? 'flex-col gap-4' : 'items-stretch')}
         style={stacked ? undefined : { gap: MENU_GAP }}
       >
         {item.groups.map((group) => (
           <div
             key={group.title}
-            className="px-3 py-1"
+            className="px-3 py-0.5"
             style={
               stacked ? undefined : { width: group.wide ? WIDE_GROUP_COL : GROUP_COL }
             }
           >
-            <p className="mb-3 text-sm font-bold text-brand-950">{group.title}</p>
+            <p className="mb-2 text-sm font-bold text-brand-950">{group.title}</p>
             <ul
               className={cn(
                 'grid gap-1.5',

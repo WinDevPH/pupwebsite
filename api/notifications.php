@@ -162,11 +162,79 @@ function notifications_get(): never
         // Table may not exist yet.
     }
 
+    try {
+        $stmt = $pdo->query(
+            "SELECT id, tracking_code, full_name, student_number, enrollment_date_label, time_slot_label, status, created_at
+             FROM enrollment_appointments
+             WHERE status = 'pending'
+             ORDER BY created_at DESC, id DESC
+             LIMIT 30"
+        );
+        if ($stmt) {
+            foreach ($stmt->fetchAll() as $row) {
+                $id = (int) $row['id'];
+                $name = trim((string) $row['full_name']);
+                $student = trim((string) $row['student_number']);
+                $tracking = trim((string) $row['tracking_code']);
+                $dateLabel = trim((string) $row['enrollment_date_label']);
+                $slotLabel = trim((string) $row['time_slot_label']);
+                $slotBits = trim($dateLabel . ($dateLabel !== '' && $slotLabel !== '' ? ' · ' : '') . $slotLabel);
+                $items[] = [
+                    'id' => 'appointment:' . $id,
+                    'kind' => 'appointment',
+                    'title' => $name !== '' ? $name : 'Routing appointment',
+                    'body' => trim(
+                        ($tracking !== '' ? $tracking . ' · ' : '') .
+                        ($student !== '' ? $student . ' · ' : '') .
+                        ($slotBits !== '' ? $slotBits . ' · ' : '') .
+                        'Pending'
+                    ),
+                    'href' => '/admin/enrollment/appointments/' . $id,
+                    'status' => 'pending',
+                    'createdAt' => api_iso((string) $row['created_at']) ?? date('c'),
+                ];
+            }
+        }
+    } catch (Throwable) {
+        // Table may not exist yet.
+    }
+
+    try {
+        $stmt = $pdo->query(
+            "SELECT id, student_name, student_number, status, created_at
+             FROM enrollment_schedules
+             WHERE status = 'pending'
+             ORDER BY created_at DESC, id DESC
+             LIMIT 30"
+        );
+        if ($stmt) {
+            foreach ($stmt->fetchAll() as $row) {
+                $id = (int) $row['id'];
+                $name = trim((string) $row['student_name']);
+                $student = trim((string) $row['student_number']);
+                $items[] = [
+                    'id' => 'schedule:' . $id,
+                    'kind' => 'schedule',
+                    'title' => $name !== '' ? $name : 'Class schedule',
+                    'body' => trim(
+                        ($student !== '' ? $student . ' · ' : '') .
+                        'Pending class load'
+                    ),
+                    'href' => '/admin/enrollment/schedules/' . $id,
+                    'status' => 'pending',
+                    'createdAt' => api_iso((string) $row['created_at']) ?? date('c'),
+                ];
+            }
+        }
+    } catch (Throwable) {
+        // Table may not exist yet.
+    }
+
     usort($items, static function (array $a, array $b): int {
         return strcmp((string) $b['createdAt'], (string) $a['createdAt']);
     });
 
-    $items = array_slice($items, 0, 40);
+    $items = array_slice($items, 0, 50);
 
     api_json([
         'ok' => true,
@@ -176,6 +244,8 @@ function notifications_get(): never
             'reservation' => count(array_filter($items, static fn ($i) => $i['kind'] === 'reservation')),
             'feedback' => count(array_filter($items, static fn ($i) => $i['kind'] === 'feedback')),
             'chat' => count(array_filter($items, static fn ($i) => $i['kind'] === 'chat')),
+            'appointment' => count(array_filter($items, static fn ($i) => $i['kind'] === 'appointment')),
+            'schedule' => count(array_filter($items, static fn ($i) => $i['kind'] === 'schedule')),
             'total' => count($items),
         ],
     ]);

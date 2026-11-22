@@ -7,6 +7,7 @@ const MENU_MIN_WIDTH = 168
 export type PortalActionItem = {
   id: string
   label: string
+  description?: string
   icon?: LucideIcon
   href?: string
   danger?: boolean
@@ -43,6 +44,8 @@ export function PortalActionMenu({
   items: PortalActionItem[]
   disabled?: boolean
   ariaLabel?: string
+  /** @deprecated Kept for call-site compatibility; unused in the restored menu. */
+  heading?: string
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null)
   const [pos, setPos] = useState<MenuPos | null>(null)

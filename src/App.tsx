@@ -26,6 +26,21 @@ import { TRANSPARENCY_ARCHIVES } from '@/lib/transparency-admin'
 import { isAppleTouch } from '@/lib/device'
 import FaqAdmin from '@/pages/dashboard/FaqAdmin'
 import FaqFormPage from '@/pages/dashboard/FaqFormPage'
+import GuidelinesAdmin from '@/pages/dashboard/enrollment/GuidelinesAdmin'
+import GuidelinesFormPage from '@/pages/dashboard/enrollment/GuidelinesFormPage'
+import BatchesAdmin from '@/pages/dashboard/enrollment/BatchesAdmin'
+import BatchFormPage from '@/pages/dashboard/enrollment/BatchFormPage'
+import BatchDetailPage from '@/pages/dashboard/enrollment/BatchDetailPage'
+import OfferingsAdmin from '@/pages/dashboard/enrollment/OfferingsAdmin'
+import OfferingFormPage from '@/pages/dashboard/enrollment/OfferingFormPage'
+import RoutingAdmin from '@/pages/dashboard/enrollment/RoutingAdmin'
+import RoutingFormPage from '@/pages/dashboard/enrollment/RoutingFormPage'
+import AppointmentsAdmin from '@/pages/dashboard/enrollment/AppointmentsAdmin'
+import AppointmentDetailPage from '@/pages/dashboard/enrollment/AppointmentDetailPage'
+import AppointmentFormPage from '@/pages/dashboard/enrollment/AppointmentFormPage'
+import SchedulesAdmin from '@/pages/dashboard/enrollment/SchedulesAdmin'
+import ScheduleDetailPage from '@/pages/dashboard/enrollment/ScheduleDetailPage'
+import ScheduleFormPage from '@/pages/dashboard/enrollment/ScheduleFormPage'
 import MerchAdmin from '@/pages/dashboard/MerchAdmin'
 import MerchFormPage from '@/pages/dashboard/MerchFormPage'
 import OrganizationFormPage from '@/pages/dashboard/OrganizationFormPage'
@@ -63,6 +78,7 @@ import FormGroupFormPage from '@/pages/dashboard/FormGroupFormPage'
 import FormGroupsAdmin from '@/pages/dashboard/FormGroupsAdmin'
 import ResourceLinkFormPage from '@/pages/dashboard/ResourceLinkFormPage'
 import ResourceLinksAdmin from '@/pages/dashboard/ResourceLinksAdmin'
+import EnrollmentHub from '@/pages/EnrollmentHub'
 import Forms from '@/pages/Forms'
 import { LockerPage, MerchPage } from '@/pages/ShopCatalog'
 import Transparency from '@/pages/Transparency'
@@ -210,6 +226,35 @@ export default function App() {
                 <Route path="faq" element={<FaqAdmin />} />
                 <Route path="faq/new" element={<FaqFormPage />} />
                 <Route path="faq/:id/edit" element={<FaqFormPage />} />
+                <Route path="enrollment/guidelines" element={<GuidelinesAdmin />} />
+                <Route path="enrollment/guidelines/schedule/new" element={<GuidelinesFormPage />} />
+                <Route
+                  path="enrollment/guidelines/schedule/:id/edit"
+                  element={<GuidelinesFormPage />}
+                />
+                <Route path="enrollment/guidelines/windows/new" element={<GuidelinesFormPage />} />
+                <Route
+                  path="enrollment/guidelines/windows/:id/edit"
+                  element={<GuidelinesFormPage />}
+                />
+                <Route path="enrollment/batches" element={<BatchesAdmin />} />
+                <Route path="enrollment/batches/new" element={<BatchFormPage />} />
+                <Route path="enrollment/batches/:id/edit" element={<BatchFormPage />} />
+                <Route path="enrollment/batches/:id" element={<BatchDetailPage />} />
+                <Route path="enrollment/offerings" element={<OfferingsAdmin />} />
+                <Route path="enrollment/offerings/new" element={<OfferingFormPage />} />
+                <Route path="enrollment/offerings/:id/edit" element={<OfferingFormPage />} />
+                <Route path="enrollment/routing" element={<RoutingAdmin />} />
+                <Route path="enrollment/routing/:kind/new" element={<RoutingFormPage />} />
+                <Route path="enrollment/routing/:kind/:id/edit" element={<RoutingFormPage />} />
+                <Route path="enrollment/appointments" element={<AppointmentsAdmin />} />
+                <Route path="enrollment/appointments/new" element={<AppointmentFormPage />} />
+                <Route path="enrollment/appointments/:id/edit" element={<AppointmentFormPage />} />
+                <Route path="enrollment/appointments/:id" element={<AppointmentDetailPage />} />
+                <Route path="enrollment/schedules" element={<SchedulesAdmin />} />
+                <Route path="enrollment/schedules/new" element={<ScheduleFormPage />} />
+                <Route path="enrollment/schedules/:id/edit" element={<ScheduleFormPage />} />
+                <Route path="enrollment/schedules/:id" element={<ScheduleDetailPage />} />
                 {TRANSPARENCY_ARCHIVES.map((archive) => (
                   <Fragment key={archive.id}>
                     <Route path={archive.id} element={<DocumentsAdmin archive={archive} />} />
@@ -335,6 +380,7 @@ function AnimatedRoutes() {
       <Route path="/merch" element={<MerchPage />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/forms" element={<Forms />} />
+      <Route path="/enrollment-hub" element={<EnrollmentHub />} />
       <Route path="/transparency" element={<Transparency />} />
       <Route path="*" element={<Placeholder />} />
     </Routes>

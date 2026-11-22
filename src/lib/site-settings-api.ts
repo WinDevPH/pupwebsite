@@ -103,3 +103,48 @@ export async function saveSiteContact(contact: SiteContact) {
     body: JSON.stringify({ key: 'contact', payload: contact }),
   })
 }
+
+export type EnrollmentPaymentSettings = {
+  bankName: string
+  accountName: string
+  accountNumber: string
+}
+
+export const defaultEnrollmentPayment: EnrollmentPaymentSettings = {
+  bankName: 'LandBank',
+  accountName: 'PUP COL SC, Inc.',
+  accountNumber: '',
+}
+
+export function mergeEnrollmentPayment(
+  fallback: EnrollmentPaymentSettings,
+  partial: Partial<EnrollmentPaymentSettings> | null | undefined,
+): EnrollmentPaymentSettings {
+  if (!partial) return fallback
+  return {
+    bankName: partial.bankName?.trim() || fallback.bankName,
+    accountName: partial.accountName?.trim() || fallback.accountName,
+    accountNumber: (partial.accountNumber ?? fallback.accountNumber).trim(),
+  }
+}
+
+export async function getEnrollmentPayment() {
+  const result = await request<{
+    enrollment: Partial<EnrollmentPaymentSettings> | null
+    payload?: Partial<EnrollmentPaymentSettings> | null
+  }>('/api/site-settings.php?key=enrollment')
+  if (!result.ok) return result
+  return {
+    ok: true as const,
+    data: {
+      enrollment: result.data.enrollment ?? result.data.payload ?? null,
+    },
+  }
+}
+
+export async function saveEnrollmentPayment(enrollment: EnrollmentPaymentSettings) {
+  return request<{ enrollment: EnrollmentPaymentSettings }>('/api/site-settings.php', {
+    method: 'PUT',
+    body: JSON.stringify({ key: 'enrollment', payload: enrollment }),
+  })
+}

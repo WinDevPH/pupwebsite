@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, FileText, Loader2, Plus, Trash2 } from 'lucide-react'
+import { ArrowUpRight, FileText, Loader2, Plus, ScrollText, Trash2 } from 'lucide-react'
 import { RequireLoginRedirect } from '@/components/portal/RequireLoginRedirect'
 import {
   formControlWellCls,
@@ -46,16 +46,15 @@ export default function SettingsAdmin() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    const result = await getSiteContact()
-    if (!result.ok) {
-      if (result.status === 401 || result.status === 403) setNeedsLogin(true)
-      else showToast(result.error, 'error')
+    const contactResult = await getSiteContact()
+    if (!contactResult.ok) {
+      if (contactResult.status === 401 || contactResult.status === 403) setNeedsLogin(true)
+      else showToast(contactResult.error, 'error')
       setContact(defaultSiteContact)
-      setLoading(false)
-      return
+    } else {
+      setNeedsLogin(false)
+      setContact(mergeSiteContact(defaultSiteContact, contactResult.data.contact))
     }
-    setNeedsLogin(false)
-    setContact(mergeSiteContact(defaultSiteContact, result.data.contact))
     setLoading(false)
   }, [showToast])
 
@@ -225,6 +224,24 @@ export default function SettingsAdmin() {
           </button>
         </div>
       </form>
+
+      <Link
+        to="/admin/enrollment/routing"
+        className="group mt-6 flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 transition hover:border-brand-300 dark:border-zinc-800 dark:bg-zinc-950"
+      >
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+          <ScrollText className="size-4" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            Enrollment bank account
+          </span>
+          <span className="block text-[12px] text-zinc-500">
+            Manage SC contribution bank details under Enrollment Hub → Routing Config → Settings.
+          </span>
+        </span>
+        <ArrowUpRight className="size-4 text-zinc-400 group-hover:text-brand-700" aria-hidden />
+      </Link>
 
       <Link
         to="/admin/board-resolutions"

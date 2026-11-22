@@ -333,7 +333,9 @@ html.dark .bg-\[\#fff\]:not([class*='dark:bg-']) {
 }
 
 html.dark .bg-zinc-50:not([class*='dark:bg-']),
+html.dark .bg-zinc-50\/40:not([class*='dark:bg-']),
 html.dark .bg-zinc-50\/50:not([class*='dark:bg-']),
+html.dark .bg-zinc-50\/60:not([class*='dark:bg-']),
 html.dark .bg-zinc-50\/80:not([class*='dark:bg-']),
 html.dark .bg-zinc-50\/85:not([class*='dark:bg-']),
 html.dark .bg-zinc-50\/90:not([class*='dark:bg-']) {
@@ -347,16 +349,20 @@ html.dark .hover\:bg-zinc-100\/80:hover {
 }
 
 html.dark .hover\:bg-zinc-50:hover:not([class*='dark:hover:bg-']),
-html.dark .hover\:bg-zinc-50\/80:hover {
+html.dark .hover\:bg-zinc-50\/80:hover,
+html.dark .hover\:bg-zinc-50\/90:hover:not([class*='dark:hover:bg-']) {
   background-color: #27272a;
 }
 
 html.dark .bg-brand-50:not([class*='dark:bg-']),
+html.dark .bg-brand-50\/35:not([class*='dark:bg-']),
 html.dark .bg-brand-50\/40:not([class*='dark:bg-']),
 html.dark .bg-brand-50\/60:not([class*='dark:bg-']),
+html.dark .bg-brand-50\/70:not([class*='dark:bg-']),
 html.dark .bg-brand-50\/80:not([class*='dark:bg-']),
 html.dark .bg-brand-50\/90:not([class*='dark:bg-']),
 html.dark .hover\:bg-brand-50:hover:not([class*='dark:hover:bg-']),
+html.dark .hover\:bg-brand-50\/35:hover:not([class*='dark:hover:bg-']),
 html.dark .hover\:bg-brand-50\/70:hover:not([class*='dark:hover:bg-']),
 html.dark .hover\:bg-brand-50\/80:hover:not([class*='dark:hover:bg-']),
 html.dark .hover\:bg-brand-50\/90:hover:not([class*='dark:hover:bg-']) {
@@ -1062,6 +1068,114 @@ html.dark .text-maroon-800:not([class*='dark:text-']) {
 
 html.dark .border-maroon-200:not([class*='dark:border-']) {
   border-color: rgb(199 58 58 / 0.28);
+}
+
+/* Status / semantic chips (Enrollment Hub + builders) */
+html.dark .bg-emerald-50:not([class*='dark:bg-']),
+html.dark .bg-emerald-50\/80:not([class*='dark:bg-']) {
+  background-color: rgb(16 185 129 / 0.14);
+}
+
+html.dark .text-emerald-700:not([class*='dark:text-']),
+html.dark .text-emerald-800:not([class*='dark:text-']) {
+  color: #6ee7b7;
+}
+
+html.dark .border-emerald-200:not([class*='dark:border-']) {
+  border-color: rgb(16 185 129 / 0.32);
+}
+
+html.dark .bg-amber-50:not([class*='dark:bg-']),
+html.dark .bg-amber-50\/80:not([class*='dark:bg-']) {
+  background-color: rgb(245 158 11 / 0.14);
+}
+
+html.dark .bg-amber-100:not([class*='dark:bg-']),
+html.dark .hover\:bg-amber-100:hover:not([class*='dark:hover:bg-']) {
+  background-color: rgb(245 158 11 / 0.22);
+}
+
+html.dark .bg-amber-200\/80:not([class*='dark:bg-']) {
+  background-color: rgb(245 158 11 / 0.28);
+}
+
+html.dark .text-amber-700:not([class*='dark:text-']),
+html.dark .text-amber-800:not([class*='dark:text-']),
+html.dark .text-amber-900:not([class*='dark:text-']) {
+  color: #fbbf24;
+}
+
+html.dark .border-amber-200:not([class*='dark:border-']) {
+  border-color: rgb(245 158 11 / 0.32);
+}
+
+html.dark .bg-rose-50:not([class*='dark:bg-']),
+html.dark .bg-rose-50\/70:not([class*='dark:bg-']),
+html.dark .bg-rose-50\/80:not([class*='dark:bg-']) {
+  background-color: rgb(244 63 94 / 0.14);
+}
+
+html.dark .text-rose-900:not([class*='dark:text-']),
+html.dark .text-rose-900\/90:not([class*='dark:text-']) {
+  color: #fda4af;
+}
+
+html.dark .border-rose-200:not([class*='dark:border-']),
+html.dark .border-rose-200\/70:not([class*='dark:border-']),
+html.dark .border-rose-300:not([class*='dark:border-']) {
+  border-color: rgb(244 63 94 / 0.32);
+}
+
+html.dark .bg-sky-50:not([class*='dark:bg-']) {
+  background-color: rgb(14 165 233 / 0.14);
+}
+
+html.dark .text-sky-700:not([class*='dark:text-']) {
+  color: #7dd3fc;
+}
+
+html.dark .border-sky-100:not([class*='dark:border-']) {
+  border-color: rgb(14 165 233 / 0.28);
+}
+
+html.dark .bg-violet-50:not([class*='dark:bg-']) {
+  background-color: rgb(139 92 246 / 0.14);
+}
+
+html.dark .text-violet-700:not([class*='dark:text-']) {
+  color: #c4b5fd;
+}
+
+html.dark .border-violet-100:not([class*='dark:border-']) {
+  border-color: rgb(139 92 246 / 0.28);
+}
+
+html.dark .ring-white {
+  --tw-ring-color: #09090b;
+}
+
+html.dark .shadow-\[0_18px_40px_-20px_rgba\(30\,5\,65\,0\.35\)\] {
+  --tw-shadow: 0 18px 40px -20px rgb(0 0 0 / 0.65);
+  --tw-shadow-colored: 0 18px 40px -20px var(--tw-shadow-color);
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+    var(--tw-shadow);
+}
+
+html.dark .shadow-\[0_10px_18px_-14px_rgba\(76\,29\,149\,0\.9\)\] {
+  --tw-shadow: 0 10px 18px -14px rgb(0 0 0 / 0.55);
+  --tw-shadow-colored: 0 10px 18px -14px var(--tw-shadow-color);
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+    var(--tw-shadow);
+}
+
+html.dark .shadow-\[0_1px_0_rgba\(24\,24\,27\,0\.03\)\] {
+  --tw-shadow: 0 1px 0 rgb(255 255 255 / 0.04);
+  --tw-shadow-colored: 0 1px 0 var(--tw-shadow-color);
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+    var(--tw-shadow);
 }
 
 /* Outline / ghost buttons without dark: variants */

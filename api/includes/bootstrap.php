@@ -263,6 +263,16 @@ function api_security_headers(): void
 
 function api_json(mixed $payload, int $status = 200, array $headers = []): never
 {
+    // Avoid leaving locks open when validation exits mid-transaction.
+    try {
+        $pdo = api_pdo();
+        if ($pdo instanceof PDO && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+    } catch (Throwable) {
+        // Connection may be unavailable while reporting a DB error.
+    }
+
     api_security_headers();
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
@@ -443,11 +453,12 @@ function api_touch_auth_session(): void
  */
 function api_start_session(?bool $remember = null): void
 {
-    // Keep PHP GC above idle browser use so unchecked sessions are not wiped mid-day.
-    $persistSeconds = api_session_lifetime_seconds(true);
-    ini_set('session.gc_maxlifetime', (string) $persistSeconds);
-
     if (session_status() !== PHP_SESSION_ACTIVE) {
+        // Keep PHP GC above idle browser use so unchecked sessions are not wiped mid-day.
+        // Only set before session_start — ini_set warns once a session is already active.
+        $persistSeconds = api_session_lifetime_seconds(true);
+        ini_set('session.gc_maxlifetime', (string) $persistSeconds);
+
         $config = api_config();
         $name = (string) ($config['session_name'] ?? 'pup_col_sc_session');
         // Cookie params are finalized after start once we know remember.
